@@ -133,7 +133,7 @@ op THUMB(i: thumb2)
 	instruction_set_select = TFLAG == 1
 	instruction_set_name = "THUMB"
 
-op thumb2 =  thumb16 /*| thumb32*/
+op thumb2 =  thumb16 | thumb32
 
 op thumb16(x: thumb16_list)
 	image = x.image
@@ -409,9 +409,9 @@ op BKPT_thumb(imm: IMM8)
 	action = {
 	}
 
-op BLX_thumb = BLX1_thumb | BLX2_thumb
+op BLX_thumb = /*BLX1_thumb |*/ BLX2_thumb
 
-op BLX1_thumb(H : u2, offs :OFFS11)
+/*op BLX1_thumb(H : u2, offs :OFFS11)
 	target = __IADDR + 4 + (coerce(s32, offs) << 1)
 	syntax =
 		switch(H) {
@@ -435,7 +435,7 @@ op BLX1_thumb(H : u2, offs :OFFS11)
 			NPC = Get_ARM_GPR(14) + (coerce(u32, offs) << 1);
 			Set_ARM_GPR(14, (__IADDR + 2) | 1);           		
 		};
-}
+}*/
 
 
 op BLX2_thumb( rm: REG_INDEX)

@@ -40,7 +40,8 @@ op ARM(x : ARM_instr)
 	instruction_set_select = TFLAG == 0
 	instruction_set_name = "ARM"
           
-op ARM_instr = dataProcessing 
+op ARM_instr =
+	  dataProcessing 
 	| branch 
 	| LoadStore 
 	| LoadStoreM 
@@ -88,4 +89,5 @@ include "loadStoreM_Macro.nmp"
 include "loadStoreM.nmp"
 include "thumb.nmp"
 include "exception.nmp"
+include "thumb2.nmp"
 

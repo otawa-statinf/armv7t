@@ -1,0 +1,64 @@
+//
+//	ARMv7 Thumb2 added instructions
+//
+//	This file is part of OTAWA
+//	Copyright (c) 2011-12, IRIT UPS.
+//
+//	OTAWA is free software; you can redistribute it and/or modify
+//	it under the terms of the GNU General Public License as published by
+//	the Free Software Foundation; either version 2 of the License, or
+//	(at your option) any later version.
+//
+//	OTAWA is distributed in the hope that it will be useful,
+//	but WITHOUT ANY WARRANTY; without even the implied warranty of
+//	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//	GNU General Public License for more details.
+//
+//	You should have received a copy of the GNU General Public License
+//	along with OTAWA; if not, write to the Free Software
+//	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+//
+
+macro ZeroExtend(v, n) = coerce(card(n), v)
+
+macro ROR_C(v, n) = (v) >> (n)
+macro ROR_CFLAG(v, n) = ((v) >> (n - 1))<0..0>
+
+macro ThumbExpandImm_C(imm12) = \
+	if imm12<11..0> == 0b00 then \
+		switch(imm12<9..8>) { \
+		case 0b00: ZeroExtend(imm12<7..0>, 32) \
+		case 0b01: 0b00000000 :: imm12<7..0> :: 0b00000000 :: imm12<7..0> \
+		case 0b10: imm12<7..0> :: 0b00000000 :: imm12<7..0> :: 0b00000000 \
+		case 0b11: imm12<7..0> :: imm12<7..0> :: imm12<7..0> :: imm12<7..0> \
+		} \
+	else \
+		ROR_C(ZeroExtend(0b1 :: imm12<6..0>, 32), imm12<11..7>) \
+	endif
+macro ThumbExpandImm_CFLAG(imm12) = \
+	if imm12<11..0> == 0b00 then CFLAG \
+	else ROR_CFLAG(ZeroExtend(0b1 :: imm12<6..0>, 32), imm12<11..7>) \
+	endif
+
+
+
+op thumb32 = EOR_imm_thumb
+
+reg result[1, card(32)]
+
+op EOR_imm_thumb(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	imm12 = i :: imm3 :: imm8
+	imm32 = ThumbExpandImm_C(imm12)
+	syntax = format("eor%s %s, %s, #%08x", S, rd, rn, imm32)
+	image = format("11110 %1b 0 0100 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
+	action = {
+		// if rd.number == 0b1111 && S == 1 then SEE TEQ (immediate); endif;
+		// if rd.number == 13 || (rd.number == 15 && S == 0) then UNPREDICTABLE; endif;
+		result = rn ^ imm32;
+		rd = result;
+		if S then
+			NFLAG = result<31..31>;
+			ZFLAG = result == 0;
+			CFLAG = ThumbExpandImm_CFLAG(imm12);
+		endif;
+	}
