@@ -19,3 +19,9 @@
 /* compatibility */
 #define sc_impl(_1, _2, _3)		arm_syscall(inst, state)
 #define print(t)				printf("%s\n", t)
+
+/* THUMB-2 decoding */
+#define ARM_ORDER_BYTES_CISC	word = (buff[1] << 24) | (buff[0] << 16) | (buff[3] << 8) | buff[2];
+
+/* mode bit removal */
+#define ARM_PROCESS_CODE_LABEL(a)		a = a & 0xfffffffe;

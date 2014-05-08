@@ -40,11 +40,47 @@ macro ThumbExpandImm_CFLAG(imm12) = \
 	else ROR_CFLAG(ZeroExtend(0b1 :: imm12<6..0>, 32), imm12<11..7>) \
 	endif
 
+macro BranchTo(addr) = PC = addr
+macro BranchWritePC(addr) = BranchTo(addr<31..1> :: 0<0..0>)
 
 
-op thumb32 = EOR_imm_thumb
+// thumb-32 temporaries
+var I1[1, card(1)]
+var I2[1, card(1)]
+var imm32[1, int(32)]
+var next_instr_addr[1, card(32)]
+var result[1, card(32)]
 
-reg result[1, card(32)]
+
+// Thumb-2 tree root
+op thumb32(x: thumb32_list)
+	image = x.image
+	syntax = x.syntax
+	action = {
+		NPC = PC + 4;
+		PC = PC + 4;
+		x.action;
+		PC = NPC;
+	}
+
+op thumb32_list = EOR_imm_thumb | BL_thumb
+
+
+// BL from Thumb2 (is equivalent to two successive Thumb1 16-bits BL)
+// In Thumb32, the 16-bits lonely version is now forbidden.
+op BL_thumb(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11: card(11))
+	addr = __IADDR + 4 + coerce(int(32), S :: ~(J1 ^ S) :: ~(J2 ^ S) :: imm10 :: imm11 :: 0<0..0>)
+	syntax = format("bl %08x", addr)
+	image = format("11110 %1b %10b 11 %1b 1 %1b %11b", S, imm10, J1, J2, imm11)
+	action = {
+		// if ConditionPassed then
+			// targetInstrSet = CurrentInstrSet();
+			// if InITBlock() && !LastInITBlock() then UNPREDICTABLE; endif;
+			next_instr_addr = PC;
+			LR = next_instr_addr<31..1> :: 1<0..0>;
+			BranchWritePC(addr); 
+		// endif
+	}
 
 op EOR_imm_thumb(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	imm12 = i :: imm3 :: imm8

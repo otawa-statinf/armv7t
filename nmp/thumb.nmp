@@ -140,7 +140,7 @@ op thumb16(x: thumb16_list)
 	syntax = x.syntax
 	action = {
 		NPC = PC + 2;
-		PC = PC + 4;
+		PC = PC + 2;
 		x.action;
 		PC = NPC;
 	}
@@ -1382,46 +1382,6 @@ op TST_thumb(rn : REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
       
 	}
 
-
-// start of work for THUMB-2
-
-/*op thumb32(x: thumb32_list)
-	image = x.image
-	syntax = x.syntax
-	action = {
-		NPC = PC + 4;
-		PC = PC + 4;
-		x.action;
-		PC = NPC;
-	}*/
-
-/*
-// thumb-32 temporaries
-var I1[1, card(1)]
-var I2[1, card(1)]
-var imm32[1, int(32)]
-var next_instr_addr[1, card(32)]
-	
-op thumb32_list = BL_thumb
-
-macro BranchTo(addr) = PC = addr
-macro BranchWritePC(addr) = BranchTo(addr<31..1> :: 0<0..0>)
-
-// BL from Thumb2 (is equivalent to two successive Thumb1 16-bits BL)
-// In Thumb32, the 16-bits lonely version is now forbidden.
-op BL_thumb(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11: card(11))
-	addr = __IADDR + 4 + coerce(int(32), S :: ~(J1 ^ S) :: ~(J2 ^ S) :: imm10 :: imm11 :: 0<0..0>)
-	syntax = format("bl %08x", addr)
-	image = format("11110 %1b %10b 11 %1b 1 %1b %11b", S, imm10, J1, J2, imm11)
-	action = {
-		// if ConditionPassed then
-			// targetInstrSet = CurrentInstrSet();
-			// if InITBlock() && !LastInITBlock() then UNPREDICTABLE; endif;
-			next_instr_addr = PC;
-			LR = next_instr_addr<31..1> :: 1<0..0>;
-			BranchWritePC(addr); 
-		// endif
-	}*/
 
 
 
