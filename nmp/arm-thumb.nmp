@@ -78,6 +78,7 @@ op sra = MSR_imm | MSR_shr | MRS
 
 // ****** includes ******
 
+include "gen.nmp"
 include "condition.nmp"
 include "shiftedRegister.nmp"
 include "dataProcessing.nmp"

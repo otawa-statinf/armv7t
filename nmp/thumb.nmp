@@ -126,16 +126,16 @@ macro Get_THUMB_GPR(r) = GPR[r]
 // All thumb Instructions 
 ///////////////////////////////////////////
 
-op THUMB(i: thumb2)
+op THUMB(i: thumb)
 	image = i.image
 	syntax = i.syntax
 	action = { i.action; }
 	instruction_set_select = TFLAG == 1
 	instruction_set_name = "THUMB"
 
-op thumb2 =  thumb16 | thumb32
+op thumb =  thumb1 | thumb2
 
-op thumb16(x: thumb16_list)
+op thumb1(x: thumb1_list)
 	image = x.image
 	syntax = x.syntax
 	action = {
@@ -145,13 +145,15 @@ op thumb16(x: thumb16_list)
 		PC = NPC;
 	}
 
-op thumb16_list = ADD_thumb | AND_thumb | ASR_thumb | B_thumb | BIC_thumb 
-| BLX_thumb | BX_thumb | COMPARE_thumb | EOR_thumb | LDMIA_thumb 
-| LDR_thumb | LDRB_thumb | LDRH_thumb | LDRS_thumb | LSL_thumb 
-| LSR_thumb | MUL_thumb | MVN_thumb | NEG_thumb 
-| ORR_thumb | POP_thumb | PUSH_thumb | ROR_thumb | SBC_thumb
-| STMIA_thumb | STR_thumb | STRB_thumb | STRH_thumb | SUB_thumb
-| TST_thumb  |  MOV_thumb  
+op thumb1_list =
+	  ADD_thumb | AND_thumb | ASR_thumb
+	| B_thumb | B_thumb_T2 | BIC_thumb 
+	| BLX_thumb | BX_thumb | COMPARE_thumb | EOR_thumb | LDMIA_thumb 
+	| LDR_thumb | LDRB_thumb | LDRH_thumb | LDRS_thumb | LSL_thumb 
+	| LSR_thumb | MUL_thumb | MVN_thumb | NEG_thumb 
+	| ORR_thumb | POP_thumb | PUSH_thumb | ROR_thumb | SBC_thumb
+	| STMIA_thumb | STR_thumb | STRB_thumb | STRH_thumb | SUB_thumb
+	| TST_thumb  |  MOV_thumb  
 
 
 ///////////////////////////////////////////
@@ -347,9 +349,7 @@ op ASR2_thumb(rd : REG_THUMB_INDEX, rs:REG_THUMB_INDEX )
 
 
 
-///////////////////////////////////////////
-// Branch instruction, conditional if L bit is set
-///////////////////////////////////////////
+// ****** branch instructions ******
 
 op B_thumb(cond : u4,  simm: SIMM8)
 	target = __IADDR + 4 + (coerce(s32, simm) << 1)
@@ -385,6 +385,17 @@ op B_thumb(cond : u4,  simm: SIMM8)
 				NPC = TMP_REG2;	       	   
 			endif;
 		endif;
+	}
+
+macro SignExtended(v, s) = coerce(int(s), v)
+
+op B_thumb_T2(imm11: int(11))
+	target = __IADDR + 4 + SignExtended(imm11 :: 0<0..0>, 32)
+	syntax = format("b %l", target)
+	image = format("11100 %11b", imm11)
+	action = {
+		// if InITBlock && !LastInITBlock then UNPREDICTABLE
+		BranchWritePC_thumb(target);
 	}
 
 

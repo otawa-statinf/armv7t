@@ -173,6 +173,16 @@ reg R[16, u32]
 	set = { Set_ARM_GPR("GLISS_IDX", "GLISS_I");  }
 
 
+// ITSTATE register
+reg ITSTATE[1, card(8)]
+reg ITSTATE_COND[1, card(4)] alias = ITSTATE<7..5>
+reg ITSTATE_MASK[1, card(5)] alias = ITSTATE<4..0>
+
+macro ITAdvance = if ITSTATE<2:0> == 0then ITSTATE = 0; else ITSTATE<4:0> = ITSTATE<4:0> << 1; endif
+macro InITBlock = (ITSTATE.IT<3:0> != 0)
+macro LastInITBlock = (ITSTATE<3:0> == '0b1000)
+
+
 // initialisation
 op init ()
 	action = { 

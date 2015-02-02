@@ -20,7 +20,7 @@
 //
 
 op B_Cond(cond: condition, setl: u1, signed_immed_24: IMM24)
-	syntax = format("b%s%s %x", if setl then "l" else "" endif, cond.syntax, __IADDR + 8 + (coerce(int(30), signed_immed_24) :: 0b00))
+	syntax = format("b%s%s %08lx", if setl then "l" else "" endif, cond.syntax, __IADDR + 8 + (coerce(int(30), signed_immed_24) :: 0b00))
 	image = format("%s101%1b%s", cond.image, setl, signed_immed_24.image) 
 	action = {	        
 		if (cond) then

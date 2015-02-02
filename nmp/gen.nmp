@@ -1,0 +1,4 @@
+// Macro from ARM Manual
+
+macro BranchTo(addr) = PC = addr
+macro BranchWritePC_thumb(addr) = BranchTo(addr<31..1> :: 0<0..0>)

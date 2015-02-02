@@ -40,9 +40,6 @@ macro ThumbExpandImm_CFLAG(imm12) = \
 	else ROR_CFLAG(ZeroExtend(0b1 :: imm12<6..0>, 32), imm12<11..7>) \
 	endif
 
-macro BranchTo(addr) = PC = addr
-macro BranchWritePC(addr) = BranchTo(addr<31..1> :: 0<0..0>)
-
 
 // thumb-32 temporaries
 var I1[1, card(1)]
@@ -53,7 +50,12 @@ var result[1, card(32)]
 
 
 // Thumb-2 tree root
-op thumb32(x: thumb32_list)
+op thumb2 = thumb2_32 /*| thumb2_16*/
+
+
+
+// ****** thumb-32 32-bits ******
+op thumb2_32(x: thumb2_32_list)
 	image = x.image
 	syntax = x.syntax
 	action = {
@@ -63,7 +65,7 @@ op thumb32(x: thumb32_list)
 		PC = NPC;
 	}
 
-op thumb32_list = EOR_imm_thumb | BL_thumb
+op thumb2_32_list = EOR_imm_thumb | BL_thumb
 
 
 // BL from Thumb2 (is equivalent to two successive Thumb1 16-bits BL)
@@ -78,7 +80,7 @@ op BL_thumb(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11: card(1
 			// if InITBlock() && !LastInITBlock() then UNPREDICTABLE; endif;
 			next_instr_addr = PC;
 			LR = next_instr_addr<31..1> :: 1<0..0>;
-			BranchWritePC(addr); 
+			BranchWritePC_thumb(addr); 
 		// endif
 	}
 
@@ -98,3 +100,18 @@ op EOR_imm_thumb(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3
 			CFLAG = ThumbExpandImm_CFLAG(imm12);
 		endif;
 	}
+
+
+// ****** thumb-2 16-bits ******
+
+/*op thumb2_16(x: thumb2_16_list)
+	image = x.image
+	syntax = x.syntax
+	action = {
+		NPC = PC + 4;
+		PC = PC + 4;
+		x.action;
+		PC = NPC;
+	}
+
+op thumb2_16_list = B_T2*/
