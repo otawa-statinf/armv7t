@@ -25,3 +25,5 @@
 
 /* mode bit removal */
 #define ARM_PROCESS_CODE_LABEL(a)		a = a & 0xfffffffe;
+
+#define ARM7
