@@ -90,6 +90,11 @@ ATi -- same encoding in both ISAs.
 4, 5, 6, 7 -- armv4, v5, v6, v7
 aSIMD -- advanced SIMD
 
+ok		Implemented.
+range	Implemented but need range parameter to be operational.
+check	Need to be checked.
+action	Action not implemented.
+
 ADC (immediate)
 	T1		6	ok
 	A1		4	ok
@@ -241,9 +246,9 @@ ISB
 IT
 	T1		6
 LDC, LDC2 (immediate)
-	T1		6
+	T1		6	action
 	A1		4	check
-	T2		6
+	T2		6	action
 	A2		5	check
 LDC, LDC2 (literal)
 	T1		6
@@ -673,10 +678,10 @@ SSUB8
 	T1		6
 	A1		6
 STC, STC2
-	T1		6
-	A1		4	ok
-	T2		6
-	A2		5	ok
+	T1		6	action
+	A1		4	action
+	T2		6	action
+	A2		5	action
 STM (STMIA, STMEA)
 	T1		4	ok
 	T2		6

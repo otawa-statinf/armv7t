@@ -1,0 +1,72 @@
+
+type sfp_index = card(5)
+
+reg S[32, singlefp]
+reg D[16, doublefp] alias = S[0]
+
+reg FPSCR[1, card(32)]
+reg FPSCR_N[1, card(1)] alias = FPSCR<31..31>
+reg FPSCR_Z[1, card(1)] alias = FPSCR<30..30>
+reg FPSCR_C[1, card(1)] alias = FPSCR<29..29>
+reg FPSCR_V[1, card(1)] alias = FPSCR<28..28>
+reg FPSCR_AHP[1, card(1)] alias = FPSCR<26..26>
+reg FPSCR_DN[1, card(1)] alias = FPSCR<25..25>
+reg FPSCR_FZ[1, card(1)] alias = FPSCR<24..24>
+reg FPSCR_RMode[1, card(2)] alias = FPSCR<23..22>
+reg FPSCR_IDC[1, card(1)] alias = FPSCR<7..7>
+reg FPSCR_IXC[1, card(2)] alias = FPSCR<6..5>
+reg FPSCR_UFC[1, card(1)] alias = FPSCR<3..3>
+reg FPSCR_OFC[1, card(1)] alias = FPSCR<2..2>
+reg FPSCR_DZC[1, card(1)] alias = FPSCR<1..1>
+reg FPSCR_IOC[1, card(1)] alias = FPSCR<0..0>
+
+
+mode DoubleReg(i: card(5)) = i 
+	syntax = format("D%d", i)
+	image = format("%4b", i<3..0>)
+	D = (i >> 4)
+
+mode SingleReg(i: card(5)) = i 
+	syntax = format("S%d", i)
+	image = format("%4b", i<4..1>)
+	D = (i & 0b00001)
+
+
+op fp = VSTR
+
+op VSTR(x: VSTR_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		// TODO
+		//	ExecuteFPCheck();
+		//	address = if add then (R[n] + imm32) else (R[n] - imm32);
+		//	if single_reg then
+		//		MemA[address,4] = S[d];
+		//	else
+		// 		Store as two word-aligned words in the correct order for current endianness.
+		//		MemA[address,4] = if BigEndian() then D[d]<63:32> else D[d]<31:0>;
+		//		MemA[address+4,4] = if BigEndian() then D[d]<31:0> else D[d]<63:32>;	}
+	}
+
+op VSTR_list = VSTR_T1 | VSTR_T2
+
+op VSTR_T1(U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	// if n == 15 then UNPREDICTABLE
+	syntax = format("vstr %s, [%s, #%s%d]", Vd, Rn, if U then "+" else "-" endif, imm8::0b00)
+	image = format("1110 1101 %1b %1b 00 %s %s 1011 %8b", U, Vd.D, Rn, Vd, imm8)
+	single_reg = 0
+	add = U
+	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	d = UInt(Vd)
+	n = UInt(Rn)
+
+op VSTR_T2(U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
+	// if n == 15 then UNPREDICTABLE
+	syntax = format("vstr %s, [%s, #%s%d]", Vd, Rn, if U then "+" else "-" endif, imm8::0b00)
+	image = format("1110 1101 %1b %1b 00 %s %s 1010 %8b", U, Vd.D, Rn, Vd, imm8)
+	single_reg = 0
+	add = U
+	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	d = UInt(Vd)
+	n = UInt(Rn)

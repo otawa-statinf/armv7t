@@ -65,7 +65,7 @@ mode OFFS11(n: u11) = n
 	image  = format ("%11b", n)
 
 
-mode REG_THUMB_INDEX(ro: thumb_index) = ro
+mode REG_THUMB_INDEX(ro: card(3)) = ro
 	syntax = format("r%d", ro)
 	hsyntax =
 		switch(ro) {

@@ -51,7 +51,7 @@ var TMP_IMM      [ 1 , u8]
 var TMP_IMM2     [ 1 , u8]
 var TMP_IMM3  [ 1 , u8]
 var TMP_IMM4  [ 1 , u8]
-var TMP_EA       [ 1 , address ]
+var TMP_EA       [ 1 , address_t ]
 var TMP_SETBIT   [ 1 , s8 ]
 var TMP_START_ADDR	 [ 1 , u32]
 var TMP_END_ADDR	 [ 1 , u32]
@@ -63,3 +63,20 @@ var TMP_INDEX1 [1, u4]
 var TMP_INDEX2 [1, u4]
 var TMP_INDEX3 [1, u4]
 var TMP_HALF [1, s16]
+
+// ARM ref flags
+var setflags[1, bool]
+var carry[1, bool]
+
+// ARM ref registers
+var d[1, card(4)]
+var n[1, card(4)]
+
+// ARM ref data
+var address[1, card(32)]
+var newaddress[1, card(32)]
+var data[1, card(16)]
+var imm32[1, card(32)]
+var offset[1, int(32)]
+var offset_addr[1, int(32)]
+var unrotated_value[1, card(32)]

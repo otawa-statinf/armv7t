@@ -19,38 +19,18 @@
 //	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
-macro ZeroExtend(v, n) = coerce(card(n), v)
-
-macro ROR_C(v, n) = (v) >> (n)
-macro ROR_CFLAG(v, n) = ((v) >> (n - 1))<0..0>
-
-macro ThumbExpandImm_C(imm12) = \
-	if imm12<11..0> == 0b00 then \
-		switch(imm12<9..8>) { \
-		case 0b00: ZeroExtend(imm12<7..0>, 32) \
-		case 0b01: 0b00000000 :: imm12<7..0> :: 0b00000000 :: imm12<7..0> \
-		case 0b10: imm12<7..0> :: 0b00000000 :: imm12<7..0> :: 0b00000000 \
-		case 0b11: imm12<7..0> :: imm12<7..0> :: imm12<7..0> :: imm12<7..0> \
-		} \
-	else \
-		ROR_C(ZeroExtend(0b1 :: imm12<6..0>, 32), imm12<11..7>) \
-	endif
-macro ThumbExpandImm_CFLAG(imm12) = \
-	if imm12<11..0> == 0b00 then CFLAG \
-	else ROR_CFLAG(ZeroExtend(0b1 :: imm12<6..0>, 32), imm12<11..7>) \
-	endif
-
 
 // thumb-32 temporaries
 var I1[1, card(1)]
 var I2[1, card(1)]
-var imm32[1, int(32)]
 var next_instr_addr[1, card(32)]
 var result[1, card(32)]
 
 
 // Thumb-2 tree root
-op thumb2 = thumb2_32 /*| thumb2_16*/
+op thumb2 = thumb2_32
+	/*| thumb2_16*/
+	/*| fp add it when range will be supported in parameters */
 
 
 
@@ -65,7 +45,48 @@ op thumb2_32(x: thumb2_32_list)
 		PC = NPC;
 	}
 
-op thumb2_32_list = EOR_imm_thumb | BL_thumb
+op thumb2_32_list =
+	  EOR_immediate_T1
+	| BL_thumb
+	| CLREX_T1
+	| LDREX_T1
+	| BLX_T2
+	| mem_thumb2
+
+
+op CLREX_T1()
+	image = "11110 0 111 01 1 1111  10 0 0 1111 0010 11111"
+	syntax = "clrex"
+	action = {
+		// TODO
+	}
+
+op LDREX_T1 (rn: REG_INDEX, rt: REG_INDEX, imm8: card(8))
+	image = format("11101 00 0 0 1 0 1 %s %s 1111 %8b", rn, rt, imm8)
+	syntax = format("ldrex %s, [%s, #%d]", rt, rn, imm8)
+	action = {
+		// TODO
+	}
+
+op BLX_T2(s: card(1), imm10h: card(10), j1: card(1), j2: card(2), imm10l: card(10), h: card(1))
+	imm32 = SignExtend(s :: (j1 ^ s) :: (j2 ^ s) :: imm10h :: imm10l :: 0<1..0>, 7)
+	target = Align(__IADDR, 4) + imm32
+	targetAddress = Align(PC, 4) + imm32
+
+	image  = format("11110 %1b %10b 11 %1b 0 %1b %10b %1b", s, imm10h, j1, j2, imm10l, h)
+	syntax = format("blx %l", target)
+	action = {
+		// if CurrentInstrSet() == InstrSet_ThumbEE || H == '1' then UNDEFINED;
+		// if InITBlock() && !LastInITBlock() then UNPREDICTABLE;
+		// 		EncodingSpecificOperations();
+		if CurrentInstrSet() == InstrSet_ARM then
+			LR = PC;				 	// in ARM ref, PC + 4
+		else
+			LR = (PC<31..1> + 4) :: 1;	// in ARM ref, PC<31..1> :: 1
+		endif;
+		SelectInstrSet(InstrSet_ARM);
+		BranchWritePC_thumb(targetAddress);
+	}
 
 
 // BL from Thumb2 (is equivalent to two successive Thumb1 16-bits BL)
@@ -84,20 +105,29 @@ op BL_thumb(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11: card(1
 		// endif
 	}
 
-op EOR_imm_thumb(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
-	imm12 = i :: imm3 :: imm8
-	imm32 = ThumbExpandImm_C(imm12)
-	syntax = format("eor%s %s, %s, #%08x", S, rd, rn, imm32)
+op EOR_immediate_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	// range decoding
+	//	rd = 0b1111 && S == 1 -> TEQ (immediate)
+	syntax = format("eor%s %s, %s, #%08x", S, rd, rn, ThumbExpandImm(i :: imm3 :: imm8))
 	image = format("11110 %1b 0 0100 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
 	action = {
-		// if rd.number == 0b1111 && S == 1 then SEE TEQ (immediate); endif;
-		// if rd.number == 13 || (rd.number == 15 && S == 0) then UNPREDICTABLE; endif;
-		result = rn ^ imm32;
-		rd = result;
-		if S then
-			NFLAG = result<31..31>;
-			ZFLAG = result == 0;
-			CFLAG = ThumbExpandImm_CFLAG(imm12);
+		d = UInt(rd);
+		n = UInt(rn);
+		setflags = (S == 1);
+		ThumbExpandImm_C(i :: imm3 :: imm8, imm32, carry);
+		// if d == 13 || (d == 15 && S == 0) || n >= 13 then UNPREDICTABLE;
+		// if ConditionPassed() then
+		//	EncodingSpecificOperations();
+		result = R[n] ^ imm32;
+		if d == 15 then
+			ALUWritePC(result); // setflags is always FALSE here
+		else
+			R[d] = result;
+			if setflags then
+				ASPR_N = result<31..31>;
+				ASPR_Z = IsZeroBit(result);
+				ASPR_C = carry;
+			endif;
 		endif;
 	}
 
@@ -108,10 +138,10 @@ op EOR_imm_thumb(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3
 	image = x.image
 	syntax = x.syntax
 	action = {
-		NPC = PC + 4;
-		PC = PC + 4;
+		NPC = PC + 2;
+		PC = PC + 2;
 		x.action;
 		PC = NPC;
 	}
 
-op thumb2_16_list = B_T2*/
+op thumb2_16_list = CLREX_T1*/

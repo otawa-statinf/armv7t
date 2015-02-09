@@ -1,0 +1,41 @@
+
+op mem_thumb2 = LDRH_register | STC | LDC_immediate
+
+op LDRH_register(x: ldrh_list)
+	image = x.image
+	syntax = x.syntax
+	action = {
+		if ConditionPassed() then
+			// EncodingSpecificOperations(); NullCheckIfThumbEE(n);
+			//Shift_C(R[x.m], x.shift_t, x.shift_n, APSR_C, offset, ASPR_C);
+			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
+			address = if x.index then offset_addr else R[x.n] endif;
+			data = M16[address];
+			if x.wback then R[x.n] = offset_addr; endif;
+			//if UnalignedSupport() || address<0..0> == 0 then
+				R[x.t] = ZeroExtend(data, 32);
+			//else // Can only apply before ARMv7
+			//	R[t] = bits(32) UNKNOWN;
+		endif;
+	}
+
+// should provide t, n, m, index, wback, shift_t, shift_n
+op ldrh_list = LDRH_T2
+
+op LDRH_T2(rt: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, imm2: card(2))
+	// TODO ranging effects
+	//		rn = 1111 -> LDRH (literal)
+	//		rt = 1111 -> LDRH (register)
+	image = format("11111 00 0 0 01 1 %s %s 0 00000 %2b %s", rn, rt, imm2, rm)
+	syntax = format("ldrh.w %s, [%s, %s, LSL #%d]", rt, rn, rm, imm2)
+	condition = 1
+	t = rt
+	n = rn
+	m = rm
+	index = 1
+	add = 1
+	wback = 0
+	shift_t = SRType_LSL
+	shift_n = imm2
+
+	

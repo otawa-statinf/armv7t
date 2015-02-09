@@ -39,7 +39,8 @@ GFLAGS= \
 	-a disasm.c \
 	-a used_regs.c \
 	-S \
-	-switch
+	-switch \
+	-D
 
 ifdef WITH_IO
 GFLAGS += -m mem:io_mem
@@ -65,12 +66,12 @@ NMP = \
 	nmp/mult.nmp \
 	nmp/shiftedRegister.nmp \
 	nmp/simpleType.nmp \
-	nmp/stateReg.nmp \
+	nmp/state.nmp \
 	nmp/system.nmp \
 	nmp/thumb2.nmp \
 	nmp/tempVar.nmp
 ifdef WITH_THUMB
-NMP += nmp/thumb.nmp
+NMP += nmp/thumb.nmp nmp/thumb2.nmp nmp/mem-thumb2.nmp nmp/gen.nmp nmp/fp.nmp
 endif
 
 

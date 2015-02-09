@@ -29,10 +29,8 @@ type u11   = card(11)
 type u12   = card(12)
 type u24   = card(24)
 
-type address = int(32)
-
-// We need 4 bit index to address 16 GPRs
-type index = card(4)
-// 3bit only for THUMB (8 reg.)
-type thumb_index = card(3)
+type address_t = int(32)
+type doublefp = float(52, 12)
+type singlefp = float(23, 9)
+type halffp = float(6, 10)
 

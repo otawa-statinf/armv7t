@@ -19,7 +19,7 @@
 let proc = "arm"
 
 include "simpleType.nmp"
-include "stateReg.nmp"
+include "state.nmp"
 include "tempVar.nmp"
 include "modes.nmp"
 

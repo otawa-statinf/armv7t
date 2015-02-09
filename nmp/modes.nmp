@@ -1,7 +1,7 @@
 /*
 Registers access
 */
-mode REG_INDEX(r: index) = r
+mode REG_INDEX(r: card(4)) = r
 	syntax = format( "%s", 
 			switch (r) {
 				case 0:"r0"
@@ -97,6 +97,39 @@ mode OFFSET_12(n: u12) = n
 	image = format("%12b", n)
 
 
+/**
+ * Special addressing for coprocessors
+ */
+mode CoproAddress = CoproOffset | CoproPreInc | CoproPostInc | CoproBased
 
+mode CoproOffset(r: REG_INDEX, i: card(8), u: bool)
+	syntax = format("[R%d, #%s%ld]", r, if u then "+" else "-" endif, i :: 0b00)
+	Rn = r
+	imm8 = i
+	U = u
+	P = 1
+	W = 0
 
+mode CoproPreInc(r: REG_INDEX, i: card(8), u: bool)
+	syntax = format("[R%d, #%s%ld]!", r, if u then "+" else "-" endif, i :: 0b00)
+	Rn = r
+	imm8 = i
+	U = u
+	P = 1
+	W = 1
 
+mode CoproPostInc(r: REG_INDEX, i: card(8), u: bool)
+	syntax = format("[R%d], #%s%ld", r, if u then "+" else "-" endif, i :: 0b00)
+	Rn = r
+	imm8 = i
+	U = u
+	P = 0
+	W = 1
+
+mode CoproBased(r: REG_INDEX, i: card(8))
+	syntax = format("[R%d], %ld", r, i)
+	Rn = r
+	imm8 = i
+	U = 0b1
+	P = 0
+	W = 0

@@ -1,0 +1,85 @@
+op STC(x: STC_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		// TODO
+	}
+
+op STC_list = STC_T1 | STC_T2
+
+op STC_T1(N: bool, CRd: card(4), coproc: card(4), addr: CoproAddress)
+	// if P == '0' && U == '0' && D == '0' && W == '0' then UNDEFINED;
+	// if P == '0' && U == '0' && D == '1' && W == '0' then SEE MCRR, MCRR2;
+	// when coproc = 1010 or 1011 see VSTR
+	syntax = format("stc%s %d, %d, %s", if N then "l" else "" endif, coproc, CRd, addr)
+	image = format("1110 110 %1b %1b %1b %1b 0 %4b %4b %4b %8b", addr.P, addr.U, N, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
+	n = UInt(addr.Rn)
+	cp = UInt(coproc)
+	imm32 = ZeroExtend(addr.imm8 :: 0b00, 32)
+	index = addr.P
+	add = addr.U
+	wback = addr.W
+	// if n == 15 then UNPREDICTABLE
+
+op STC_T2(N: bool, CRd: card(4), coproc: card(4), addr: CoproAddress)
+	// if P == '0' && U == '0' && D == '0' && W == '0' then UNDEFINED;
+	// if P == '0' && U == '0' && D == '1' && W == '0' then SEE MCRR, MCRR2;
+	syntax = format("stc2%s %d, %d, %s", if N then "l" else "" endif, coproc, CRd, addr)
+	image = format("1111 110 %1b %1b %1b %1b 0 %4b %4b %4b %8b", addr.P, addr.U, N, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
+	n = UInt(addr.Rn)
+	cp = UInt(coproc)
+	imm32 = ZeroExtend(addr.imm8 :: 0b00, 32)
+	index = addr.P
+	add = addr.U
+	wback = addr.W
+	// if n == 15 then UNPREDICTABLE
+
+
+op LDC_immediate(x: LDC_immediate_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		// TODO
+		// if !Coproc_Accepted(cp, ThisInstr()) then
+		//		GenerateCoprocessorException();
+		// else
+		//		NullCheckIfThumbEE(n);
+		//		offset_addr = if add then (R[n] + imm32) else (R[n] - imm32);
+		//		address = if index then offset_addr else R[n];
+		//		repeat
+		//			Coproc_SendLoadedWord(MemA[address,4], cp, ThisInstr());
+		//			address = address + 4;
+		//		until Coproc_DoneLoading(cp, ThisInstr());
+		//		if wback then R[n] = offset_addr;
+	}
+
+op LDC_immediate_list = LDC_immediate_T1 | LDC_immediate_T2
+
+
+op LDC_immediate_T1(N: bool, CRd: card(4), coproc: card(4), addr: CoproAddress)
+	// if Rn == '1111' then SEE LDC (literal);
+	// if P == '0' && U == '0' && D == '0' && W == 0 then UNDEFINED
+	// if P == '0' && U == '0' && D == '1' && W == 0 then see MRRC, MRRC2
+	// if coproc IN "101x" then SEE Advanced SIMD
+	syntax = format("ldc%s %d, %d, %s", if N then "l" else "" endif, coproc, CRd, addr)
+	image = format("1110 110 %1b %1b %1b %1b 1 %4b %4b %4b %8b", addr.P, addr.U, N, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
+	n = UInt(addr.Rn)
+	cp = UInt(coproc)
+	imm32 = ZeroExtend(addr.imm8 :: 0b00, 32)
+	index = addr.P
+	add = addr.U
+	wback = addr.W
+
+op LDC_immediate_T2(N: bool, CRd: card(4), coproc: card(4), addr: CoproAddress)
+	// if Rn == '1111' then SEE LDC (literal);
+	// if P == '0' && U == '0' && D == '0' && W == 0 then UNDEFINED
+	// if P == '0' && U == '0' && D == '1' && W == 0 then see MRRC, MRRC2
+	// if coproc IN "101x" then SEE Advanced SIMD
+	syntax = format("ldc2%s %d, %d, %s", if N then "l" else "" endif, coproc, CRd, addr)
+	image = format("1111 110 %1b %1b %1b %1b 1 %4b %4b %4b %8b", addr.P, addr.U, N, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
+	n = UInt(addr.Rn)
+	cp = UInt(coproc)
+	imm32 = ZeroExtend(addr.imm8 :: 0b00, 32)
+	index = addr.P
+	add = addr.U
+	wback = addr.W

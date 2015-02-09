@@ -120,13 +120,42 @@ reg VFLAG [1, u1] alias  = Ucpsr<28..28>
 	//(*) Else V is normally unchanged
 reg QFLAG [1, u1] alias  = Ucpsr<27..27>	//Indicate if an overflow and/or saturation has occured in the DSP instruction
 
+reg JFLAG [1, card(1)] alias = CPSR<24..24>	// ARM v6 Jazelle bit
 reg EBIT [1, u1]  alias  = CPSR<9..9>		// ARM v6, load/store endianness (1 big, 0 little)
 reg ABIT [1, u1]  alias  = CPSR<8..8>		// ARM v6, 
-reg IFLAG [1, u1] alias  = Ucpsr<7..7>		//Disable IRQ interrupts when it is set
-reg FFLAG [1, u1] alias  = Ucpsr<6..6>		//Disable FIQ interrupts whenit is set
-reg TFLAG [1, u1] alias	 = Ucpsr<5..5>		//If T=0 Indicates ARM execution else if T=1 indicates Thumb execution
+reg IFLAG [1, u1] alias  = Ucpsr<7..7>		// Disable IRQ interrupts when it is set
+reg FFLAG [1, u1] alias  = Ucpsr<6..6>		// Disable FIQ interrupts whenit is set
+reg TFLAG [1, u1] alias	 = Ucpsr<5..5>		// If T=0 Indicates ARM execution else if T=1 indicates Thumb execution
 reg TBIT [1, u1]  alias	 = Ucpsr<5..5>
 reg MBITS [1, u5] alias  = Ucpsr<4..0>		//Determine the mode in which the processor operates
+reg GEBITS[1, card(4)] alias = CPSR<19..16> 
+
+// ISETSTATE definitions
+// TODO alias does not support concatenation?
+let InstrSet_ARM     = 0b00
+let InstrSet_Thumb   = 0b01
+let InstrSet_Jazelle = 0b10
+let InstrSet_ThumbEE = 0b11
+macro ISETSTATE = (JFLAG :: TFLAG)
+macro CurrentInstrSet() = ISETSTATE
+macro SelectInstrSet(iset) = ISETSTATE = iset
+
+// ITSTATE definitions
+// TODO alias does not support concatenation?
+macro ITSTATE = (CPSR<15..10> :: CPSR<26..25>)
+macro ITSTATE_COND = ITSTATE<7..5>
+macro ITSTATE_MASK = ITSTATE<4..0>
+
+macro ITAdvance = if ITSTATE<2..0> == 0 then ITSTATE = 0; else ITSTATE<4..0> = ITSTATE<4..0> << 1; endif
+macro InITBlock = (ITSTATE.IT<3..0> != 0)
+macro LastInITBlock = (ITSTATE<3..0> == 0b1000)
+
+// ASPR aliases
+reg ASPR_C[1, card(1)] alias = CFLAG
+reg ASPR_N[1, card(1)] alias = NFLAG
+reg ASPR_Z[1, card(1)] alias = ZFLAG
+reg ASPR_V[1, card(1)] alias = VFLAG
+
 
 
 // Memory
@@ -171,16 +200,6 @@ reg R[16, u32]
 	fmt = "R%d"
 	get = { "GLISS_GET_I"(Get_ARM_GPR("GLISS_IDX"));  }
 	set = { Set_ARM_GPR("GLISS_IDX", "GLISS_I");  }
-
-
-// ITSTATE register
-reg ITSTATE[1, card(8)]
-reg ITSTATE_COND[1, card(4)] alias = ITSTATE<7..5>
-reg ITSTATE_MASK[1, card(5)] alias = ITSTATE<4..0>
-
-macro ITAdvance = if ITSTATE<2:0> == 0then ITSTATE = 0; else ITSTATE<4:0> = ITSTATE<4:0> << 1; endif
-macro InITBlock = (ITSTATE.IT<3:0> != 0)
-macro LastInITBlock = (ITSTATE<3:0> == '0b1000)
 
 
 // initialisation

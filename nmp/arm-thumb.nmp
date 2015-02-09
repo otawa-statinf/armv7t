@@ -20,7 +20,7 @@ let proc = "arm"
 
 include "simpleType.nmp"
 include "dataProcessingMacro.nmp"
-include "stateReg.nmp"
+include "state.nmp"
 include "tempVar.nmp"
 include "modes.nmp"
 
@@ -50,6 +50,8 @@ op ARM_instr =
 	| semaphore 
 	| misc 
 	| sra
+	| STC
+	| LDC_immediate
 
 
 op dataProcessing = ADD_imm | ADC_shr | ADC_imm | ADD_shr | AND_shr | AND_imm | BIC_shr | BIC_imm
@@ -91,4 +93,6 @@ include "loadStoreM.nmp"
 include "thumb.nmp"
 include "exception.nmp"
 include "thumb2.nmp"
-
+include "mem-thumb2.nmp"
+include "fp.nmp"
+include "coproc.nmp"
