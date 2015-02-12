@@ -1,9 +1,10 @@
 
-op mem_thumb2 = LDRH_register | STC | LDC_immediate
+op mem_thumb2 = LDR_immediate | LDRH_register | STC | LDC_immediate | LDM_T2
 
 op LDRH_register(x: ldrh_list)
 	image = x.image
 	syntax = x.syntax
+	cond = x.condition
 	action = {
 		if ConditionPassed() then
 			// EncodingSpecificOperations(); NullCheckIfThumbEE(n);
@@ -39,3 +40,92 @@ op LDRH_T2(rt: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, imm2: card(2))
 	shift_n = imm2
 
 	
+op LDR_immediate(x: ldr_immediate_list)
+	image = x.image
+	syntax = x.syntax
+	cond = x.condition
+	action = {
+		if ConditionPassed() then
+			// EncodingSpecificOperations(); NullCheckIfThumbEE(n);
+			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else R[x.n] endif;
+			data = M32[address];
+			if x.wback then R[x.n] = offset_addr; endif;
+			if x.t == 15 then
+				//if address<1:0> == '00' then LoadWritePC(data); else UNPREDICTABLE; endif;
+			else //if UnalignedSupport() || address<1:0> == '00' then
+				R[x.t] = data;
+			//else R[x.t] = bits(32) UNKNOWN; // Can only apply before ARMv7
+			endif;
+		endif;
+	}
+
+// should provide t, n, imm32, index, add, wback
+op ldr_immediate_list = LDR_immediate_T3
+
+op LDR_immediate_T3(rn: REG_INDEX, rt: REG_INDEX, imm12: card(12))
+	// TODO ranging effects
+	//		rn = 1111 -> LDR (literal)
+	image = format("11111 00 0 1 10 1 %s %s %12b", rn, rt, imm12)
+	syntax = format("ldr.w %s, [%s, #%d]", rt, rn, imm12)
+	condition = 1
+	t = rt
+	n = rn
+	imm32 = imm12
+	index = 1
+	add = 1
+	wback = 0
+
+mode RegisterListThumb(_P: card(1), _M: card(1), _l: card(13)) = _l
+	l = _l
+	P = _P
+	MM = _M
+	syntax = format("{%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s}",
+		if _l<0..0> then format("r0%s", if _l<1..12> || _P || _M then ", " else "" endif) else "" endif,
+		if _l<1..1> then format("r1%s", if _l<2..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<2..2> then format("r2%s", if _l<3..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<3..3> then format("r3%s", if _l<4..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<4..4> then format("r4%s", if _l<5..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<5..5> then format("r5%s", if _l<6..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<6..6> then format("r6%s", if _l<7..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<7..7> then format("r7%s", if _l<8..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<8..8> then format("r8%s", if _l<9..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<9..9> then format("r9%s", if _l<10..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<10..10> then format("r10%s", if _l<11..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<11..11> then format("r11%s", if _l<12..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<12..12> then format("r12%s", if _P || _M  then ", " else "" endif) else "" endif,
+		if _M then format("lr%s", if _P then ", " else "" endif) else "" endif,
+		if _P then "pc" else "" endif)
+
+op LDM_T2(W: bool, Rn: REG_INDEX, register_list: RegisterListThumb)
+	syntax = format("ldm.w %s%s, %s", Rn, if W then "!" else "" endif, register_list)
+	image = format("11101 00 010 %1b 1 %s %1b %1b 0 %13b", W, Rn, register_list.P, register_list.MM, register_list.l)
+	action = {
+		// if W == '1' && Rn == '1101' then SEE POP (Thumb);
+		n = UInt(Rn);
+		registers = register_list.P :: register_list.MM :: 0b0 :: register_list.l;
+		wback = (W == 1);
+		// if n == 15 || BitCount(registers) < 2 || (P == '1' && M == '1') then UNPREDICTABLE;
+		// if registers<15> == '1' && InITBlock() && !LastInITBlock() then UNPREDICTABLE;
+		// if wback && registers<n> == '1' then UNPREDICTABLE;
+		address = R[n];
+		i = 0; bitcount = 0; loop;
+		if registers<15..15> == 1 then
+			LoadWritePC(M[address]);
+			bitcount = bitcount + 1;
+		endif;
+		if wback && registers<n..n> == 0 then R[n] = R[n] + 4 * bitcount; endif;
+		// if wback && registers<n> == '1' then R[n] = bits(32) UNKNOWN		
+	}
+	loop = {
+		if registers<i..i> == 1 then
+			R[i] = M[address];
+			address = address + 4;
+			bitcount = bitcount + 1;
+		endif;
+		i = i + 1;
+		if i <= 14 then
+			loop;
+		endif;
+	}
+

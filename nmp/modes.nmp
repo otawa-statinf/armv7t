@@ -133,3 +133,32 @@ mode CoproBased(r: REG_INDEX, i: card(8))
 	U = 0b1
 	P = 0
 	W = 0
+
+
+mode ShiftOperand(_Rm: REG_INDEX, _t: card(2), _n: card(5)) =
+		switch(_t) {
+		case SRType_LSL:	LSL_(R[_Rm], _n)
+		case SRType_LSR:	LSR_(R[_Rm], _n)
+		case SRType_ASR:	ASR_(R[_Rm], _n)
+		case SRType_ROR:
+			if _n == 0
+			then			ROR_(R[_Rm], _n)
+			else			RRX_(R[_Rm], 0)
+			endif
+		}
+
+	syntax =
+		switch(_t) {
+		case SRType_LSL:	format("%s, lsl #%d", _Rm.syntax, _n)
+		case SRType_LSR:	format("%s, lsr #%d", _Rm.syntax, _n)
+		case SRType_ASR:	format("%s, asr #%d", _Rm.syntax, _n)
+		case SRType_ROR:
+			if _n == 0
+			then			format("%s, ror #%d", _Rm.syntax, _n)
+			else			format("%s, rrx", _Rm.syntax)
+			endif
+		}
+
+	Rm = _Rm
+	t =_t
+	n = _n

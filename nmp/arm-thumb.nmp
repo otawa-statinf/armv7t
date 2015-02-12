@@ -19,6 +19,7 @@
 let proc = "arm"
 
 include "simpleType.nmp"
+include "gen.nmp"
 include "dataProcessingMacro.nmp"
 include "state.nmp"
 include "tempVar.nmp"
@@ -80,7 +81,6 @@ op sra = MSR_imm | MSR_shr | MRS
 
 // ****** includes ******
 
-include "gen.nmp"
 include "condition.nmp"
 include "shiftedRegister.nmp"
 include "dataProcessing.nmp"

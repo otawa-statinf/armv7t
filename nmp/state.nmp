@@ -151,10 +151,10 @@ macro InITBlock = (ITSTATE.IT<3..0> != 0)
 macro LastInITBlock = (ITSTATE<3..0> == 0b1000)
 
 // ASPR aliases
-reg ASPR_C[1, card(1)] alias = CFLAG
-reg ASPR_N[1, card(1)] alias = NFLAG
-reg ASPR_Z[1, card(1)] alias = ZFLAG
-reg ASPR_V[1, card(1)] alias = VFLAG
+reg APSR_C[1, card(1)] alias = CFLAG
+reg APSR_N[1, card(1)] alias = NFLAG
+reg APSR_Z[1, card(1)] alias = ZFLAG
+reg APSR_V[1, card(1)] alias = VFLAG
 
 
 

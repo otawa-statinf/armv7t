@@ -24,7 +24,6 @@
 var I1[1, card(1)]
 var I2[1, card(1)]
 var next_instr_addr[1, card(32)]
-var result[1, card(32)]
 
 
 // Thumb-2 tree root
@@ -40,7 +39,7 @@ op thumb2_32(x: thumb2_32_list)
 	syntax = x.syntax
 	action = {
 		NPC = PC + 4;
-		PC = PC + 4;
+		PC = PC + 8;
 		x.action;
 		PC = NPC;
 	}
@@ -48,10 +47,14 @@ op thumb2_32(x: thumb2_32_list)
 op thumb2_32_list =
 	  EOR_immediate_T1
 	| BL_thumb
-	| CLREX_T1
+	| B_T3
+	//| CLREX_T1
 	| LDREX_T1
 	| BLX_T2
 	| mem_thumb2
+	| ADD_register_T3
+	| LSL_T2
+	| MUL_T2
 
 
 op CLREX_T1()
@@ -60,6 +63,29 @@ op CLREX_T1()
 	action = {
 		// TODO
 	}
+
+op LSL_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
+	image  = format("11111 010 0 00 %s %s 1111 %s 0 000 %s", S, rn, rd, rm)
+	syntax = format("lsl%s.w %s, %s, %s", S, rd, rn, rm)
+	action = {
+		d = UInt(rd);
+		n = UInt(rn);
+		m = UInt(rm);
+		setflags = (S == 1);
+		//if d IN {13,15} || n IN {13,15} || m IN {13,15} then UNPREDICTABLE;		
+		//if ConditionPassed() then
+			//EncodingSpecificOperations();
+			//Shift_C(R[n], SRType_LSL, m, ASPR_C, result, carry) // TODO! Make this work.
+			R[d] = result;
+			if setflags then
+				APSR_N = result<31..31>;
+				APSR_Z = IsZeroBit(result); 
+				APSR_C = carry;
+				// APSR.V unchanged
+			endif;
+		//endif;
+	}
+
 
 op LDREX_T1 (rn: REG_INDEX, rt: REG_INDEX, imm8: card(8))
 	image = format("11101 00 0 0 1 0 1 %s %s 1111 %8b", rn, rt, imm8)
@@ -124,13 +150,77 @@ op EOR_immediate_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: car
 		else
 			R[d] = result;
 			if setflags then
-				ASPR_N = result<31..31>;
-				ASPR_Z = IsZeroBit(result);
-				ASPR_C = carry;
+				APSR_N = result<31..31>;
+				APSR_Z = IsZeroBit(result);
+				APSR_C = carry;
 			endif;
 		endif;
 	}
 
+op ADD_register_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
+	syntax = format("add%s.w %s, %s, %s", if S then ".s" else "" endif, Rd.syntax, Rn.syntax, shift.syntax) 
+	image = format("11101 01 1000 %1b %4b 0 %3b %4b %2b %2b %4b", S, shift.Rm, shift.n<4..2>, Rd.image, shift.n<1..0>, shift.t, Rn.image)
+	action = {
+		// if Rd == '1111' && S == '1' then SEE CMN (register);
+		// if Rn == '1101' then SEE ADD (SP plus register);
+		d = UInt(Rd);
+		//n = UInt(Rn);
+		m = UInt(shift.Rm);
+		setflags = (S == 1);
+		// (shift_t, shift_n) = DecodeImmShift(type, imm3:imm2);
+		// if d == 13 || (d == 15 && S == 0) || n == 15 || m >= 13 then UNPREDICTABLE;
+		shifted = shift;
+		AddWithCarry(result, carry, overflow, R[Rn], shifted, 0);
+		if d == 15 then
+			ALUWritePC(result);
+		else
+			R[d] = result;
+			if setflags then
+				APSR_N = result<31..31>;
+				APSR_Z = IsZeroBit(result);
+				APSR_C = carry;
+				APSR_V = overflow;
+			endif;
+		endif;			
+	}
+
+
+op MUL_T2(Rd: REG_INDEX, Rn: REG_INDEX, Rm: REG_INDEX)
+	syntax = format("mul %s, %s, %s", Rd, Rn, Rm)
+	image = format("11111 0110 000 %s 1111 %s 0000 %s", Rn, Rd, Rm)
+	action = {
+		d = UInt(Rd);
+		n = UInt(Rn);
+		m = UInt(Rm);
+		setflags = 0;
+		// if d >= 13 || n >= 13 || m >= 13 then UNPREDICTABLE;
+		operand1 = SInt(R[n]); 		// operand1 = UInt(R[n]) produces the same final results
+		operand2 = SInt(R[m]); 		// operand2 = UInt(R[m]) produces the same final results
+		result = operand1 * operand2;
+		R[d] = result<31..0>;
+		if setflags then
+			APSR_N = result<31..31>;
+			APSR_Z = IsZeroBit(result<31..0>);
+			// if ArchVersion() == 4 then
+			//		APSR_C = bit UNKNOWN;
+			// else APSR.C unchanged
+			// APSR.V always unchanged
+		endif;		
+	}
+
+op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(2), imm11: card(11))
+	imm32 = SignExtend(S :: J2 :: J1 :: imm6 :: imm11 :: 0b0, 11)
+	target = __IADDR + imm32 + 8
+	syntax = format("b%s.w %l", cond, target)
+	image = format("11110 %1b %s %6b 10 %1b 0 %1b %11b", S, cond, imm6, J1, J2, imm11)
+	action = {
+		// if cond<3:1> == '111' then SEE "Related encodings";
+		// if InITBlock() then UNPREDICTABLE;
+		if ConditionPassed() then
+			BranchWritePC(PC + imm32);
+		endif;
+	}
+	  
 
 // ****** thumb-2 16-bits ******
 

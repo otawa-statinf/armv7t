@@ -65,18 +65,28 @@ var TMP_INDEX3 [1, u4]
 var TMP_HALF [1, s16]
 
 // ARM ref flags
-var setflags[1, bool]
 var carry[1, bool]
+var setflags[1, bool]
+var overflow[1, bool]
+var wback[1, bool]
 
 // ARM ref registers
 var d[1, card(4)]
 var n[1, card(4)]
+var m[1, card(4)]
 
 // ARM ref data
 var address[1, card(32)]
+var bitcount[1, card(32)]
 var newaddress[1, card(32)]
 var data[1, card(16)]
+var i[1, card(32)]
 var imm32[1, card(32)]
 var offset[1, int(32)]
 var offset_addr[1, int(32)]
+var operand1[1, int(32)]
+var operand2[1, int(32)]
+var registers[1, card(16)]
+var result[1, card(32)]
+var shifted[1, int(32)]
 var unrotated_value[1, card(32)]
