@@ -29,7 +29,7 @@ var next_instr_addr[1, card(32)]
 // Thumb-2 tree root
 op thumb2 = thumb2_32
 	/*| thumb2_16*/
-	/*| fp add it when range will be supported in parameters */
+	| fp /* add it when range will be supported in parameters */
 
 
 

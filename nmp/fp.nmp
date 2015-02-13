@@ -1,8 +1,7 @@
-
 type sfp_index = card(5)
 
 reg S[32, singlefp]
-reg D[16, doublefp] alias = S[0]
+reg D[16, doublefp] //alias = S[0] // TODO! This really should be an alias but it doesn't work as of yet.
 
 reg FPSCR[1, card(32)]
 reg FPSCR_N[1, card(1)] alias = FPSCR<31..31>
@@ -21,18 +20,26 @@ reg FPSCR_DZC[1, card(1)] alias = FPSCR<1..1>
 reg FPSCR_IOC[1, card(1)] alias = FPSCR<0..0>
 
 
-mode DoubleReg(i: card(5)) = i 
-	syntax = format("D%d", i)
-	image = format("%4b", i<3..0>)
-	D = (i >> 4)
+//mode DoubleReg(i: card(5)) = i 
+//	syntax = format("D%d", i)
+//	image = format("%4b", i<3..0>)
+//	D = (i >> 4)
+//
+//mode SingleReg(i: card(5)) = i 
+//	syntax = format("S%d", i)
+//	image = format("%4b", i<4..1>)
+//	D = (i & 0b00001)
 
-mode SingleReg(i: card(5)) = i 
-	syntax = format("S%d", i)
-	image = format("%4b", i<4..1>)
-	D = (i & 0b00001)
+mode DoubleReg(i: card(4)) = i 
+	syntax = format("d%d", i)
+	image = format("%4b", i)
+
+mode SingleReg(i: card(4)) = i 
+	syntax = format("s%d", i)
+	image = format("%4b", i)
 
 
-op fp = VSTR
+op fp = /*VSTR |*/ VMOV_list | VSUB_list | VMRS_list
 
 op VSTR(x: VSTR_list)
 	syntax = x.syntax
@@ -70,3 +77,77 @@ op VSTR_T2(U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
 	imm32 = ZeroExtend(imm8 :: 0b00, 32)
 	d = UInt(Vd)
 	n = UInt(Rn)
+
+op VMOV_list = VMOV_register
+
+op VMOV_register = VMOV_register_T2_32 | VMOV_register_T2_64
+
+op VMOV_register_T2_32(D_: bool, Vd: SingleReg, M: bool, Vm: SingleReg)
+	syntax = format("vmov.f32 %s, %s", Vd, Vm)
+	image = format("1110 11101 %1b 11 0000 %s 101 0 0 1 %1b 0 %s", D_, Vd, M, Vm)
+	
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors" endif; 
+	//advsimd = FALSE;
+	 
+	action = {
+		//EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd); 
+		S[UInt(Vd::D_)] = S[UInt(Vm::M)];
+	}
+
+op VMOV_register_T2_64(D_: bool, Vd: DoubleReg, M: bool, Vm: DoubleReg)
+	syntax = format("vmov.f64 %s, %s", Vd, Vm)
+	image = format("1110 11101 %1b 11 0000 %s 101 1 0 1 %1b 0 %s", D_, Vd, M, Vm)
+	
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors" endif; 
+	//advsimd = FALSE;
+	
+	action = {
+		//EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd); 
+		D[UInt(D_::Vd)] = D[UInt(M::Vm)];
+	}
+
+op VSUB_list = VSUB_fp
+
+op VSUB_fp = VSUB_fp_T2_32 | VSUB_fp_T2_64
+
+op VSUB_fp_T2_32(D_: bool, Vn: SingleReg, Vd: SingleReg, N: bool, M: bool, Vm: SingleReg)
+	syntax = format("vsub.f32 %s, %s, %s", Vd, Vn, Vm)
+	image = format("1110 11100 %1b 11 %s %s 101 0 %1b 1 %1b 0 %s", D_, Vn, Vd, N, M, Vm)
+	
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors"; 
+	//advsimd = FALSE;
+	
+	action = {
+		//EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd); 
+		//S[UInt(Vd::D_)] = FPSub(S[UInt(Vn::N)], S[UInt(Vm::M)], TRUE); TODO! Implement a floating point substraction
+	}
+	
+op VSUB_fp_T2_64(D_: bool, Vn: DoubleReg, Vd: DoubleReg, N: bool, M: bool, Vm: DoubleReg)
+	syntax = format("vsub.f64 %s, %s, %s", Vd, Vn, Vm)
+	image = format("1110 11100 %1b 11 %s %s 101 1 %1b 1 %1b 0 %s", D_, Vn, Vd, N, M, Vm)
+	
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors"; 
+	//advsimd = FALSE;
+	
+	action = {
+		//EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd); 
+		//D[UInt(D_::Vd)] = FPSub(D[UInt(N::Vn)], D[UInt(M::Vm)], TRUE); TODO! Implement a floating point substraction
+	}
+	
+op VMRS_list = VMRS_T1
+
+op VMRS_T1(Rt: REG_INDEX)
+	syntax = format("vmrs %s, fpscr", if UInt(Rt) != 15 then Rt.image else "APSR_nzcv" endif)
+	image = format("1110 11101111 0001 %s 1010 000 1 0000", Rt)
+	
+	//if Rt == 13 && CurrentInstrSet() != InstrSet_ARM then UNPREDICTABLE;
+	
+	action = {
+		//EncodingSpecificOperations(); CheckVFPEnabled(TRUE); 
+		//SerializeVFP(); VFPExcBarrier();
+		if Rt != 15 then
+			R[UInt(Rt)] = FPSCR;
+		else
+			Ucpsr<28..31> = FPSCR<28..31>;
+		endif;
+	}
