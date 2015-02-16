@@ -24,29 +24,41 @@ in the end.
 
 ===== Future File Organization =====
 
-There are three sets of NMP files in the nmp/ directory.
-  * entry files allows to select an instruction version:
-    * armv5.nmp
-    * armv5t.nmp
-    * armv7.nmp
-  * instruction files defines the instructions themselves
-    * alu.nmp
-    * mult.nmp
-    * load.nmp
-    * store.nmp
-    * control.nmp
-    * system.nmp
-    * simd.nmp
-  * utility nmp
-    * gen.nmp -- ARM macros
-    * type.nmp -- basic types
-    * state.nmp -- registers
-    * var.nmp -- temporary variables
+The ''nmp'' directory contains lots of file to describe ARM ISA
+until v7 version. Some files contains instruction description but
+are not intended to be entry points.
 
-For exceptions, see below.
+In the opposite, the entry point NMP files allows to select
+different flavors and versions of the ISA:
+  * ''armv4.nmp'' -- ARM v4 ISA
+  * ''armv5.nmp'' -- ARM v5 ISA (without thumb)
+  * ''armv5t.nmp'' -- ARM v5 ISA (with thumb)
+  * ''armv6.nmp'' -- ARM v6 ISA (with thumb)
+  * ''armv7.nmp'' -- ARM v7 ISA (with thumb)
+  
+Other NMP provides definition shared by the instruction description files:
+  * ''types.nmp'' -- base types,
+  * ''state.nmp'' -- state description,
+  * ''var.nmp'' -- temporary variables description,
+  * ''modes.nmp'' -- shared modes,
+  * ''macros.nmp'' -- common macros.
+  
+Some NMP files are designed for third-party tools:
+  * ''exception.nmp'' -- implementation of ARM exception mechanism,
+  * ''used_regs.nmp'' -- complementary information on the register use.
+
+Finally, remaining NMP files provide instruction description:
+  * ''alu.nmp'' -- basic ALU instructions,
+  * ''alu-thumb.nmp'' -- thumb ALU instructions,
+  * ''mem.nmp'' -- memory instructions,
+  * ''mem-thumb.nmp'' -- thumb memory instructions,
+  * ''mult.nmp'' -- multiplication instructions,
+  * ''control.nmp'' -- control instructions,
+  * ''system.nmp'' -- system control instructions,
+  * ''fp.nmp'' -- floating-point instructions.
 
 
-===== Issue about mode for register R8 to R15 =====
+===== Issue about mode for register R8 to R15 and SPSR =====
 
 Depending on the processor mode (CPSR), registers R8 and R15 does not map to the same
 hardware entity. Implementing it as in the processor, that is, with a software map
@@ -61,7 +73,23 @@ The synchronization of value will be performed each time the mode is modified:
 
 This means that a lot of precautions must be taken to write macros dedicated to mode
 change, ''CHANGE_MODE'', and to instruction implementing access to specific registers,
-''msr'' and ''mrs''. 
+''msr'' and ''mrs''.
+
+The GPR registers will be organized as follows:
+  * RO .. R15 -- R register bank,
+  * CPSR -- current status register,
+  * SPSR -- current save status register,
+  * SPSR_usr, R8_usr .. R14_usr
+  * SPSR_svc, R13_svc, R14_svc
+  * SPSR_abt, R13_abt, R14_abt
+  * SPSR_und, R13_und, R14_und
+  * SPSR_irq, R13_irq, R14_irq
+  * SPSR_fiq, R8_fiq .. R14_fiq
+
+One macro is introduced to support mode switching operations: ''ModeSwitch''(old_mode, new_mode)
+that is responsible for:
+  * copy R register bank to the old_mode register version,
+  * copy new mode register to the R register bank.
 
 
 ===== Handling of Exceptions =====
