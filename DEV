@@ -473,8 +473,8 @@ MVN (register - shifted register)
 	A1		4	ok
 NOP
 	T1		6	ok
-	T2		6
-	A1		?
+	T2		6	range
+	A1		6
 ORN (immediate)
 	T1		6
 ORN (register)

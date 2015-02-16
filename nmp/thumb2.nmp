@@ -211,13 +211,20 @@ op MUL_T2(Rd: REG_INDEX, Rn: REG_INDEX, Rm: REG_INDEX)
 op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(2), imm11: card(11))
 	imm32 = SignExtend(S :: J2 :: J1 :: imm6 :: imm11 :: 0b0, 11)
 	target = __IADDR + imm32 + 8
-	syntax = format("b%s.w %l", cond, target)
+	syntax =
+		if cond.value<3..1> == 0b111
+		then "nop.w"
+		else format("b%s.w %l", cond, target) endif
 	image = format("11110 %1b %s %6b 10 %1b 0 %1b %11b", S, cond, imm6, J1, J2, imm11)
 	action = {
 		// if cond<3:1> == '111' then SEE "Related encodings";
 		// if InITBlock() then UNPREDICTABLE;
-		if ConditionPassed() then
-			BranchWritePC(PC + imm32);
+		if cond.value<3..1> == 0b111 then
+			// do nothing
+		else
+			if ConditionPassed() then
+				BranchWritePC(PC + imm32);
+			endif;
 		endif;
 	}
 	  
