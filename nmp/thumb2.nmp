@@ -46,13 +46,17 @@ op thumb2_32(x: thumb2_32_list)
 
 op thumb2_32_list =
 	  EOR_immediate_T1
-	| BL_thumb
+	| BL_immediate_T1
 	| B_T3
+	| ADD_register_T3
+	| ADD_immediate_T3
+	| SUB_immediate_T3
+	| BIC_immediate_T1
+	| CLZ_T1
 	//| CLREX_T1
 	| LDREX_T1
 	| BLX_T2
 	| mem_thumb2
-	| ADD_register_T3
 	| LSL_T2
 	| MUL_T2
 
@@ -62,6 +66,9 @@ op CLREX_T1()
 	syntax = "clrex"
 	action = {
 		// TODO
+		//if ConditionPassed() then 
+			//EncodingSpecificOperations(); 
+			//ClearExclusiveLocal(ProcessorID());
 	}
 
 op LSL_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
@@ -117,9 +124,9 @@ op BLX_T2(s: card(1), imm10h: card(10), j1: card(1), j2: card(2), imm10l: card(1
 
 // BL from Thumb2 (is equivalent to two successive Thumb1 16-bits BL)
 // In Thumb32, the 16-bits lonely version is now forbidden.
-op BL_thumb(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11: card(11))
+op BL_immediate_T1(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11: card(11))
 	addr = __IADDR + 4 + coerce(int(32), S :: ~(J1 ^ S) :: ~(J2 ^ S) :: imm10 :: imm11 :: 0<0..0>)
-	syntax = format("bl %08x", addr)
+	syntax = format("bl 0x%08x", addr)
 	image = format("11110 %1b %10b 11 %1b 1 %1b %11b", S, imm10, J1, J2, imm11)
 	action = {
 		// if ConditionPassed then
@@ -134,7 +141,7 @@ op BL_thumb(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11: card(1
 op EOR_immediate_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	// range decoding
 	//	rd = 0b1111 && S == 1 -> TEQ (immediate)
-	syntax = format("eor%s %s, %s, #%08x", S, rd, rn, ThumbExpandImm(i :: imm3 :: imm8))
+	syntax = format("eor%s %s, %s, #0x%08x", S, rd, rn, ThumbExpandImm(i :: imm3 :: imm8))
 	image = format("11110 %1b 0 0100 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
 	action = {
 		d = UInt(rd);
@@ -154,6 +161,30 @@ op EOR_immediate_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: car
 				APSR_Z = IsZeroBit(result);
 				APSR_C = carry;
 			endif;
+		endif;
+	}
+	
+op ADD_immediate_T3(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	// range decoding
+	//	rd = 0b1111 && S == 1 -> CMN (immediate)
+	//	rn = 0b1101 -> ADD (SP plus immediate)
+	syntax = format("add%s.w %s, %s, #0x%08x", S, rd, rn, ThumbExpandImm(i :: imm3 :: imm8))
+	image = format("11110 %1b 0 1000 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
+	action = {
+		d = UInt(rd);
+		n = UInt(rn);
+		setflags = (S == 1);
+		imm32 = ThumbExpandImm(i :: imm3 :: imm8);
+		// if d == 13 || (d == 15 && S == 0) || n == 15 then UNPREDICTABLE;
+		// if ConditionPassed() then
+		//	EncodingSpecificOperations();
+		AddWithCarry(result, carry, overflow, R[n], imm32, 0);
+		R[d] = result;
+		if setflags then
+			APSR_N = result<31..31>;
+			APSR_Z = IsZeroBit(result);
+			APSR_C = carry;
+			APSR_V = overflow;
 		endif;
 	}
 
@@ -184,7 +215,30 @@ op ADD_register_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
 		endif;			
 	}
 
-
+op SUB_immediate_T3(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	// range decoding
+	//	rd = 0b1111 && S == 1 -> CMP (immediate)
+	//	rn = 0b1101 -> SUB (SP minus immediate)
+	syntax = format("sub%s.w %s, %s, #0x%08x", S, rd, rn, ThumbExpandImm(i :: imm3 :: imm8))
+	image = format("11110 %1b 0 1101 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
+	action = {
+		d = UInt(rd);
+		n = UInt(rn);
+		setflags = (S == 1);
+		imm32 = ThumbExpandImm(i :: imm3 :: imm8);
+		// if d == 13 || (d == 15 && S == 0) || n == 15 then UNPREDICTABLE;
+		// if ConditionPassed() then
+		//	EncodingSpecificOperations();
+		AddWithCarry(result, carry, overflow, R[n], ~imm32, 1);
+		R[d] = result;
+		if setflags then
+			APSR_N = result<31..31>;
+			APSR_Z = IsZeroBit(result);
+			APSR_C = carry;
+			APSR_V = overflow;
+		endif;
+	}
+	
 op MUL_T2(Rd: REG_INDEX, Rn: REG_INDEX, Rm: REG_INDEX)
 	syntax = format("mul %s, %s, %s", Rd, Rn, Rm)
 	image = format("11111 0110 000 %s 1111 %s 0000 %s", Rn, Rd, Rm)
@@ -206,6 +260,58 @@ op MUL_T2(Rd: REG_INDEX, Rn: REG_INDEX, Rm: REG_INDEX)
 			// else APSR.C unchanged
 			// APSR.V always unchanged
 		endif;		
+	}
+	
+op BIC_immediate_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, imm8: card(8))
+	syntax = format("bic%s %s, %s, #0x%03x", S, Rd, Rn, ThumbExpandImm(i :: imm3 :: imm8))
+	image = format("11110 %1b 0 0001 %s %s  0 %3b %s %8b", i, S, Rn, imm3, Rd, imm8)
+	action = {
+		d = UInt(Rd);
+		n = UInt(Rn);
+		setflags = (S == 1);
+		ThumbExpandImm_C(i :: imm3 :: imm8, imm32, carry);
+		//if d IN {13,15} || n IN {13,15} then UNPREDICTABLE;
+		//if ConditionPassed() then
+			//EncodingSpecificOperations();
+			result = R[n] & ~imm32;
+			if d == 15 then // Can only occur for ARM encoding
+				ALUWritePC(result); // setflags is always FALSE here 
+			else
+				R[d] = result<31..0>; 
+				if setflags then
+					APSR_N = result<31..31>;
+					APSR_Z = IsZeroBit(result<31..0>); 
+					APSR_C = carry;
+					// APSR.V unchanged
+				endif;
+			endif;
+		//endif
+	}
+
+op CLZ_T1(Rd: REG_INDEX, Rm: REG_INDEX)
+	syntax = format("clz %s, %s", Rd.syntax, Rm.syntax)
+	image = format("11111 010 1 011 %s 1111 %s 1 000 %s", Rm.image, Rd.image, Rm.image)
+	//if !Consistent(Rm) then UNPREDICTABLE;
+	//if Rd IN {13,15} || Rm IN {13,15} then UNPREDICTABLE;
+	action = {
+		// EncodingSpecificOperations();
+		TMP_BYTE = 32;
+		TMP_SWORD = GPR[Rm];
+		most_sign_bit;
+		GPR[Rd] = 31 - TMP_INC;
+	}
+
+	most_sign_bit = {	
+		if (TMP_BYTE != 0) then       	       
+			if (TMP_SWORD & 0x80000000 == 1) then
+				TMP_INC = TMP_BYTE-1;			
+			else
+				TMP_SWORD = TMP_SWORD << 1;
+				//Decrease the register counter
+				TMP_BYTE = TMP_BYTE - 1;
+				most_sign_bit;
+			endif;
+		endif;
 	}
 
 op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(2), imm11: card(11))

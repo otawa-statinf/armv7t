@@ -1,5 +1,5 @@
 
-op mem_thumb2 = LDR_immediate | LDRH_register | STC | LDC_immediate | LDM_T2
+op mem_thumb2 = LDR_immediate | LDRH_register | STC | LDC_immediate | LDM_T2 | STR_immediate | LDRB_immediate
 
 op LDRH_register(x: ldrh_list)
 	image = x.image
@@ -52,7 +52,10 @@ op LDR_immediate(x: ldr_immediate_list)
 			data = M32[address];
 			if x.wback then R[x.n] = offset_addr; endif;
 			if x.t == 15 then
-				//if address<1:0> == '00' then LoadWritePC(data); else UNPREDICTABLE; endif;
+				//if address<1..0> == 0b00 then 
+					LoadWritePC(data); 
+				//else UNPREDICTABLE; 
+				//endif;
 			else //if UnalignedSupport() || address<1:0> == '00' then
 				R[x.t] = data;
 			//else R[x.t] = bits(32) UNKNOWN; // Can only apply before ARMv7
@@ -61,13 +64,13 @@ op LDR_immediate(x: ldr_immediate_list)
 	}
 
 // should provide t, n, imm32, index, add, wback
-op ldr_immediate_list = LDR_immediate_T3
+op ldr_immediate_list = LDR_immediate_T3 | LDR_immediate_T4
 
 op LDR_immediate_T3(rn: REG_INDEX, rt: REG_INDEX, imm12: card(12))
 	// TODO ranging effects
 	//		rn = 1111 -> LDR (literal)
 	image = format("11111 00 0 1 10 1 %s %s %12b", rn, rt, imm12)
-	syntax = format("ldr.w %s, [%s, #%d]", rt, rn, imm12)
+	syntax = format("ldr.w %s, [%s, #0x%x]", rt, rn, imm12)
 	condition = 1
 	t = rt
 	n = rn
@@ -75,6 +78,91 @@ op LDR_immediate_T3(rn: REG_INDEX, rt: REG_INDEX, imm12: card(12))
 	index = 1
 	add = 1
 	wback = 0
+
+op LDR_immediate_T4(Rn: REG_INDEX, Rt: REG_INDEX, imm8: card(8), P: card(1), U: card(1), W: card(1))
+	// TODO ranging effects
+	//		Rn = 1111 -> LDR (literal)
+	//	 	P = 1 && U = 1 && W = 0 -> LDRT;
+	// 		Rn = 1101 & P = 0 & U = 1 & W = 1 & imm8 = 00000100 -> POP;
+	image = format("11111 00 0 0 10 1 %s %s 1 %1b %1b %1b %8b", Rn, Rt, P, U, W, imm8)
+	syntax = 
+		if P then format("ldr %s, [%s, #%s0x%x]%s", Rt, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif) 
+		else format("ldr %s, [%s], #%s0x%x", Rt, Rn, if U then '' else '-' endif, imm8) endif
+	//if P == '0' && W == '0' then UNDEFINED;
+	condition = 1
+	t = Rt
+	n = Rn
+	imm32 = imm8
+	index = P
+	add = U
+	wback = W
+	//if (wback && n == t) || (t == 15 && InITBlock() && !LastInITBlock()) then UNPREDICTABLE;
+
+op LDRB_immediate(x: ldrb_immediate_list)
+	image = x.image
+	syntax = x.syntax
+	cond = x.condition
+	action = {
+		if ConditionPassed() then
+			// EncodingSpecificOperations(); NullCheckIfThumbEE(n);
+			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else R[x.n] endif;
+			data = M[address];	
+			R[x.t] = ZeroExtend(data, 32);;
+			if x.wback then R[x.n] = offset_addr; endif;
+		endif;
+	}
+
+// should provide t, n, imm32, index, add, wback
+op ldrb_immediate_list = LDRB_immediate_T2
+
+op LDRB_immediate_T2(Rn: REG_INDEX, Rt: REG_INDEX, imm12: card(12))
+	// TODO ranging effects
+	//		Rt = 1111 -> PLD;
+	//		Rn = 1111 -> LDRB (literal)
+	image = format("11111 00 0 1 00 1 %s  %s %12b", Rn, Rt, imm12)
+	syntax = format("ldrb.w %s, [%s, #0x%x]", Rt, Rn, imm12)
+	condition = 1
+	t = Rt
+	n = Rn
+	imm32 = imm12
+	index = 1
+	add = 1
+	wback = 0
+
+op STR_immediate(x: str_immediate_list)
+	image = x.image
+	syntax = x.syntax
+	cond = x.condition
+	action = {
+		if ConditionPassed() then
+			// EncodingSpecificOperations(); NullCheckIfThumbEE(n);
+			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else R[x.n] endif;
+			data = R[x.t];
+			//if UnalignedSupport() || address<1:0> == '00' then
+				M32[address] = data;
+			//else // Can only occur before ARMv7
+				//MemU[address,4] = bits(32) UNKNOWN;			
+			if x.wback then R[x.n] = offset_addr; endif;
+		endif;
+	}
+	
+// should provide t, n, imm32, index, add, wback
+op str_immediate_list = STR_immediate_T3
+
+op STR_immediate_T3(Rn: REG_INDEX, Rt: REG_INDEX, imm12: card(12))
+	image = format("11111 00 0 1 10 0 %s %s %12b", Rn, Rt, imm12)
+	syntax = format("str.w %s, [%s, #0x%x]", Rt, Rn, imm12)
+	//if Rn == '1111' then UNDEFINED
+	condition = 1
+	t = Rt
+	n = Rn
+	imm32 = imm12
+	index = 1
+	add = 1
+	wback = 0
+	//if t == 15 then UNPREDICTABLE;
 
 mode RegisterListThumb(_P: card(1), _M: card(1), _l: card(13)) = _l
 	l = _l
