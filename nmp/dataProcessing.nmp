@@ -382,7 +382,7 @@ op CLZ(cond: condition, rd: REG_INDEX, rm: REG_INDEX)
 				most_sign_bit;
 				GPR[rd] = 31 - TMP_INC;
 			endif;
-			endif;
+		endif;
 	}
 
 	most_sign_bit = {	
