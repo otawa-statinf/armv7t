@@ -48,6 +48,8 @@ op thumb2_32_list =
 	  EOR_immediate_T1
 	| BL_immediate_T1
 	| B_T3
+	| B_T4
+	| TBB_TBH
 	| ADD_register_T3
 	| ADD_immediate_T3
 	| SUB_immediate_T3
@@ -59,6 +61,8 @@ op thumb2_32_list =
 	| mem_thumb2
 	| LSL_T2
 	| MUL_T2
+	| MOV_immediate
+	| MOVT_T1
 
 
 op CLREX_T1()
@@ -101,7 +105,7 @@ op LDREX_T1 (rn: REG_INDEX, rt: REG_INDEX, imm8: card(8))
 		// TODO
 	}
 
-op BLX_T2(s: card(1), imm10h: card(10), j1: card(1), j2: card(2), imm10l: card(10), h: card(1))
+op BLX_T2(s: card(1), imm10h: card(10), j1: card(1), j2: card(1), imm10l: card(10), h: card(1))
 	imm32 = SignExtend(s :: (j1 ^ s) :: (j2 ^ s) :: imm10h :: imm10l :: 0<1..0>, 7)
 	target = Align(__IADDR, 4) + imm32
 	targetAddress = Align(PC, 4) + imm32
@@ -314,9 +318,9 @@ op CLZ_T1(Rd: REG_INDEX, Rm: REG_INDEX)
 		endif;
 	}
 
-op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(2), imm11: card(11))
+op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), imm11: card(11))
 	imm32 = SignExtend(S :: J2 :: J1 :: imm6 :: imm11 :: 0b0, 11)
-	target = __IADDR + imm32 + 8
+	target = __IADDR + imm32 + 4
 	syntax =
 		if cond.value<3..1> == 0b111
 		then "nop.w"
@@ -335,6 +339,91 @@ op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(2), im
 	}
 	  
 
+op B_T4(S: card(1), imm10: card(10), J1: card(1), J2: card(1), imm11: card(11))
+	imm32 = SignExtend(S :: J1 :: J2 :: imm10 :: imm11 :: 0b0, 7)
+	target = __IADDR + imm32 + 4
+	syntax = format("b.w %l", target)
+	image = format("11110 %1b %10b 10 %1b 1 %1b %11b", S, imm10, J1, J2, imm11)
+	action = {
+		// if InITBlock() && !LastInITBlock() then UNPREDICTABLE;
+		//if ConditionPassed() then
+			BranchWritePC(PC + imm32);
+		//endif;
+	}
+	  
+op TBB_TBH(Rn: REG_INDEX, Rm: REG_INDEX, H:card(1))
+	syntax = 
+		if H  then format("tbh [%s, %s, lsl #1]", Rn, Rm) 
+		else format("tbb [%s, %s]", Rn, Rm) endif
+	image = format("11101 00 0 1 1 0 1 %s 1111 0000 000 %1b %s", Rn, H, Rm)
+	action = {
+		n = UInt(Rn);
+		m = UInt(Rm);
+		//if n == 13 || m IN {13,15} then UNPREDICTABLE;
+		// TODO!
+		// Table Branch Byte causes a PC-relative forward branch using a table of single byte offsets. A base register provides a pointer to the table, and a second register supplies an index into the table. The branch length is twice the value of the byte returned from the table.
+		// Table Branch Halfword causes a PC-relative forward branch using a table of single halfword offsets. A base register provides a pointer to the table, and a second register supplies an index into the table. The branch length is twice the value of the halfword returned from the table.
+	}
+
+op MOV_immediate(x: mov_immediate_list)
+	image = x.image
+	syntax = x.syntax
+	cond = x.condition
+	action = {
+		if ConditionPassed() then
+			// EncodingSpecificOperations();
+			init_imm32_carry;
+			result = imm32;
+			if x.d == 15 then // Can only occur for encoding A1
+				ALUWritePC(result); // setflags is always FALSE here 
+			else
+				R[x.d] = result; 
+				if x.setflags then
+					APSR_N = result<31..31>;
+					APSR_Z = IsZeroBit(result); 
+					APSR_C = carry;
+					// APSR.V unchanged
+				endif;
+			endif;
+		endif;
+	}
+	
+// should provide d, setflags, condition, init_imm32_carry
+op mov_immediate_list = MOV_immediate_T2 | MOV_immediate_T3
+
+op MOV_immediate_T2(i: card(1), S: setS, Rd: REG_INDEX, imm3: card(3), imm8: card(8))
+	syntax = format("mov%s.w %s, #%d", S, Rd, ThumbExpandImm(i :: imm3 :: imm8))
+	image = format("11110 %1b 0 0010 %s 1111  0 %3b %s %8b", i, S, imm3, Rd, imm8)
+	d = UInt(Rd)
+	setflags = S 
+	condition = 1
+	init_imm32_carry = {
+		ThumbExpandImm_C(i :: imm3 :: imm8, imm32, carry);
+	}
+	//if d IN {13,15} then UNPREDICTABLE;
+
+op MOV_immediate_T3(i: card(1), Rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: card(8))
+	syntax = format("movw %s, #%d", Rd, ZeroExtend(imm4 :: i :: imm3 :: imm8, 16))
+	image = format("11110 %1b 10 0 1 0 0 %4b  0 %3b %s %8b", i, imm4, imm3, Rd, imm8)
+	d = UInt(Rd)
+	setflags = 0
+	condition = 1
+	init_imm32_carry = {
+		imm32 = ZeroExtend(imm4 :: i :: imm3 :: imm8, 16);
+	}
+	//if d IN {13,15} then UNPREDICTABLE;
+	
+op MOVT_T1(i: card(1), Rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: card(8))
+	syntax = format("movt %s, #%d", Rd, imm4 :: i :: imm3 :: imm8)
+	image= format("11110 %1b 10 1 1 0 0 %4b  0 %3b %s %8b", i, imm4, imm3, Rd, imm8)
+	d = UInt(Rd)
+	//if d IN {13,15} then UNPREDICTABLE;
+	action = {
+		R[d]<31..16> = imm4 :: i :: imm3 :: imm8;
+		// R[d]<15:0> unchanged
+	}
+	
+			
 // ****** thumb-2 16-bits ******
 
 /*op thumb2_16(x: thumb2_16_list)

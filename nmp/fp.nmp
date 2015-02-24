@@ -39,7 +39,7 @@ mode SingleReg(i: card(4)) = i
 	image = format("%4b", i)
 
 
-op fp = /*VSTR |*/ VMOV_list | VSUB_list | VMRS_list
+op fp = /*VSTR |*/ VMOV_list | VSUB_list /*| VMRS_list*/
 
 op VSTR(x: VSTR_list)
 	syntax = x.syntax
@@ -137,8 +137,8 @@ op VSUB_fp_T2_64(D_: bool, Vn: DoubleReg, Vd: DoubleReg, N: bool, M: bool, Vm: D
 op VMRS_list = VMRS_T1
 
 op VMRS_T1(Rt: REG_INDEX)
-	syntax = format("vmrs %s, fpscr", if UInt(Rt) != 15 then Rt.image else "APSR_nzcv" endif)
-	image = format("1110 11101111 0001 %s 1010 000 1 0000", Rt)
+	syntax = format("vmrs %s, fpscr", if UInt(Rt) != 15 then Rt.syntax else "APSR_nzcv" endif)
+	image = format("1110 11101111 0001  %s 1010 000 1 0000", Rt)
 	
 	//if Rt == 13 && CurrentInstrSet() != InstrSet_ARM then UNPREDICTABLE;
 	
