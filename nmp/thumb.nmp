@@ -148,7 +148,7 @@ op thumb1(x: thumb1_list)
 op thumb1_list =
 	  ADD_thumb | AND_thumb | ASR_thumb
 	| B_thumb | B_thumb_T2 | BIC_thumb 
-	| BLX_thumb | BX_thumb | COMPARE_thumb | EOR_thumb | LDMIA_thumb 
+	| BLX_thumb | BX_thumb | CBNZ_CBZ_thumb| COMPARE_thumb | EOR_thumb | LDMIA_thumb 
 	| LDR_thumb | LDRB_thumb | LDRH_thumb | LDRS_thumb | LSL_thumb 
 	| LSR_thumb | MUL_thumb | MVN_thumb | NEG_thumb 
 	| ORR_thumb | POP_thumb | PUSH_thumb | ROR_thumb | SBC_thumb
@@ -470,6 +470,20 @@ op BX_thumb(rm : REG_INDEX)
 	}
 
 
+op CBNZ_CBZ_thumb(rn: REG_THUMB_INDEX, i: card(1), imm5: card(5), op_: card(1))
+	imm32 = ZeroExtend(i :: imm5 :: 0b0, 7)
+	target = __IADDR + 4 + imm32
+	syntax = format("cb%sz, %s, #0x%x", if op_ then "n" else "" endif, rn, target)
+	image = format("1011 %1b 0 %1b 1 %5b %s", op_, i, imm5, rn)
+	nonzero = op_
+	//if InITBlock() then UNPREDICTABLE;
+	action = {
+		//EncodingSpecificOperations(); 
+		if nonzero ^ (R[rn] == 0) then 
+			BranchWritePC(PC + imm32); 
+		endif;
+	}
+	
 
 op COMPARE_thumb = CMN_shr_thumb | CMP_imm_thumb | CMP_shr1_thumb
 				 | CMP_shr2_thumb

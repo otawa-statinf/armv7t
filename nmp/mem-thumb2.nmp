@@ -1,5 +1,13 @@
 
-op mem_thumb2 = LDR_immediate | LDRH_register | STC | LDC_immediate | LDM_T2 | STR_immediate | LDRB_immediate
+op mem_thumb2 = LDR_immediate 
+	| LDRH_register 
+	| STC 
+	| LDC_immediate 
+	| LDM_T2 
+	| STR_immediate 
+	| LDRB_immediate 
+	| MRC_MRC2 
+	| STMDB_T1
 
 op LDRH_register(x: ldrh_list)
 	image = x.image
@@ -149,7 +157,7 @@ op STR_immediate(x: str_immediate_list)
 	}
 	
 // should provide t, n, imm32, index, add, wback
-op str_immediate_list = STR_immediate_T3
+op str_immediate_list = STR_immediate_T3 | STR_immediate_T4
 
 op STR_immediate_T3(Rn: REG_INDEX, Rt: REG_INDEX, imm12: card(12))
 	image = format("11111 00 0 1 10 0 %s %s %12b", Rn, Rt, imm12)
@@ -163,6 +171,24 @@ op STR_immediate_T3(Rn: REG_INDEX, Rt: REG_INDEX, imm12: card(12))
 	add = 1
 	wback = 0
 	//if t == 15 then UNPREDICTABLE;
+
+op STR_immediate_T4(Rn: REG_INDEX, Rt: REG_INDEX, imm8: card(8), P: card(1), U: card(1), W: card(1))
+	// TODO ranging effects
+	//		P == '1' && U == '1' && W == '0' -> STRT
+	// 		Rn == '1101' && P == '1' && U == '0' && W == '1' && imm8 == '00000100' -> PUSH;
+	image = format("11111 00 0 0 10 0 %s %s 1 %1b %1b %1b %8b", Rn, Rt, P, U, W, imm8)
+	syntax = 
+		if P then format("str %s, [%s, #%s0x%x]%s", Rt, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif) 
+		else format("str %s, [%s], #%s0x%x", Rt, Rn, if U then '' else '-' endif, imm8) endif
+	//if Rn == '1111' || (P == '0' && W == '0') then UNDEFINED;		
+	condition = 1
+	t = Rt
+	n = Rn
+	imm32 = imm8
+	index = P
+	add = U
+	wback = W
+	//if t == 15 || (wback && n == t) then UNPREDICTABLE;
 
 mode RegisterListThumb(_P: card(1), _M: card(1), _l: card(13)) = _l
 	l = _l
@@ -186,10 +212,11 @@ mode RegisterListThumb(_P: card(1), _M: card(1), _l: card(13)) = _l
 		if _P then "pc" else "" endif)
 
 op LDM_T2(W: bool, Rn: REG_INDEX, register_list: RegisterListThumb)
-	syntax = format("ldm.w %s%s, %s", Rn, if W then "!" else "" endif, register_list)
+	// TODO ranging effects
+	// 		Rn = 1101 & W = 1 -> POP (Thumb);
+	syntax = format("ldm%s.w %s%s, %s", if Rn == 0b1101 then "fd" else "ia" endif, Rn, if W then "!" else "" endif, register_list)
 	image = format("11101 00 010 %1b 1 %s %1b %1b 0 %13b", W, Rn, register_list.P, register_list.MM, register_list.l)
 	action = {
-		// if W == '1' && Rn == '1101' then SEE POP (Thumb);
 		n = UInt(Rn);
 		registers = register_list.P :: register_list.MM :: 0b0 :: register_list.l;
 		wback = (W == 1);
@@ -199,7 +226,7 @@ op LDM_T2(W: bool, Rn: REG_INDEX, register_list: RegisterListThumb)
 		address = R[n];
 		i = 0; bitcount = 0; loop;
 		if registers<15..15> == 1 then
-			LoadWritePC(M[address]);
+			LoadWritePC(M32[address]);
 			bitcount = bitcount + 1;
 		endif;
 		if wback && registers<n..n> == 0 then R[n] = R[n] + 4 * bitcount; endif;
@@ -207,7 +234,7 @@ op LDM_T2(W: bool, Rn: REG_INDEX, register_list: RegisterListThumb)
 	}
 	loop = {
 		if registers<i..i> == 1 then
-			R[i] = M[address];
+			R[i] = M32[address];
 			address = address + 4;
 			bitcount = bitcount + 1;
 		endif;
@@ -217,3 +244,49 @@ op LDM_T2(W: bool, Rn: REG_INDEX, register_list: RegisterListThumb)
 		endif;
 	}
 
+mode RegisterListThumbLtd(_M: card(1), _l: card(13)) = _l
+	_P = 0
+	l = _l
+	P = _P
+	MM = _M
+	syntax = format("{%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s}",
+		if _l<0..0> then format("r0%s", if _l<1..12> || _P || _M then ", " else "" endif) else "" endif,
+		if _l<1..1> then format("r1%s", if _l<2..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<2..2> then format("r2%s", if _l<3..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<3..3> then format("r3%s", if _l<4..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<4..4> then format("r4%s", if _l<5..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<5..5> then format("r5%s", if _l<6..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<6..6> then format("r6%s", if _l<7..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<7..7> then format("r7%s", if _l<8..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<8..8> then format("r8%s", if _l<9..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<9..9> then format("r9%s", if _l<10..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<10..10> then format("r10%s", if _l<11..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<11..11> then format("r11%s", if _l<12..12> || _P || _M  then ", " else "" endif) else "" endif,
+		if _l<12..12> then format("r12%s", if _P || _M  then ", " else "" endif) else "" endif,
+		if _M then format("lr%s", if _P then ", " else "" endif) else "" endif,
+		if _P then "pc" else "" endif)
+
+op STMDB_T1(W: bool, Rn: REG_INDEX, register_list: RegisterListThumbLtd)
+	// TODO ranging effects
+	// 		Rn = 1101 & W = 1 -> PUSH;
+	syntax = format("stm%s %s%s, %s", if Rn == 0b1101 then "fd" else "db" endif, Rn, if W then "!" else "" endif, register_list)
+	image = format("11101 00 100 %1b 0 %s  0 %1b 0 %13b", W, Rn, register_list.MM, register_list.l) 
+	action = {
+		n = UInt(Rn);
+		registers = 0b0 :: register_list.MM :: 0b0 :: register_list.l;
+		wback = (W == 1);
+		//if n == 15 || BitCount(registers) < 2 then UNPREDICTABLE;
+		//if wback && registers<n> == '1' then UNPREDICTABLE;
+		i = 14; address = R[n]; loop;
+		if wback then R[n] = address; endif;
+	}
+	loop = {
+		if registers<i..i> == 1 then
+			address = address - 4;
+			M32[address] = R[i];
+		endif;
+		i = i - 1;
+		if i >= 0 then
+			loop;
+		endif;
+	}

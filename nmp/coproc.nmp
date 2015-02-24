@@ -55,7 +55,6 @@ op LDC_immediate(x: LDC_immediate_list)
 
 op LDC_immediate_list = LDC_immediate_T1 | LDC_immediate_T2
 
-
 op LDC_immediate_T1(N: bool, CRd: card(4), coproc: card(4), addr: CoproAddress)
 	// if Rn == '1111' then SEE LDC (literal);
 	// if P == '0' && U == '0' && D == '0' && W == 0 then UNDEFINED
@@ -83,3 +82,36 @@ op LDC_immediate_T2(N: bool, CRd: card(4), coproc: card(4), addr: CoproAddress)
 	index = addr.P
 	add = addr.U
 	wback = addr.W
+
+op MRC_MRC2(x: MRC_MRC2_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		// TODO
+		//if ConditionPassed() then 
+		//	EncodingSpecificOperations();
+		//	if !Coproc_Accepted(cp, ThisInstr()) then
+		//		GenerateCoprocessorException(); 
+		//	else
+		//		value = Coproc_GetOneWord(cp, ThisInstr()); 
+		//		if t != 15 then
+		//			R[t] = value; 
+		//		else
+		//			APSR.N = value<31>;
+		//			APSR.Z = value<30>;
+		//			APSR.C = value<29>;
+		//			APSR.V = value<28>;
+		//			// value<27:0> are not used.
+	}
+
+op MRC_MRC2_list = MRC_T1
+
+op MRC_T1(opc1: card(3), CRn: card(4), Rt: REG_INDEX, coproc: card(4), opc2: card(3), CRm: card(4))
+	// TODO ranging effects
+	//		if coproc IN "101x" -> "Advanced SIMD and Floating-point";
+	syntax = format("mrc %4b, %3b, %s, %4b, %4b, %3b", coproc, opc1, Rt, CRn, CRm, opc2)
+	image = format("1110 1110 %3b 1 %4b  %s %4b %3b 1 %4b", opc1, CRn, Rt, coproc, opc2, CRm)
+	t = UInt(Rt)
+	cp = UInt(coproc)
+	//if t == 13 && (CurrentInstrSet() != InstrSet_ARM) then UNPREDICTABLE;
+	

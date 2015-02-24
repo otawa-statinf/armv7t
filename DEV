@@ -218,7 +218,7 @@ BXJ (to Jazelle)
 	T1		6
 	A1		5
 CBNZ, CBZ
-	T1		6
+	T1		6	ok
 CDP, CDP2
 	T1		6
 	A1		4	check
@@ -428,8 +428,8 @@ MLS
 	A1		6
 MOV (immediate)
 	T1		4	ok
-	T2		6
-	T3		6
+	T2		6	ok
+	T3		6	ok
 	A1		4	ok
 	A2		6
 MOV (register)
@@ -438,10 +438,10 @@ MOV (register)
 	T3		6
 	A1		4	ok
 MOVT
-	T1		6
+	T1		6	ok
 	A1		6
 MRC, MRC2
-	T1		6
+	T1		6	action
 	A1		4	check
 	T2		6
 	A2		5	check
@@ -718,7 +718,7 @@ STM (STMIA, STMEA)
 STMDA (STMED)
 	A1		4	ok
 STMDB (STMFD)
-	T1		6
+	T1		6	test
 	A1		4	ok
 STMIB (STMFA)
 	A1		4	ok
@@ -726,7 +726,7 @@ STR (immediate)
 	T1		4	ok
 	T2		4	ok
 	T3		6	ok
-	T4		6
+	T4		6	ok
 	A1		4	ok
 STR (register)
 	T1		4	ok
@@ -1048,7 +1048,7 @@ VMOV (register)
 	T2		VFPv2	ok
 	A2		VFPv2
 VMRS
-	T1		VFPv2	ok
+	T1		VFPv2	range
 	A1		VFPv2
 VSUB (floating-point)
 	T1		aSIMD
