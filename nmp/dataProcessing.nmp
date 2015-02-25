@@ -424,9 +424,9 @@ op BFIC(cond: condition, rd: REG_INDEX, rn: REG_INDEX, msb: card(5), lsb: card(5
 		if cond then
 			if msb >= lsb then
 				if rn.number == 15 then
-					rd<msb..lsb> = 0;
+					GPR[rd]<msb..lsb> = 0;
 				else
-					rd<msb..lsb> = rn;
+					GPR[rd]<msb..lsb> = rn;
 				endif;
 			else
 				error("UNPREDICTABLE");

@@ -15,14 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# configuration
-GLISS_PREFIX	= ../gliss2
-WITH_EABI		= 1	# comment it to enable EABI support (no system call)
-WITH_DISASM		= 1	# comment it to prevent disassembler building
-WITH_SIM		= 1	# comment it to prevent simulator building
-WITH_THUMB		= 1	# comment it to prevent use of THUMB mode
-WITH_DYNLIB		= 1 # uncomment it to link in dynamic library
-WITH_IO			= 1	# uncomment it to use IO memory (slower but allowing callback)
+-include config.mk 
 
 # definitions
 ARCH=arm
@@ -78,14 +71,16 @@ endif
 # goals definition
 GOALS		=
 SUBDIRS		=	src
-CLEAN		=	arm.nml arm.irg
-DISTCLEAN	=	include src $(CLEAN)
+CLEAN		=	arm.nml arm.irg nmp/state.nmp
+DISTCLEAN	=	include src $(CLEAN) config.mk
+LIB_DEPS	=	include/arm/config.h src/used_regs.c
 
 ifdef WITH_DISASM
 GOALS		+=	arm-disasm
 SUBDIRS		+=	disasm
 DISTCLEAN	+= 	disasm
 GFLAGS		+= -a disasm.c
+LIB_DEPS	+= src/disasm.c 
 endif
 
 ifdef WITH_SIM
@@ -101,10 +96,18 @@ all: lib $(GOALS)
 $(ARCH).irg: $(NMP)
 	cd nmp &&  ../$(GLISS_PREFIX)/irg/mkirg $(MAIN_NMP) ../$@  && cd ..
 
+ifdef WITH_FAST_STATE
+STATE_NMP=state-fast.nmp
+else
+STATE_NMP=state-normal.nmp
+endif
+nmp/state.nmp:
+	cp nmp/$(STATE_NMP) nmp/state.nmp  
+
 src include: arm.irg
 	$(GLISS_PREFIX)/gep/gep $(GFLAGS) $<
 
-lib: src include/arm/config.h src/disasm.c src/used_regs.c
+lib: src $(LIB_DEPS)
 	(cd src; make $(REC_FLAGS))
 
 arm-disasm:
@@ -132,3 +135,11 @@ clean:
 
 distclean:
 	rm -Rf $(DISTCLEAN) arm.irg arm.out
+
+config: config.mk
+
+config.mk:
+	cp config.mk.in config.mk
+	echo "Created config.mk. Edit it for configuration."
+
+	
