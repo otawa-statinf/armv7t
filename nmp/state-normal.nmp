@@ -2,12 +2,6 @@
 // activate only marked registers for debugging
 let gliss_debug_only = 1
 
-// constants
-let LSL = 0
-let LSR = 1
-let ASR = 2
-let ROR = 3
-
 // No of user registers
 let GPRNum = 32
 
@@ -33,57 +27,23 @@ let mode_system     = 0b11111
 let mode_sys     	= 0b11111
 
 
-// Register file
-reg GPR[GPRNum, u32]
-
-reg LR[1, u32]	alias = GPR[14]
-reg PC[1, u32] 	alias = GPR[15] pc = 1
-reg NPC[1, u32]
-reg R14_svc [1, u32] alias = GPR[24]
-
-let offset_fiq	= 16
-let offset_irq	= 23
-let offset_svc 	= 25
-let offset_abt	= 27
-let offset_und	= 29
-macro reg_id(m, i) = coerce(card(8), (((m) << 4) | (i)))
-
-macro reg_offset(i) = \
-	switch(reg_id(MBITS, i)) { \
-	case reg_id(mode_fiq, 8): offset_fiq - 8 \
-	case reg_id(mode_fiq, 9): offset_fiq - 8 \
-	case reg_id(mode_fiq, 10): offset_fiq - 8 \
-	case reg_id(mode_fiq, 11): offset_fiq - 8 \
-	case reg_id(mode_fiq, 12): offset_fiq - 8 \
-	case reg_id(mode_fiq, 13): offset_fiq - 8 \
-	case reg_id(mode_fiq, 14): offset_fiq - 8 \
-	case reg_id(mode_irq, 13): offset_irq - 13 \
-	case reg_id(mode_irq, 14): offset_irq - 13 \
-	case reg_id(mode_svc, 13): offset_svc - 13 \
-	case reg_id(mode_svc, 14): offset_svc - 13 \
-	case reg_id(mode_abt, 13): offset_abt - 13 \
-	case reg_id(mode_abt, 14): offset_abt - 13 \
-	case reg_id(mode_und, 13): offset_und - 13 \
-	case reg_id(mode_und, 14): offset_und - 13 \
-	default: 0 \
-	}
-
-macro Get_ARM_GPR(r) = GPR[r + reg_offset(r)]
-macro Set_ARM_GPR(r, v) = if r == 15 then NPC = v; else GPR[r + reg_offset(r)] = v; endif
-
-
-
 // Current Program Status Register
-reg Ucpsr [1, u32]
+reg APSR[1, u32]
 	debug = 1
-	label = "CPSR"
 	fmt = "CPSR"
-reg CPSR [1, u32] alias = Ucpsr
+reg CPSR[1, u32] alias = APSR
+reg Ucpsr[1, u32] alias = APSR
 
 
 // Saved SR
-reg Uspsr [SPSRNum, u32]
-reg SPSR_svc [1, u32] alias = Uspsr[0]
+reg SPSR [SPSRNum, u32]
+reg Uspsr [SPSRNum, u32] alias = SPSR[0]
+reg SPSR_usr[1, u32] alias = SPSR[0]
+reg SPSR_svc[1, u32] alias = SPSR[0]
+reg SPSR_abt[1, u32] alias = SPSR[1]
+reg SPSR_und[1, u32] alias = SPSR[2]
+reg SPSR_irq[1, u32] alias = SPSR[3]
+reg SPSR_fiq[1, u32] alias = SPSR[4]
 
 macro GetSPSR() = \
 	switch (MBITS) { \
@@ -192,6 +152,62 @@ reg PSRCMODE[1,u1]
 reg RBIT[1,u1]
 
 
+// Generic Register File
+reg GPR[GPRNum, u32]
+
+reg LR[1, u32]	alias = GPR[14]
+reg PC[1, u32] 	alias = GPR[15] pc = 1
+reg NPC[1, u32]
+reg R14_svc [1, u32] alias = GPR[24]
+
+let offset_fiq	= 16
+let offset_irq	= 23
+let offset_svc 	= 25
+let offset_abt	= 27
+let offset_und	= 29
+
+macro reg_id(m, i) = coerce(card(8), (((m) << 4) | (i)))
+
+macro reg_offset(i) = \
+	switch(reg_id(MBITS, i)) { \
+	case reg_id(mode_fiq, 8): offset_fiq - 8 \
+	case reg_id(mode_fiq, 9): offset_fiq - 8 \
+	case reg_id(mode_fiq, 10): offset_fiq - 8 \
+	case reg_id(mode_fiq, 11): offset_fiq - 8 \
+	case reg_id(mode_fiq, 12): offset_fiq - 8 \
+	case reg_id(mode_fiq, 13): offset_fiq - 8 \
+	case reg_id(mode_fiq, 14): offset_fiq - 8 \
+	case reg_id(mode_irq, 13): offset_irq - 13 \
+	case reg_id(mode_irq, 14): offset_irq - 13 \
+	case reg_id(mode_svc, 13): offset_svc - 13 \
+	case reg_id(mode_svc, 14): offset_svc - 13 \
+	case reg_id(mode_abt, 13): offset_abt - 13 \
+	case reg_id(mode_abt, 14): offset_abt - 13 \
+	case reg_id(mode_und, 13): offset_und - 13 \
+	case reg_id(mode_und, 14): offset_und - 13 \
+	default: 0 \
+	}
+
+// mode for register access
+mode REG_INDEX(r: card(4)) = r + reg_offset(r)
+	syntax = if r < 10 then format("r%d", r) else
+				switch(r) {
+				case 10: "sl"  
+				case 11: "fp" 
+				case 12: "ip" 
+				case 13: "sp" 
+				case 14: "lr" 
+				case 15: "pc"
+				default: ""
+				}
+			endif
+	image  = format("%4b", r)
+	number = r
+
+macro Get_ARM_GPR(r) = GPR[r]
+macro Set_ARM_GPR(r, v) = if r == 15 then NPC = v; else GPR[r] = v; endif
+
+
 // R for debugging
 reg R[16, u32]
 	alias = GPR[0]
@@ -220,4 +236,3 @@ op init ()
 		// sp init for validator (same value as gdb)
 		GPR[13 + 10] = 0x800;
 	 }
-

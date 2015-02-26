@@ -214,7 +214,7 @@ mode RegisterListThumb(_P: card(1), _M: card(1), _l: card(13)) = _l
 op LDM_T2(W: bool, Rn: REG_INDEX, register_list: RegisterListThumb)
 	// TODO ranging effects
 	// 		Rn = 1101 & W = 1 -> POP (Thumb);
-	syntax = format("ldm%s.w %s%s, %s", if Rn == 0b1101 then "fd" else "ia" endif, Rn, if W then "!" else "" endif, register_list)
+	syntax = format("ldm%s.w %s%s, %s", if Rn.number == 0b1101 then "fd" else "ia" endif, Rn, if W then "!" else "" endif, register_list)
 	image = format("11101 00 010 %1b 1 %s %1b %1b 0 %13b", W, Rn, register_list.P, register_list.MM, register_list.l)
 	action = {
 		n = UInt(Rn);
@@ -269,7 +269,7 @@ mode RegisterListThumbLtd(_M: card(1), _l: card(13)) = _l
 op STMDB_T1(W: bool, Rn: REG_INDEX, register_list: RegisterListThumbLtd)
 	// TODO ranging effects
 	// 		Rn = 1101 & W = 1 -> PUSH;
-	syntax = format("stm%s %s%s, %s", if Rn == 0b1101 then "fd" else "db" endif, Rn, if W then "!" else "" endif, register_list)
+	syntax = format("stm%s %s%s, %s", if Rn.number == 0b1101 then "fd" else "db" endif, Rn, if W then "!" else "" endif, register_list)
 	image = format("11101 00 100 %1b 0 %s  0 %1b 0 %13b", W, Rn, register_list.MM, register_list.l) 
 	action = {
 		n = UInt(Rn);

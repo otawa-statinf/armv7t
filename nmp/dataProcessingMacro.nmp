@@ -1,4 +1,8 @@
-
+// constants
+let LSL = 0
+let LSR = 1
+let ASR = 2
+let ROR = 3
 
 //macro Get_ARM_GPR(r) = \
 //	if (r) <= 7 then \

@@ -2,22 +2,14 @@
 // activate only marked registers for debugging
 let gliss_debug_only = 1
 
-// new comment
-
-// constants
-let LSL = 0
-let LSR = 1
-let ASR = 2
-let ROR = 3
-
 // No of user registers
-let GPRNum = 32
+//let GPRNum = 32
 
 // No of spsr registers
-let SPSRNum = 5
+//let SPSRNum = 5
 
 // Dont switch to high Vector
-let hivector = 0 
+//let hivector = 0 
 
 //Mode of a ARM Processor
 let mode_user       = 0b10000
@@ -36,12 +28,14 @@ let mode_sys     	= 0b11111
 
 
 // Register file
-reg GPR[GPRNum, u32]
+reg GPR[16, u32]
 
+
+// Useful aliases
 reg LR[1, u32]	alias = GPR[14]
 reg PC[1, u32] 	alias = GPR[15] pc = 1
 reg NPC[1, u32]
-reg R14_svc [1, u32] alias = GPR[24]
+//reg R14_svc [1, u32] alias = GPR[24]
 
 let offset_fiq	= 16
 let offset_irq	= 23
@@ -192,16 +186,6 @@ reg PSRXMODE[1,u1]
 reg PSRCMODE[1,u1]
 
 reg RBIT[1,u1]
-
-
-// R for debugging
-reg R[16, u32]
-	alias = GPR[0]
-	debug = 1
-	label = "Registers"
-	fmt = "R%d"
-	get = { "GLISS_GET_I"(Get_ARM_GPR("GLISS_IDX"));  }
-	set = { Set_ARM_GPR("GLISS_IDX", "GLISS_I");  }
 
 
 // initialisation
