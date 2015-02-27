@@ -44,15 +44,15 @@ op thumb2_32(x: thumb2_32_list)
 		PC = NPC;
 	}
 
-op thumb2_32_list =
-	  EOR_immediate_T1
+op thumb2_32_list = AND_immediate_T1
+	| EOR_immediate_T1
 	| BL_immediate_T1
 	| B_T3
 	| B_T4
 	| TBB_TBH
 	| ADD_register_T3
 	| ADD_immediate_T3
-	| SUB_immediate_T3
+	| SUB_immediate
 	| BIC_immediate_T1
 	| CLZ_T1
 	//| CLREX_T1
@@ -141,6 +141,33 @@ op BL_immediate_T1(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11:
 			BranchWritePC_thumb(addr); 
 		// endif
 	}
+	
+op AND_immediate_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, imm8: card(8))
+	// range decoding
+	//	rd = 0b1111 && S == 1 -> TST (immediate)
+	syntax = format("and%s %s, %s, #0x%08x", S, Rd, Rn, ThumbExpandImm(i :: imm3 :: imm8))
+	image = format("11110 %1b 0 0000 %s %s  0 %3b %s %8b", i, S, Rn, imm3, Rd, imm8)
+	d = UInt(Rd)
+	n = UInt(Rn)
+	setflags = S
+	//if d == 13 || (d == 15 && S == '0') || n IN {13,15} then UNPREDICTABLE;
+	action = {
+		ThumbExpandImm_C(i :: imm3 :: imm8, imm32, carry);
+		//if ConditionPassed() then
+			//EncodingSpecificOperations();
+			result = R[n] & imm32;
+			if d == 15 then // Can only occur for ARM encoding
+				ALUWritePC(result); // setflags is always FALSE here 
+			else
+				R[d] = result; 
+				if setflags then
+					APSR_N = result<31..31>;
+					APSR_Z = IsZeroBit(result); 
+					APSR_C = carry;
+					// APSR.V unchanged
+				endif;
+			endif;
+	}
 
 op EOR_immediate_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	// range decoding
@@ -219,30 +246,50 @@ op ADD_register_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
 		endif;			
 	}
 
-op SUB_immediate_T3(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+
+op SUB_immediate(x: SUB_immediate_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		//if ConditionPassed() then
+			//EncodingSpecificOperations();
+			AddWithCarry(result, carry, overflow, R[x.n], ~x.imm32, 1);
+			R[x.d] = result;
+			if x.setflags then
+				APSR_N = result<31..31>;
+				APSR_Z = IsZeroBit(result);
+				APSR_C = carry;
+				APSR_V = overflow;
+			endif;
+	}
+
+// should provide d, n, setflags, imm32
+op SUB_immediate_list = SUB_immediate_T3 | SUB_immediate_T4
+
+op SUB_immediate_T3(i: card(1), S: setS, Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	// range decoding
 	//	rd = 0b1111 && S == 1 -> CMP (immediate)
 	//	rn = 0b1101 -> SUB (SP minus immediate)
-	syntax = format("sub%s.w %s, %s, #0x%08x", S, rd, rn, ThumbExpandImm(i :: imm3 :: imm8))
-	image = format("11110 %1b 0 1101 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
-	action = {
-		d = UInt(rd);
-		n = UInt(rn);
-		setflags = (S == 1);
-		imm32 = ThumbExpandImm(i :: imm3 :: imm8);
-		// if d == 13 || (d == 15 && S == 0) || n == 15 then UNPREDICTABLE;
-		// if ConditionPassed() then
-		//	EncodingSpecificOperations();
-		AddWithCarry(result, carry, overflow, R[n], ~imm32, 1);
-		R[d] = result;
-		if setflags then
-			APSR_N = result<31..31>;
-			APSR_Z = IsZeroBit(result);
-			APSR_C = carry;
-			APSR_V = overflow;
-		endif;
-	}
+	syntax = format("sub%s.w %s, %s, #%d", S, Rd, Rn, ThumbExpandImm(i :: imm3 :: imm8))
+	image = format("11110 %1b 0 1101 %s %s  0 %3b %s %8b", i, S, Rn, imm3, Rd, imm8)
+	d = UInt(Rd)
+	n = UInt(Rn)
+	setflags = S
+	imm32 = ThumbExpandImm(i :: imm3 :: imm8)
+	//if d == 13 || (d == 15 && S == '0') || n == 15 then UNPREDICTABLE;
 	
+op SUB_immediate_T4(i: card(1), Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	// range decoding
+	//	rn = 0b1111 -> ADR
+	//	rn = 0b1101 -> SUB (SP minus immediate)
+	syntax = format("subw %s, %s, #%d", Rd, Rn, ZeroExtend(i :: imm3 :: imm8, 32))
+	image = format("11110 %1b 1 0101 0 %s  0 %3b %s %8b", i, Rn, imm3, Rd, imm8)
+	d = UInt(Rd)
+	n = UInt(Rn)
+	setflags = 0
+	imm32 = ZeroExtend(i :: imm3 :: imm8, 32)
+	//if d IN {13,15} then UNPREDICTABLE;
+		
 op MUL_T2(Rd: REG_INDEX, Rn: REG_INDEX, Rm: REG_INDEX)
 	syntax = format("mul %s, %s, %s", Rd, Rn, Rm)
 	image = format("11111 0110 000 %s 1111 %s 0000 %s", Rn, Rd, Rm)

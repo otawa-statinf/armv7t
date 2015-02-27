@@ -21,25 +21,32 @@ reg FPSCR_IOC[1, card(1)] alias = FPSCR<0..0>
 
 
 //mode DoubleReg(i: card(5)) = i 
-//	syntax = format("D%d", i)
+//	syntax = format("d%d", i)
 //	image = format("%4b", i<3..0>)
 //	D = (i >> 4)
 //
 //mode SingleReg(i: card(5)) = i 
-//	syntax = format("S%d", i)
+//	syntax = format("s%d", i)
 //	image = format("%4b", i<4..1>)
 //	D = (i & 0b00001)
 
-mode DoubleReg(i: card(4)) = i 
-	syntax = format("d%d", i)
-	image = format("%4b", i)
+mode DoubleReg(_p: card(1), _r: card(4)) = _p :: _r
+	p = _p
+	r = _r
+	syntax = format("d%d", p :: r)
 
-mode SingleReg(i: card(4)) = i 
-	syntax = format("s%d", i)
-	image = format("%4b", i)
+mode SingleReg(_r: card(4), _p: card(1)) = _r :: _p
+	r = _r
+	p = _p
+	syntax = format("s%d", r :: p)
 
 
-op fp = /*VSTR |*/ VMOV_list | VSUB_list /*| VMRS_list*/
+op fp = VMOV_list 
+	//| VLDR 
+	//| VSTR
+	| VSUB_list 
+	//| VMRS_list
+
 
 op VSTR(x: VSTR_list)
 	syntax = x.syntax
@@ -53,7 +60,7 @@ op VSTR(x: VSTR_list)
 		//	else
 		// 		Store as two word-aligned words in the correct order for current endianness.
 		//		MemA[address,4] = if BigEndian() then D[d]<63:32> else D[d]<31:0>;
-		//		MemA[address+4,4] = if BigEndian() then D[d]<31:0> else D[d]<63:32>;	}
+		//		MemA[address+4,4] = if BigEndian() then D[d]<31:0> else D[d]<63:32>;
 	}
 
 op VSTR_list = VSTR_T1 | VSTR_T2
@@ -61,7 +68,7 @@ op VSTR_list = VSTR_T1 | VSTR_T2
 op VSTR_T1(U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
 	// if n == 15 then UNPREDICTABLE
 	syntax = format("vstr %s, [%s, #%s%d]", Vd, Rn, if U then "+" else "-" endif, imm8::0b00)
-	image = format("1110 1101 %1b %1b 00 %s %s 1011 %8b", U, Vd.D, Rn, Vd, imm8)
+	image = format("1110 1101 %1b %1b 00 %s %4b 1011 %8b", U, Vd.p, Rn, Vd.r, imm8)
 	single_reg = 0
 	add = U
 	imm32 = ZeroExtend(imm8 :: 0b00, 32)
@@ -71,48 +78,86 @@ op VSTR_T1(U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
 op VSTR_T2(U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
 	// if n == 15 then UNPREDICTABLE
 	syntax = format("vstr %s, [%s, #%s%d]", Vd, Rn, if U then "+" else "-" endif, imm8::0b00)
-	image = format("1110 1101 %1b %1b 00 %s %s 1010 %8b", U, Vd.D, Rn, Vd, imm8)
+	image = format("1110 1101 %1b %1b 00 %s %4b 1010 %8b", U, Vd.p, Rn, Vd.r, imm8)
 	single_reg = 0
 	add = U
 	imm32 = ZeroExtend(imm8 :: 0b00, 32)
 	d = UInt(Vd)
 	n = UInt(Rn)
 
+
+op VLDR(x: VLDR_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		// TODO
+		//if ConditionPassed() then
+		//	EncodingSpecificOperations(); CheckVFPEnabled(TRUE); NullCheckIfThumbEE(n); 
+		//	base = if n == 15 then Align(PC,4) else R[n];
+		//	address = if add then (base + imm32) else (base - imm32);
+		//	if single_reg then
+		//		S[d] = MemA[address,4]; else
+		//		word1 = MemA[address,4]; word2 = MemA[address+4,4];
+		//		// Combine the word-aligned words in the correct order for current endianness. 
+		//		D[d] = if BigEndian() then word1:word2 else word2:word1;
+	}
+
+op VLDR_list = VLDR_T1 | VLDR_T2
+
+op VLDR_T1(U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	syntax = format("vldr d%d, [%s, #%s%d]", Vd, Rn, if U then "+" else "-" endif, imm8 :: 0b00)
+	image = format("1110 1101 %1b %1b 0 1 %s  %4b 1011 %8b", U, Vd.p, Rn, Vd.r, imm8)
+	single_reg = 0
+	add = U
+	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	d = UInt(Vd)
+	n = UInt(Rn)
+
+op VLDR_T2(U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
+	syntax = format("vldr d%d, [%s, #%s%d]", Vd, Rn, if U then "+" else "-" endif, imm8 :: 0b00)
+	image = format("1110 1101 %1b %1b 0 1 %s  %4b 1010 %8b", U, Vd.p, Rn, Vd.r, imm8)
+	single_reg = 1
+	add = U
+	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	d = UInt(Vd)
+	n = UInt(Rn)
+	
+
 op VMOV_list = VMOV_register
 
 op VMOV_register = VMOV_register_T2_32 | VMOV_register_T2_64
 
-op VMOV_register_T2_32(D_: bool, Vd: SingleReg, M: bool, Vm: SingleReg)
+op VMOV_register_T2_32(Vd: SingleReg, Vm: SingleReg)
 	syntax = format("vmov.f32 %s, %s", Vd, Vm)
-	image = format("1110 11101 %1b 11 0000 %s 101 0 0 1 %1b 0 %s", D_, Vd, M, Vm)
+	image = format("1110 11101 %1b 11 0000 %4b 101 0 0 1 %1b 0 %4b", Vd.p, Vd.r, Vm.p, Vm.r)
 	
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors" endif; 
 	//advsimd = FALSE;
 	 
 	action = {
 		//EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd); 
-		S[UInt(Vd::D_)] = S[UInt(Vm::M)];
+		S[Vd] = S[Vm];
 	}
 
-op VMOV_register_T2_64(D_: bool, Vd: DoubleReg, M: bool, Vm: DoubleReg)
+op VMOV_register_T2_64(Vd: DoubleReg, Vm: DoubleReg)
 	syntax = format("vmov.f64 %s, %s", Vd, Vm)
-	image = format("1110 11101 %1b 11 0000 %s 101 1 0 1 %1b 0 %s", D_, Vd, M, Vm)
+	image = format("1110 11101 %1b 11 0000 %4b 101 1 0 1 %1b 0 %4b", Vd.p, Vd.r, Vm.p, Vm.r)
 	
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors" endif; 
 	//advsimd = FALSE;
 	
 	action = {
 		//EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd); 
-		D[UInt(D_::Vd)] = D[UInt(M::Vm)];
+		D[Vd] = D[Vm];
 	}
 
 op VSUB_list = VSUB_fp
 
 op VSUB_fp = VSUB_fp_T2_32 | VSUB_fp_T2_64
 
-op VSUB_fp_T2_32(D_: bool, Vn: SingleReg, Vd: SingleReg, N: bool, M: bool, Vm: SingleReg)
+op VSUB_fp_T2_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
 	syntax = format("vsub.f32 %s, %s, %s", Vd, Vn, Vm)
-	image = format("1110 11100 %1b 11 %s %s 101 0 %1b 1 %1b 0 %s", D_, Vn, Vd, N, M, Vm)
+	image = format("1110 11100 %1b 11 %4b %4b 101 0 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
 	
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors"; 
 	//advsimd = FALSE;
@@ -122,9 +167,9 @@ op VSUB_fp_T2_32(D_: bool, Vn: SingleReg, Vd: SingleReg, N: bool, M: bool, Vm: S
 		//S[UInt(Vd::D_)] = FPSub(S[UInt(Vn::N)], S[UInt(Vm::M)], TRUE); TODO! Implement a floating point substraction
 	}
 	
-op VSUB_fp_T2_64(D_: bool, Vn: DoubleReg, Vd: DoubleReg, N: bool, M: bool, Vm: DoubleReg)
+op VSUB_fp_T2_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
 	syntax = format("vsub.f64 %s, %s, %s", Vd, Vn, Vm)
-	image = format("1110 11100 %1b 11 %s %s 101 1 %1b 1 %1b 0 %s", D_, Vn, Vd, N, M, Vm)
+	image = format("1110 11100 %1b 11 %4b %4b 101 1 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
 	
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors"; 
 	//advsimd = FALSE;
