@@ -5,6 +5,7 @@ op mem_thumb2 = LDR_immediate
 	| LDC_immediate 
 	| LDM_T2 
 	| STR_immediate 
+	| STRB_immediate 
 	| LDRB_immediate 
 	| MRC_MRC2 
 	| STMDB_T1
@@ -189,6 +190,37 @@ op STR_immediate_T4(Rn: REG_INDEX, Rt: REG_INDEX, imm8: card(8), P: card(1), U: 
 	add = U
 	wback = W
 	//if t == 15 || (wback && n == t) then UNPREDICTABLE;
+	
+op STRB_immediate(x: strb_immediate_list)
+	image = x.image
+	syntax = x.syntax
+	cond = x.condition
+	action = {
+		if ConditionPassed() then
+			// EncodingSpecificOperations(); NullCheckIfThumbEE(n);
+			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else R[x.n] endif;
+			M[address] = R[x.t]<0..7>;	
+			if x.wback then R[x.n] = offset_addr; endif;
+		endif;
+	}
+
+// should provide t, n, imm32, index, add, wback
+op strb_immediate_list = STRB_immediate_T2
+
+op STRB_immediate_T2(Rn: REG_INDEX, Rt: REG_INDEX, imm12: card(12))
+	// TODO ranging effects
+	//		Rt in 1111 1101 -> UNPREDICTABLE;
+	//		Rn = 1111 -> UNDEFINED
+	image = format("11111 00 0 1 00 0 %s  %s %12b", Rn, Rt, imm12)
+	syntax = format("strb.w %s, [%s, #0x%x]", Rt, Rn, imm12)
+	condition = 1
+	t = Rt
+	n = Rn
+	imm32 = ZeroExtend(imm12, 32)
+	index = 1
+	add = 1
+	wback = 0
 
 mode RegisterListThumb(_P: card(1), _M: card(1), _l: card(13)) = _l
 	l = _l

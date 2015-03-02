@@ -187,11 +187,11 @@ B
 	T4		6	ok
 	A1		4	ok
 BFC
-	T1		6
-	A1		6
+	T1		6	ok
+	A1		6	test
 BFI
-	T1		6
-	A1		6
+	T1		6	ok
+	A1		6	test
 BIC (immediate)
 	T1		6	ok
 	A1		4	ok
@@ -735,7 +735,7 @@ STR (register)
 	A1		4	ok
 STRB (immediate)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	T3		6
 	A1		4	ok
 STRB (register)

@@ -33,13 +33,14 @@ reg FPSCR_IOC[1, card(1)] alias = FPSCR<0..0>
 mode DoubleReg(_p: card(1), _r: card(4)) = _p :: _r
 	p = _p
 	r = _r
-	syntax = format("d%d", p :: r)
-
+	i = p :: r
+	syntax = format("d%d", i)
+	
 mode SingleReg(_r: card(4), _p: card(1)) = _r :: _p
 	r = _r
 	p = _p
-	syntax = format("s%d", r :: p)
-
+	i = r :: p
+	syntax = format("s%d", i)
 
 op fp = VMOV_list 
 	//| VLDR 

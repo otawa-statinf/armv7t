@@ -63,6 +63,7 @@ op thumb2_32_list = AND_immediate_T1
 	| MUL_T2
 	| MOV_immediate
 	| MOVT_T1
+	| BFIC_T1
 
 
 op CLREX_T1()
@@ -469,6 +470,32 @@ op MOVT_T1(i: card(1), Rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: card(8
 		R[d]<31..16> = imm4 :: i :: imm3 :: imm8;
 		// R[d]<15:0> unchanged
 	}
+	
+op BFIC_T1(Rd: REG_INDEX, Rn: REG_INDEX, msb: card(5), imm3: card(3), imm2: card(2))
+	syntax =
+		if Rn.number == 0b1111
+		then format("bfc %s, #%d, #%d", Rd, (imm3 :: imm2), msb - (imm3 :: imm2) + 1)
+		else format("bfi %s, %s, #%d, #%d", Rd, Rn, (imm3 :: imm2), msb - (imm3 :: imm2) + 1)
+		endif
+	image = format("11110 0 11 011 0 %s  0 %3b %s %2b 0 %5b", Rn, imm3, Rd, imm2, msb)
+	d = UInt(Rd)
+	n = UInt(Rn)
+	msbit = UInt(msb)
+	lsbit = UInt(imm3 :: imm2)
+	//if d IN {13,15} then UNPREDICTABLE;
+	action = {
+		if msbit >= lsbit then
+			if Rn.number == 15 then
+				R[Rd]<msbit..lsbit> = 0;
+			else
+				//if n == 13 then UNPREDICTABLE;
+				R[Rd]<msbit..lsbit> = R[Rn]<(msbit-lsbit)..0>;
+			endif;
+		else
+			error("UNPREDICTABLE");
+		endif;
+	}
+
 	
 			
 // ****** thumb-2 16-bits ******
