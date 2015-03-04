@@ -206,7 +206,7 @@ BKPT
 	A1		5	ok
 BL, BLX (immediate)
 	T1		4/6	ok
-	T2		5/6
+	T2		5/6	ok
 	A1		4	ok
 	A2		5	ok
 BLX (register)

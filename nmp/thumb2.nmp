@@ -57,7 +57,7 @@ op thumb2_32_list = AND_immediate_T1
 	| CLZ_T1
 	//| CLREX_T1
 	| LDREX_T1
-	| BLX_T2
+	| BLX_immediate_T2
 	| mem_thumb2
 	| LSL_T2
 	| MUL_T2
@@ -106,22 +106,15 @@ op LDREX_T1 (rn: REG_INDEX, rt: REG_INDEX, imm8: card(8))
 		// TODO
 	}
 
-op BLX_T2(s: card(1), imm10h: card(10), j1: card(1), j2: card(1), imm10l: card(10), h: card(1))
-	imm32 = SignExtend(s :: (j1 ^ s) :: (j2 ^ s) :: imm10h :: imm10l :: 0<1..0>, 7)
-	target = Align(__IADDR, 4) + imm32
-	targetAddress = Align(PC, 4) + imm32
-
-	image  = format("11110 %1b %10b 11 %1b 0 %1b %10b %1b", s, imm10h, j1, j2, imm10l, h)
-	syntax = format("blx %l", target)
+op BLX_immediate_T2(S: card(1), imm10H: card(10), J1: card(1), J2: card(1), imm10L: card(10), H: card(1))
+	// if CurrentInstrSet() == InstrSet_ThumbEE || H == '1' then UNDEFINED;
+	// if InITBlock() && !LastInITBlock() then UNPREDICTABLE;
+	imm32 = SignExtend(S :: ~(J1 ^ S) :: ~(J2 ^ S) :: imm10H :: imm10L :: 0b00, 7)
+	targetAddress = Align(__IADDR, 4) + imm32
+	image  = format("11110 %1b %10b 11 %1b 0 %1b %10b %1b", S, imm10H, J1, J2, imm10L, H)
+	syntax = format("blx 0x%08x", targetAddress)
 	action = {
-		// if CurrentInstrSet() == InstrSet_ThumbEE || H == '1' then UNDEFINED;
-		// if InITBlock() && !LastInITBlock() then UNPREDICTABLE;
-		// 		EncodingSpecificOperations();
-		if CurrentInstrSet() == InstrSet_ARM then
-			LR = PC;				 	// in ARM ref, PC + 4
-		else
-			LR = (PC<31..1> + 4) :: 1;	// in ARM ref, PC<31..1> :: 1
-		endif;
+		LR = (__IADDR<31..1> :: 0b1) + 4;	// in ARM ref, PC<31:1> : '1'
 		SelectInstrSet(InstrSet_ARM);
 		BranchWritePC_thumb(targetAddress);
 	}

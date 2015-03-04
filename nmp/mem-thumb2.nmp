@@ -75,14 +75,14 @@ op LDR_immediate(x: ldr_immediate_list)
 // should provide t, n, imm32, index, add, wback
 op ldr_immediate_list = LDR_immediate_T3 | LDR_immediate_T4
 
-op LDR_immediate_T3(rn: REG_INDEX, rt: REG_INDEX, imm12: card(12))
+op LDR_immediate_T3(Rn: REG_INDEX, Rt: REG_INDEX, imm12: card(12))
 	// TODO ranging effects
 	//		rn = 1111 -> LDR (literal)
-	image = format("11111 00 0 1 10 1 %s %s %12b", rn, rt, imm12)
-	syntax = format("ldr.w %s, [%s, #0x%x]", rt, rn, imm12)
+	image = format("11111 00 0 1 10 1 %s %s %12b", Rn, Rt, imm12)
+	syntax = format("ldr.w %s, [%s, #0x%x]", Rt, Rn, imm12)
 	condition = 1
-	t = rt
-	n = rn
+	t = Rt
+	n = Rn
 	imm32 = imm12
 	index = 1
 	add = 1

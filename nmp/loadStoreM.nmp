@@ -31,7 +31,7 @@ op setBoff()
 // Load/Store Instructions Multiple
 ///////////////////////////////////////////
 
-op  LDM(cond: condition, adr_mode: u2, sets: u1, setw: u1, rn: REG_INDEX, reglist: REG_LIST)
+op LDM(cond: condition, adr_mode: u2, sets: u1, setw: u1, rn: REG_INDEX, reglist: REG_LIST)
 	syntax = format("ldm%s%s %s%s, {%s}%s",
 		cond.syntax,
 		switch (adr_mode) {
