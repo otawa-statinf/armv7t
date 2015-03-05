@@ -110,11 +110,11 @@ op BLX_immediate_T2(S: card(1), imm10H: card(10), J1: card(1), J2: card(1), imm1
 	// if CurrentInstrSet() == InstrSet_ThumbEE || H == '1' then UNDEFINED;
 	// if InITBlock() && !LastInITBlock() then UNPREDICTABLE;
 	imm32 = SignExtend(S :: ~(J1 ^ S) :: ~(J2 ^ S) :: imm10H :: imm10L :: 0b00, 7)
-	targetAddress = Align(__IADDR, 4) + imm32
+	targetAddress = Align(__IADDR, 4) + 4 + imm32 // in ARM ref, targetAddress = PC + imm32;
 	image  = format("11110 %1b %10b 11 %1b 0 %1b %10b %1b", S, imm10H, J1, J2, imm10L, H)
 	syntax = format("blx 0x%08x", targetAddress)
 	action = {
-		LR = (__IADDR<31..1> :: 0b1) + 4;	// in ARM ref, PC<31:1> : '1'
+		LR = (__IADDR<31..1> :: 0b1) + 4;	// in ARM ref, PC<31:1> : '1';
 		SelectInstrSet(InstrSet_ARM);
 		BranchWritePC_thumb(targetAddress);
 	}
