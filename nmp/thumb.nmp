@@ -247,12 +247,12 @@ op ADD_reg1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm: REG_THUMB_IND
 		endif;
 	}
 
-op ADD_reg2_thumb( H: u1, rd : REG_THUMB_INDEX, rm: REG_INDEX)
+op ADD_reg2_thumb( rd : REG_INDEX, rm: REG_INDEX)
 	syntax = format("add %s, %s", rd.syntax, rm.syntax)
-	image = format("01000100%1b%s%s", H, rm.image, rd.image)
+	image = format("01000100%1b%s%3b", rd.number<3..3>, rm.image, rd.number<2..0>)
 	action = {
 		TMP_REG1 = Get_ARM_GPR(rm);
-		TMP_REG2 = Get_ARM_GPR(rd + if H == 1 then 8 else 0 endif);
+		TMP_REG2 = Get_ARM_GPR(rd);
 		Set_ARM_GPR(rd, TMP_REG2 + TMP_REG1);
 	}
 

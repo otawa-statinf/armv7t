@@ -1,6 +1,3 @@
-
-
-
 macro first_bit_on(v16) = \
 	if v16<0..0> == 1 then 15 else \
 	if v16<1..1> == 1 then 14 else \
@@ -116,7 +113,7 @@ mode ShiftOperand(_Rm: REG_INDEX, _t: card(2), _n: card(5)) =
 		case SRType_LSR:	LSR_(R[_Rm], _n)
 		case SRType_ASR:	ASR_(R[_Rm], _n)
 		case SRType_ROR:
-			if _n == 0
+			if _n != 0
 			then			ROR_(R[_Rm], _n)
 			else			RRX_(R[_Rm], 0)
 			endif
@@ -128,7 +125,7 @@ mode ShiftOperand(_Rm: REG_INDEX, _t: card(2), _n: card(5)) =
 		case SRType_LSR:	format("%s, lsr #%d", _Rm.syntax, _n)
 		case SRType_ASR:	format("%s, asr #%d", _Rm.syntax, _n)
 		case SRType_ROR:
-			if _n == 0
+			if _n != 0
 			then			format("%s, ror #%d", _Rm.syntax, _n)
 			else			format("%s, rrx", _Rm.syntax)
 			endif

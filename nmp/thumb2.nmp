@@ -59,7 +59,7 @@ op thumb2_32_list = AND_immediate_T1
 	| LDREX_T1
 	| BLX_immediate_T2
 	| mem_thumb2
-	| LSL_T2
+	| LSL_register_T2
 	| MUL_T2
 	| MOV_immediate
 	| MOVT_T1
@@ -76,7 +76,7 @@ op CLREX_T1()
 			//ClearExclusiveLocal(ProcessorID());
 	}
 
-op LSL_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
+op LSL_register_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
 	image  = format("11111 010 0 00 %s %s 1111 %s 0 000 %s", S, rn, rd, rm)
 	syntax = format("lsl%s.w %s, %s, %s", S, rd, rn, rm)
 	action = {
@@ -215,7 +215,7 @@ op ADD_immediate_T3(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: car
 
 op ADD_register_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
 	syntax = format("add%s.w %s, %s, %s", if S then ".s" else "" endif, Rd.syntax, Rn.syntax, shift.syntax) 
-	image = format("11101 01 1000 %1b %4b 0 %3b %4b %2b %2b %4b", S, shift.Rm, shift.n<4..2>, Rd.image, shift.n<1..0>, shift.t, Rn.image)
+	image = format("11101 01 1000 %1b %s  0 %3b %s %2b %2b %4b", S, Rn.image, shift.n<4..2>, Rd.image, shift.n<1..0>, shift.t, shift.Rm)
 	action = {
 		// if Rd == '1111' && S == '1' then SEE CMN (register);
 		// if Rn == '1101' then SEE ADD (SP plus register);

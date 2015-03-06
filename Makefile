@@ -56,6 +56,7 @@ NMP = \
 	nmp/loadstore.nmp \
 	nmp/loadStoreM.nmp \
 	nmp/loadStoreM_Macro.nmp \
+	nmp/modes.nmp \
 	nmp/mult.nmp \
 	nmp/shiftedRegister.nmp \
 	nmp/simpleType.nmp \
