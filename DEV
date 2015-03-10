@@ -110,6 +110,44 @@ This implementation try to provide both way through three files:
 The exact handling of exceptions is configured in the Makefile.
 
 
+===== Handling of PC (work in progress) =====
+
+PC should be interpreted as described in ARM manual:
+	* When executing an ARM instruction, PC reads as the address of the current instruction plus 8.
+	* When executing a Thumb instruction, PC reads as the address of the current instruction plus 4.
+	
+NPC should to be used as the 'pc' for gliss: it should contain the address of the next instruction.
+
+Here is an illustration:
+
+reg PC[1, u32] alias = GPR[15]
+reg NPC[1, u32] pc = 1
+
+op instruction(x: instruction_list)
+	...
+	action = {
+		PC = NPC + 8 or 4;
+		NPC = NPC + 4 or 2;
+		x.action;
+	}
+
+macro BranchTo(addr)
+	NPC = addr;
+
+
+===== Notes on handling of IT Blocks =====
+
+op instruction(x: instruction_list)
+	...
+	action = {
+		if IMASK == 0 || ICOND
+			then x.action;
+		endif;
+		ICOND<0..0> = IMASK<3..3>
+		IMASK = IMASK << 1;
+	}
+
+
 ===== Instruction List (Normal, Thumb2) =====
 
 Ai -- normal ISA
