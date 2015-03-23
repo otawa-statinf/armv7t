@@ -170,16 +170,18 @@ ADC (register)
 	A1		4	ok
 ADC (register-shifted-register)
 	A1		4	ok
-ADD (immediate)
+ADD (immediate, Thumb)
 	T1		4	ok
 	T2		4	ok
 	T3		6	ok
-	T4		6
+	T4		6	ok
+ADD (immediate, ARM)
 	A1		4	ok
-ADD (register)
+ADD (register, Thumb)
 	T1		4	ok
 	T2		4/6	ok
 	T3		6	ok
+ADD (register, ARM)
 	A1		4	ok
 ADD (register-shifted-register)
 	A1		4	ok
@@ -189,10 +191,11 @@ ADD (SP plus immediate)
 	T3		6
 	T4		6
 	A1		4	ok
-ADD (SP plus register)
+ADD (SP plus register, Thumb)
 	T1		4	ok
-	T2		4	ok
+	T2		4
 	T3		6
+ADD (SP plus register, ARM)
 	A1		4
 ADR
 	T1		4	ok
@@ -617,7 +620,7 @@ RRX
 	A1		4	ok
 RSB (immediate)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 RSB (register)
 	T1		6

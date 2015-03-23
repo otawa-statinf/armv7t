@@ -28,8 +28,6 @@ var next_instr_addr[1, card(32)]
 
 // Thumb-2 tree root
 op thumb2 = thumb2_32
-	/*| thumb2_16*/
-	| fp /* add it when range will be supported in parameters */
 
 
 
@@ -44,14 +42,15 @@ op thumb2_32(x: thumb2_32_list)
 		PC = NPC;
 	}
 
-op thumb2_32_list = AND_imm_T1
+op thumb2_32_list = fp
+	| AND_imm_T1
 	| EOR_imm_T1
 	| BL_imm_T1
 	| B_T3
 	| B_T4
 	| TBB_TBH
 	| ADD_reg_T3
-	| ADD_imm_T3
+	| ADD_imm_Thumb
 	| SUB_imm_Thumb
 	| BIC_imm_T1
 	| CLZ_T1
@@ -62,6 +61,7 @@ op thumb2_32_list = AND_imm_T1
 	| MOV_immediate
 	| MOVT_T1
 	| BFIC_T1
+	| RSB_imm_T2
 
 op LSL_reg_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
 	image  = format("11111 010 0 00 %s %s 1111 %s 0 000 %s", S, rn, rd, rm)
@@ -163,30 +163,50 @@ op EOR_imm_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), 
 			endif;
 		endif;
 	}
-	
-op ADD_imm_T3(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
-	// range decoding
-	//	rd = 0b1111 && S == 1 -> CMN (immediate)
-	//	rn = 0b1101 -> ADD (SP plus immediate)
-	syntax = format("add%s.w %s, %s, #%d", S, rd, rn, ThumbExpandImm(i :: imm3 :: imm8))
-	image = format("11110 %1b 0 1000 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
+
+
+op ADD_imm_Thumb(x: ADD_imm_Thumb_list)
+	syntax = x.syntax
+	image = x.image
+	cond = x.cond
 	action = {
-		d = UInt(rd);
-		n = UInt(rn);
-		setflags = (S == 1);
-		imm32 = ThumbExpandImm(i :: imm3 :: imm8);
-		// if d == 13 || (d == 15 && S == 0) || n == 15 then UNPREDICTABLE;
-		// if ConditionPassed() then
-		//	EncodingSpecificOperations();
-		AddWithCarry(result, carry, overflow, R[n], imm32, 0);
-		R[d] = result;
-		if setflags then
-			APSR_N = result<31..31>;
-			APSR_Z = IsZeroBit(result);
-			APSR_C = carry;
-			APSR_V = overflow;
+		if ConditionPassed() then
+			AddWithCarry(result, carry, overflow, R[x.n], x.imm32, 0);
+			R[x.d] = result;
+			if x.setflags then
+				APSR_N = result<31..31>;
+				APSR_Z = IsZeroBit(result);
+				APSR_C = carry;
+				APSR_V = overflow;
+			endif;
 		endif;
 	}
+
+op ADD_imm_Thumb_list = ADD_imm_Thumb_T3 | ADD_imm_Thumb_T4
+
+op ADD_imm_Thumb_T3(i: card(1), S: setS, Rd: REG_INDEX, Rn: enum(0..12, 14..15), imm3: card(3), imm8: card(8))
+	// TODO: range decoding
+	syntax = format("add%s.w %s, r%d, #%d", S, Rd, UInt(Rn), ThumbExpandImm(i :: imm3 :: imm8))
+	image = format("11110 %1b 0 1000 %s %4b  0 %3b %s %8b", i, S, Rn, imm3, Rd, imm8)
+	//if Rd == '1111' && S == '1' then SEE CMN (immediate);
+	d = UInt(Rd)
+	n = UInt(Rn)
+	setflags = S
+	imm32 = ThumbExpandImm(i :: imm3 :: imm8)
+	//if d == 13 || (d == 15 && S == '0') || n == 15 then UNPREDICTABLE;
+	cond = 1
+
+op ADD_imm_Thumb_T4(i: card(1), Rd: REG_INDEX, Rn: enum(0..12, 14), imm3: card(3), imm8: card(8))
+	// TODO: range decoding
+	syntax = format("addw %s, r%d, #%d", Rd, UInt(Rn), ZeroExtend(i :: imm3 :: imm8, 32))
+	image = format("11110 %1b 1 0000 0 %4b  0 %3b %s %8b", i, Rn, imm3, Rd, imm8)
+	d = UInt(Rd)
+	n = UInt(Rn)
+	setflags = 0
+	imm32 = ZeroExtend(i :: imm3 :: imm8, 32)
+	//if d IN {13,15} then UNPREDICTABLE;
+	cond = 1
+
 
 op ADD_reg_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
 	syntax = format("add%s.w %s, %s, %s", if S then ".s" else "" endif, Rd.syntax, Rn.syntax, shift.syntax) 
@@ -454,7 +474,7 @@ op TBB_TBH(Rn: REG_INDEX, Rm: REG_INDEX, H:card(1))
 	}
 
 
-op MOV_immediate(x: mov_imm_list)
+op MOV_immediate(x: MOV_imm_list)
 	image = x.image
 	syntax = x.syntax
 	cond = x.condition
@@ -478,7 +498,7 @@ op MOV_immediate(x: mov_imm_list)
 	}
 	
 // should provide d, setflags, condition, init_imm32_carry
-op mov_imm_list = MOV_imm_T2 | MOV_imm_T3
+op MOV_imm_list = MOV_imm_T2 | MOV_imm_T3
 
 op MOV_imm_T2(i: card(1), S: setS, Rd: REG_INDEX, imm3: card(3), imm8: card(8))
 	syntax = format("mov%s.w %s, #%d", S, Rd, ThumbExpandImm(i :: imm3 :: imm8))
@@ -538,3 +558,28 @@ op BFIC_T1(Rd: REG_INDEX, Rn: REG_INDEX, msb: card(5), imm3: card(3), imm2: card
 		endif;
 	}
 
+op RSB_imm_T2(i: card(1), S: setS, Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	syntax = format("rsb%s.w %s, %s, #%d", S, Rd, Rn, ThumbExpandImm(i :: imm3 :: imm8))
+	image = format("11110 %1b 0 1110 %s %s  0 %3b %s %8b", i, S, Rn, imm3, Rd, imm8)
+	d = UInt(Rd)
+	n = UInt(Rn)
+	setflags = S
+	imm32 = ThumbExpandImm(i :: imm3 :: imm8)
+	//if d IN {13,15} || n IN {13,15} then UNPREDICTABLE;
+	cond = 1
+	action = {
+		if ConditionPassed() then
+			AddWithCarry(result, carry, overflow, ~R[n], imm32, 0b1)
+			if d == 15 then
+				ALUWritePC(result);
+			else
+				R[d] = result;
+				if setflags then
+					APSR_N = result<31..31>;
+					APSR_Z = IsZeroBit(result); 
+					APSR_C = carry;
+					APSR_V = overflow;
+				endif;
+			endif;
+		endif;
+	}
