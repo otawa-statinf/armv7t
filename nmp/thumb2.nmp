@@ -44,69 +44,45 @@ op thumb2_32(x: thumb2_32_list)
 		PC = NPC;
 	}
 
-op thumb2_32_list = AND_immediate_T1
-	| EOR_immediate_T1
-	| BL_immediate_T1
+op thumb2_32_list = AND_imm_T1
+	| EOR_imm_T1
+	| BL_imm_T1
 	| B_T3
 	| B_T4
 	| TBB_TBH
-	| ADD_register_T3
-	| ADD_immediate_T3
-	| SUB_immediate
-	| BIC_immediate_T1
+	| ADD_reg_T3
+	| ADD_imm_T3
+	| SUB_imm_Thumb
+	| BIC_imm_T1
 	| CLZ_T1
-	//| CLREX_T1
-	| LDREX_T1
-	| BLX_immediate_T2
+	| BLX_imm_T2
 	| mem_thumb2
-	| LSL_register_T2
+	| LSL_reg_T2
 	| MUL_T2
 	| MOV_immediate
 	| MOVT_T1
 	| BFIC_T1
 
-
-op CLREX_T1()
-	image = "11110 0 111 01 1 1111  10 0 0 1111 0010 11111"
-	syntax = "clrex"
-	action = {
-		// TODO
-		//if ConditionPassed() then 
-			//EncodingSpecificOperations(); 
-			//ClearExclusiveLocal(ProcessorID());
-	}
-
-op LSL_register_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
+op LSL_reg_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
 	image  = format("11111 010 0 00 %s %s 1111 %s 0 000 %s", S, rn, rd, rm)
 	syntax = format("lsl%s.w %s, %s, %s", S, rd, rn, rm)
 	action = {
 		d = UInt(rd);
 		n = UInt(rn);
 		m = UInt(rm);
-		setflags = (S == 1);
+		setflags = S;
 		//if d IN {13,15} || n IN {13,15} || m IN {13,15} then UNPREDICTABLE;		
-		//if ConditionPassed() then
-			//EncodingSpecificOperations();
-			//Shift_C(R[n], SRType_LSL, m, ASPR_C, result, carry) // TODO! Make this work.
-			R[d] = result;
-			if setflags then
-				APSR_N = result<31..31>;
-				APSR_Z = IsZeroBit(result); 
-				APSR_C = carry;
-				// APSR.V unchanged
-			endif;
-		//endif;
+		Shift_C(R[n], SRType_LSL, m, APSR_C, result, carry);
+		R[d] = result;
+		if setflags then
+			APSR_N = result<31..31>;
+			APSR_Z = IsZeroBit(result); 
+			APSR_C = carry;
+			// APSR.V unchanged
+		endif;
 	}
 
-
-op LDREX_T1 (rn: REG_INDEX, rt: REG_INDEX, imm8: card(8))
-	image = format("11101 00 0 0 1 0 1 %s %s 1111 %8b", rn, rt, imm8)
-	syntax = format("ldrex %s, [%s, #%d]", rt, rn, imm8)
-	action = {
-		// TODO
-	}
-
-op BLX_immediate_T2(S: card(1), imm10H: card(10), J1: card(1), J2: card(1), imm10L: card(10), H: card(1))
+op BLX_imm_T2(S: card(1), imm10H: card(10), J1: card(1), J2: card(1), imm10L: card(10), H: card(1))
 	// if CurrentInstrSet() == InstrSet_ThumbEE || H == '1' then UNDEFINED;
 	// if InITBlock() && !LastInITBlock() then UNPREDICTABLE;
 	imm32 = SignExtend(S :: ~(J1 ^ S) :: ~(J2 ^ S) :: imm10H :: imm10L :: 0b00, 7)
@@ -119,10 +95,9 @@ op BLX_immediate_T2(S: card(1), imm10H: card(10), J1: card(1), J2: card(1), imm1
 		BranchWritePC_thumb(targetAddress);
 	}
 
-
 // BL from Thumb2 (is equivalent to two successive Thumb1 16-bits BL)
 // In Thumb32, the 16-bits lonely version is now forbidden.
-op BL_immediate_T1(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11: card(11))
+op BL_imm_T1(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11: card(11))
 	addr = __IADDR + 4 + coerce(int(32), S :: ~(J1 ^ S) :: ~(J2 ^ S) :: imm10 :: imm11 :: 0<0..0>)
 	syntax = format("bl 0x%08x", addr)
 	image = format("11110 %1b %10b 11 %1b 1 %1b %11b", S, imm10, J1, J2, imm11)
@@ -136,7 +111,7 @@ op BL_immediate_T1(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11:
 		// endif
 	}
 	
-op AND_immediate_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, imm8: card(8))
+op AND_imm_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, imm8: card(8))
 	// range decoding
 	//	rd = 0b1111 && S == 1 -> TST (immediate)
 	syntax = format("and%s %s, %s, #0x%08x", S, Rd, Rn, ThumbExpandImm(i :: imm3 :: imm8))
@@ -163,7 +138,7 @@ op AND_immediate_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_I
 			endif;
 	}
 
-op EOR_immediate_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+op EOR_imm_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	// range decoding
 	//	rd = 0b1111 && S == 1 -> TEQ (immediate)
 	syntax = format("eor%s %s, %s, #0x%08x", S, rd, rn, ThumbExpandImm(i :: imm3 :: imm8))
@@ -189,11 +164,11 @@ op EOR_immediate_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: car
 		endif;
 	}
 	
-op ADD_immediate_T3(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+op ADD_imm_T3(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	// range decoding
 	//	rd = 0b1111 && S == 1 -> CMN (immediate)
 	//	rn = 0b1101 -> ADD (SP plus immediate)
-	syntax = format("add%s.w %s, %s, #0x%08x", S, rd, rn, ThumbExpandImm(i :: imm3 :: imm8))
+	syntax = format("add%s.w %s, %s, #%d", S, rd, rn, ThumbExpandImm(i :: imm3 :: imm8))
 	image = format("11110 %1b 0 1000 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
 	action = {
 		d = UInt(rd);
@@ -213,7 +188,7 @@ op ADD_immediate_T3(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: car
 		endif;
 	}
 
-op ADD_register_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
+op ADD_reg_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
 	syntax = format("add%s.w %s, %s, %s", if S then ".s" else "" endif, Rd.syntax, Rn.syntax, shift.syntax) 
 	image = format("11101 01 1000 %1b %s  0 %3b %s %2b %2b %4b", S, Rn.image, shift.n<4..2>, Rd.image, shift.n<1..0>, shift.t, shift.Rm)
 	action = {
@@ -241,7 +216,7 @@ op ADD_register_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
 	}
 
 
-op SUB_immediate(x: SUB_immediate_list)
+op SUB_imm_Thumb(x: SUB_imm_Thumb_list)
 	syntax = x.syntax
 	image = x.image
 	action = {
@@ -258,9 +233,9 @@ op SUB_immediate(x: SUB_immediate_list)
 	}
 
 // should provide d, n, setflags, imm32
-op SUB_immediate_list = SUB_immediate_T3 | SUB_immediate_T4
+op SUB_imm_Thumb_list = SUB_imm_T3 | SUB_imm_T4
 
-op SUB_immediate_T3(i: card(1), S: setS, Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), imm8: card(8))
+op SUB_imm_T3(i: card(1), S: setS, Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	// range decoding
 	//	rd = 0b1111 && S == 1 -> CMP (immediate)
 	//	rn = 0b1101 -> SUB (SP minus immediate)
@@ -272,7 +247,7 @@ op SUB_immediate_T3(i: card(1), S: setS, Rd: REG_INDEX, Rn: REG_INDEX, imm3: car
 	imm32 = ThumbExpandImm(i :: imm3 :: imm8)
 	//if d == 13 || (d == 15 && S == '0') || n == 15 then UNPREDICTABLE;
 	
-op SUB_immediate_T4(i: card(1), Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), imm8: card(8))
+op SUB_imm_T4(i: card(1), Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	// range decoding
 	//	rn = 0b1111 -> ADR
 	//	rn = 0b1101 -> SUB (SP minus immediate)
@@ -283,6 +258,7 @@ op SUB_immediate_T4(i: card(1), Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), imm
 	setflags = 0
 	imm32 = ZeroExtend(i :: imm3 :: imm8, 32)
 	//if d IN {13,15} then UNPREDICTABLE;
+		
 		
 op MUL_T2(Rd: REG_INDEX, Rn: REG_INDEX, Rm: REG_INDEX)
 	syntax = format("mul %s, %s, %s", Rd, Rn, Rm)
@@ -307,7 +283,7 @@ op MUL_T2(Rd: REG_INDEX, Rn: REG_INDEX, Rm: REG_INDEX)
 		endif;		
 	}
 	
-op BIC_immediate_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, imm8: card(8))
+op BIC_imm_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, imm8: card(8))
 	syntax = format("bic%s %s, %s, #0x%03x", S, Rd, Rn, ThumbExpandImm(i :: imm3 :: imm8))
 	image = format("11110 %1b 0 0001 %s %s  0 %3b %s %8b", i, S, Rn, imm3, Rd, imm8)
 	action = {
@@ -359,7 +335,7 @@ op CLZ_T1(Rd: REG_INDEX, Rm: REG_INDEX)
 		endif;
 	}
 
-op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), imm11: card(11))
+/*op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), imm11: card(11))
 	imm32 = SignExtend(S :: J2 :: J1 :: imm6 :: imm11 :: 0b0, 11)
 	target = __IADDR + imm32 + 4
 	syntax =
@@ -377,8 +353,79 @@ op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), im
 				BranchWritePC(PC + imm32);
 			endif;
 		endif;
+	}*/
+
+// Modified version of the code from Thomas Jerabek (https://github.com/jerabek/ARMv7-Loader)
+canon u8 "f_set_ITSTATE"(u8)
+canon u8 "f_get_ITSTATE"()
+canon u8 "f_get_update_ITSTATE"()
+canon u8 "f_get_C"()
+canon u32 "Decode_and_Shift"(u8, u8, u32, u8)
+canon u32 "f_ROR"(u32,int(32))
+op B_T3(S: setS, j1: card(1), j2: card(1), cond: condition, imm6: card(6), imm11: card(11))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm4 = imm11<3..0>
+ 	//SignExtend(S:J2:J1:imm6:imm11:'0', 32) -> see old armv7 reference manual(2007!!)
+	addr = __IADDR + 4 + SignExtend(S::j2::j1::imm6::imm11::0<0..0>,32)
+	syntax =
+		if (S == 0b0) && (cond.value == 0b1111) && (imm6 == 0b101111) && (j1 == 0b0) then
+			format("mrs%s %s, %s", op_cond_syntax_new(ITCOND), syntax_reg(1,j2::imm11<10..8>), sysm_syntax(imm11<7..0>))
+		else if (S == 0b0) && (cond.value == 0b1110) && (imm6<5..4> == 0b00) && (j1 == 0b0) && (imm11<9..8> == 0b00) then
+			format("msr%s %s%s, %s", op_cond_syntax_new(ITCOND), sysm_syntax(imm11<7..0>), msr_bit_syntax(j2::imm11<10..10>), syntax_reg(1,imm6<3..0>))
+		else if (cond.value == 0b1110) && (imm6<5..4> == 0b10) && (imm11<10..8> == 0b000) then
+			switch(imm11<4..0>) {
+					case 0: format("nop%s.w",op_cond_syntax_new(ITCOND))
+					case 1: format("yield%s.w",op_cond_syntax_new(ITCOND))
+					case 2: format("wfe%s.w",op_cond_syntax_new(ITCOND))
+					case 3: format("wfi%s.w",op_cond_syntax_new(ITCOND))
+					case 4: format("sev%s.w",op_cond_syntax_new(ITCOND))
+					default: if (imm11<7..4> == 0b1111) then format("dbg%s #%d",op_cond_syntax_new(ITCOND),imm4) else "undefined" endif
+				}
+		else if (cond.value == 0b1110) && (imm6<5..4> == 0b11) then
+			switch(imm11<7..4>) {
+					case 0b0010: format("clrex%s",op_cond_syntax_new(ITCOND))
+					case 0b0100: format("dsb%s %s",op_cond_syntax_new(ITCOND),if (imm4 == 0b1111) then "sy" else format("#%d",imm4) endif)
+					case 0b0101: format("dmb%s %s",op_cond_syntax_new(ITCOND),if (imm4 == 0b1111) then "sy" else format("#%d",imm4) endif)
+					case 0b0110: format("isb%s %s",op_cond_syntax_new(ITCOND),if (imm4 == 0b1111) then "sy" else format("#%d",imm4) endif)
+					default: "undefined_B_T3"
+				}
+		else
+			format("b%s.w %08x", cond, addr)
+		endif	
+		endif
+		endif	
+		endif		
+
+	image = format("11110 %s %s %6b 10 %1b 0 %1b %11b",  S, cond, imm6, j1, j2, imm11)
+	action = {
+		if (S == 0b0) && (cond.value == 0b1111) && (imm6 == 0b101111) && (j1 == 0b0) then
+			//mrs
+		else if (S == 0b0) && (cond.value == 0b1110) && (imm6<5..4> == 0b00) && (j1 == 0b0) && (imm11<9..8> == 0b00) then
+			//msr
+		else if (cond.value == 14) && (imm6<5..4> == 0b10) && (imm11<10..8> == 0b000) then
+			switch(imm11<4..0>) {
+					case 0: // nop: do nothing
+					case 1: //"yield" Hint_Yield();
+					case 2: //"wfe" if EventRegistered() then ClearEventRegister(); else WaitForEvent();
+					case 3: //"wfi" WaitForInterrupt();
+					case 4: //"sev" Hint_SendEvent();
+					default: if (imm11<7..4> == 0b1111) then /*"dbg"*/ else /*"undefined"*/ endif;
+				};
+		else if (cond.value == 14) && (imm6<5..4> == 0b11) then
+			switch(imm11<7..4>) {
+					case 0b0010: //clrex: ClearExclusiveLocal(int processorid)
+					case 0b0100: //dsb: DataSynchronizationBarrier(imm3);
+					case 0b0101: //dmb: DataMemoryBarrier(imm3);
+					case 0b0110: //isb: InstructionSynchronizationBarrier(imm3);
+					default: //undefined
+				};
+		else
+			BranchWritePC(addr);
+		endif;	
+		endif;
+		endif;	
+		endif;
 	}
-	  
 
 op B_T4(S: card(1), imm10: card(10), J1: card(1), J2: card(1), imm11: card(11))
 	imm32 = SignExtend(S :: J1 :: J2 :: imm10 :: imm11 :: 0b0, 7)
@@ -406,7 +453,8 @@ op TBB_TBH(Rn: REG_INDEX, Rm: REG_INDEX, H:card(1))
 		// Table Branch Halfword causes a PC-relative forward branch using a table of single halfword offsets. A base register provides a pointer to the table, and a second register supplies an index into the table. The branch length is twice the value of the halfword returned from the table.
 	}
 
-op MOV_immediate(x: mov_immediate_list)
+
+op MOV_immediate(x: mov_imm_list)
 	image = x.image
 	syntax = x.syntax
 	cond = x.condition
@@ -430,9 +478,9 @@ op MOV_immediate(x: mov_immediate_list)
 	}
 	
 // should provide d, setflags, condition, init_imm32_carry
-op mov_immediate_list = MOV_immediate_T2 | MOV_immediate_T3
+op mov_imm_list = MOV_imm_T2 | MOV_imm_T3
 
-op MOV_immediate_T2(i: card(1), S: setS, Rd: REG_INDEX, imm3: card(3), imm8: card(8))
+op MOV_imm_T2(i: card(1), S: setS, Rd: REG_INDEX, imm3: card(3), imm8: card(8))
 	syntax = format("mov%s.w %s, #%d", S, Rd, ThumbExpandImm(i :: imm3 :: imm8))
 	image = format("11110 %1b 0 0010 %s 1111  0 %3b %s %8b", i, S, imm3, Rd, imm8)
 	d = UInt(Rd)
@@ -443,7 +491,7 @@ op MOV_immediate_T2(i: card(1), S: setS, Rd: REG_INDEX, imm3: card(3), imm8: car
 	}
 	//if d IN {13,15} then UNPREDICTABLE;
 
-op MOV_immediate_T3(i: card(1), Rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: card(8))
+op MOV_imm_T3(i: card(1), Rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: card(8))
 	syntax = format("movw %s, #%d", Rd, ZeroExtend(imm4 :: i :: imm3 :: imm8, 16))
 	image = format("11110 %1b 10 0 1 0 0 %4b  0 %3b %s %8b", i, imm4, imm3, Rd, imm8)
 	d = UInt(Rd)
@@ -453,7 +501,8 @@ op MOV_immediate_T3(i: card(1), Rd: REG_INDEX, imm3: card(3), imm4: card(4), imm
 		imm32 = ZeroExtend(imm4 :: i :: imm3 :: imm8, 16);
 	}
 	//if d IN {13,15} then UNPREDICTABLE;
-	
+
+
 op MOVT_T1(i: card(1), Rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: card(8))
 	syntax = format("movt %s, #%d", Rd, imm4 :: i :: imm3 :: imm8)
 	image= format("11110 %1b 10 1 1 0 0 %4b  0 %3b %s %8b", i, imm4, imm3, Rd, imm8)
@@ -489,18 +538,3 @@ op BFIC_T1(Rd: REG_INDEX, Rn: REG_INDEX, msb: card(5), imm3: card(3), imm2: card
 		endif;
 	}
 
-	
-			
-// ****** thumb-2 16-bits ******
-
-/*op thumb2_16(x: thumb2_16_list)
-	image = x.image
-	syntax = x.syntax
-	action = {
-		NPC = PC + 2;
-		PC = PC + 2;
-		x.action;
-		PC = NPC;
-	}
-
-op thumb2_16_list = CLREX_T1*/

@@ -28,6 +28,7 @@ GFLAGS= \
 	-m code:code \
 	-m env:void_env \
 	-m sys_call:extern/sys_call \
+	-m shift:extern/shift \
 	-v \
 	-a disasm.c \
 	-a used_regs.c \
@@ -61,6 +62,7 @@ NMP = \
 	nmp/shiftedRegister.nmp \
 	nmp/simpleType.nmp \
 	nmp/state.nmp \
+	nmp/syntax_macros.nmp \
 	nmp/system.nmp \
 	nmp/thumb2.nmp \
 	nmp/tempVar.nmp
@@ -143,4 +145,3 @@ config.mk:
 	cp config.mk.in config.mk
 	echo "Created config.mk. Edit it for configuration."
 
-	

@@ -159,7 +159,7 @@ aSIMD -- advanced SIMD
 ok		Implemented.
 range	Implemented but need range parameter to be operational.
 check	Need to be checked.
-action	Action not implemented.
+action	Action not implemented or incomplete.
 
 ADC (immediate)
 	T1		6
@@ -264,7 +264,7 @@ CDP, CDP2
 	T2		6
 	A2		5	check
 CLREX
-	T1		7
+	T1		7	action
 	A1		6
 CLZ
 	T1		6	ok
@@ -293,10 +293,10 @@ DBG
 	T1		7
 	A1		7
 DMB
-	T1		7
+	T1		7	action
 	A1		7
 DSB
-	T1		7
+	T1		7	action
 	A1		7
 EOR (immediate)
 	T1		6
@@ -308,20 +308,20 @@ EOR (register)
 EOR (register - shifted register)
 	A1		4	ok
 ISB
-	T1		7
+	T1		7	action
 	A1		7
 IT
 	T1		6
 LDC, LDC2 (immediate)
 	T1		6	action
-	A1		4	check
+	A1		4
 	T2		6	action
-	A2		5	check
+	A2		5
 LDC, LDC2 (literal)
-	T1		6
-	A1		4	check
-	T2		6
-	A2		5	check
+	T1		6	action
+	A1		4
+	T2		6	action
+	A2		5
 LDM, LDMIA, LDMFD
 	T1		4	ok
 	T2		6	check
@@ -364,15 +364,15 @@ LDRBT
 	A1		4	check
 	A2		4	check
 LDRD (immediate)
-	T1		6
+	T1		6	action
 	A1		5	check
 LDRD (literal)
-	T1		6
+	T1		6	action
 	A1		5	check
 LDRD (register)
 	A1		5	check
 LDREX
-	T1		6
+	T1		6	action
 	A1		6
 LDREXB
 	T1		7
@@ -481,21 +481,21 @@ MOVT
 	A1		6
 MRC, MRC2
 	T1		6	action
-	A1		4	check
+	A1		4
 	T2		6
-	A2		5	check
+	A2		5
 MRRC, MRRC2
 	T1		6
 	A1		5	check
 	T2		6
 	A2		6
 MRS
-	T1		6
+	T1		6	action
 	A1		4	check
 MSR (immediate)
 	A1		4	check
 MSR (register)
-	T1		6
+	T1		6	action
 	A1		4	check
 MUL
 	T1		4	ok
@@ -512,7 +512,7 @@ MVN (register - shifted register)
 	A1		4	ok
 NOP
 	T1		6	ok
-	T2		6	range
+	T2		6	ok
 	A1		6
 ORN (immediate)
 	T1		6
@@ -662,7 +662,7 @@ SETEND
 	A1		6
 SEV
 	T1		7
-	T2		7
+	T2		7	action
 	A1		6
 SHADD16
 	T1		6
@@ -747,7 +747,7 @@ SSUB8
 	A1		6
 STC, STC2
 	T1		6	action
-	A1		4	action
+	A1		4
 	T2		6	action
 	A2		5	action
 STM (STMIA, STMEA)
@@ -785,7 +785,7 @@ STRBT
 	A1		4	ok
 	A1		4	ok
 STRD (immediate)
-	T1		6
+	T1		6	action
 	A1		5	check
 STRD (register)
 	A1		5	check
@@ -1059,7 +1059,8 @@ VCVT (between half-precision and single-precision)
 VCVTB, VCVTT
 	AT1		aSIMD
 VDIV
-	AT1		aSIMD
+	T1		VFPv2	action
+	A1		VFPv2
 VDUP (scalar)
 	AT1		aSIMD
 VDUP (core register)
@@ -1082,21 +1083,60 @@ VLD1 (single element to one lane)
 VLD1 (single element to all lanes)
 	AT1		aSIMD
 VLDR
-	AT1		aSIMD	action,range
-	AT2		VFPv2	action,range
+	T1		VFPv2	ok
+	A1		VFPv2	ok
+	T2		VFPv2	ok
+	A2		VFPv2
+VMOV (immediate)
+	T1		aSIMD
+	A1		aSIMD
+	T2		VFPv3	ok
+	A2		VFPv3
 VMOV (register)
 	T1		aSIMD
 	A1		aSIMD
 	T2		VFPv2	ok
 	A2		VFPv2
-VMRS
-	T1		VFPv2	range
+VMOV (between ARM core register and single-precision register)
+	T1		VFPv2	ok
 	A1		VFPv2
+VMRS
+	T1		VFPv2	action
+	A1		VFPv2
+VMUL, VMULL (integer and polynomial)
+	T1		aSIMD
+	A1		aSIMD
+	T2		aSIMD
+	A2		aSIMD
+VMUL (floating-point)
+	T1		aSIMD
+	A1		aSIMD
+	T2		VFPv2	action
+	A2		VFPv2
+VMUL, VMULL (by scalar)
+	T1		aSIMD
+	A1		aSIMD
+	T2		aSIMD
+	A2		aSIMD
 VSTR
-	AT1		aSIMD	action,range
-	AT2		VFPv2	action,range
+	T1		VFPv2	ok
+	A1		VFPv2	ok
+	T2		VFPv2	ok
+	A2		VFPv2
 VSUB (floating-point)
 	T1		aSIMD
 	A1		aSIMD
 	T2		VFPv2	action
 	A2		VFPv2
+WFE
+	T1		7
+	T2		7		action
+	A1		7
+WFI
+	T1		7
+	T2		7		action
+	A1		7
+YIELD
+	T1		7
+	T2		7		action
+	A1		7

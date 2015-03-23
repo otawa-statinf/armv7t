@@ -94,18 +94,20 @@ macro ASR_C(x, shift, result, carry_out) = \
 macro ROR_C(x, shift, result, carry_out) = \
 	result = ROR_(x, shift); carry_out = result<31..31>
 macro RRX_C(x, carry_in, result, carry_out) = \
-	result = RRX_(x, carry_in); carry_out = (x)<0>
+	result = RRX_(x, carry_in); carry_out = (x)<0..0>
 
 macro Shift_C(value, t, amount, carry_in, result, carry_out) = \
-	if amount == 0 then result = value; else \
+	if amount == 0 then result = value; \	
+	else \
 		switch ( t ) { \
-		case SRType_LSL:	LSL_C(value, amount, result, carry_out) \
-		case SRType_LSR:	LSR_C(value, amount, result, carry_out) \
-		case SRType_ASR:	ASR_C(value, amount, result, carry_out) \
-		case SRType_ROR:	ROR_C(value, amount, result, carry_out) \
-		case SRType_RRX:	RRX_C(value, carry_in, result, carry_out) \
-		} \
+		case SRType_LSL:	LSL_C(value, amount, result, carry_out); \
+		case SRType_LSR:	LSR_C(value, amount, result, carry_out); \
+		case SRType_ASR:	ASR_C(value, amount, result, carry_out); \
+		case SRType_ROR:	ROR_C(value, amount, result, carry_out); \
+		case SRType_RRX:	RRX_C(value, carry_in, result, carry_out); \
+		}; \
 	endif
+	
 macro Shift(value, t, amount, carry_in) = \
 	if amount == 0 then value else \
 		switch ( t ) { \
@@ -120,7 +122,7 @@ macro Shift(value, t, amount, carry_in) = \
 
 // ALU operations
 macro AddWithCarry(result, carry, overflow, v1, v2, carry_in) = \
-	result = (v1) + (v2) + (carry_in); \ 
+	result = (v1) + (v2) + (carry_in); \
 	carry = CarryFromAdd((v1), ((v2) + (carry_in)), (result)); \
 	overflow = OverflowFromAdd((v1), ((v2) + (carry_in)), (result))
 
