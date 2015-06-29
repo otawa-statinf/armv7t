@@ -378,62 +378,62 @@ LDREX
 	T1		6	action
 	A1		6
 LDREXB
-	T1		7
+	T1		7	action
 	A1		7
 LDREXD
 	T1		7
 	A1		6
 LDREXH
-	T1		7
+	T1		7	action
 	A1		6
 LDRH (immediate)
 	T1		4	ok
-	T2		6
-	T3		6
+	T2		6	ok
+	T3		6	ok
 	A1		4	ok
 LDRH (literal)
 	T1		6
 	A1		4	ok
 LDRH (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 LDRHT
-	T1		6
+	T1		6	ok
 	A1		6
 	A2		6
 LDRSB (immediate)
-	T1		6
-	T2		6
+	T1		6	ok
+	T2		6	ok
 	A1		4	ok
 LDRSB (literal)
 	T1		6
 	A1		4	ok
 LDRSB (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 LDRSBT
-	T1		6
+	T1		6	ok
 	A1		6
 	A2		6
 LDRSH (immediate)
-	T1		6
-	T2		6
+	T1		6	ok
+	T2		6	ok
 	A1		4	ok
 LDRSH (literal)
 	T1		6
 	A1		4	ok
 LDRSH (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 LDRSHT
-	T1		6
+	T1		6	ok
 	A1		6
 	A2		6
 LDRT
-	T1		6
+	T1		6	action
 	A1		4	check
 	A2		4	check
 LSL (immediate)
