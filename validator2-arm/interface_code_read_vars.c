@@ -85,25 +85,24 @@ static int get_next_reg_value(char **val_list, uint64_t *v)
 }
 
 
-void init_gdb_regs(char * drive_gdb_reply_buffer)
-{
+void init_gdb_regs(char * drive_gdb_reply_buffer) {
 	send_gdb_cmd("-data-list-register-names\n", drive_gdb_reply_buffer, display_replies);
 	match_gdb_output(drive_gdb_reply_buffer, "^done", IS_ERROR, "When trying to get register name list, ");
+
 	/* find beginning of register name list and "clean" the list */
 	while (*drive_gdb_reply_buffer++ != '[');
+
 	/* each reg name is surrounded by 2 " */
 	nb_regs = count_in_string(drive_gdb_reply_buffer, '\"') / 2;
 	cut_string(drive_gdb_reply_buffer);
 	
 	/* fill in reg_infos */
 	int idx, i, gdb_idx = -1;
-	for (i=0; i<NUM_REG; i++)
-	{
-//		printf("before:#%s#\n", drive_gdb_reply_buffer);
+	for (i=0; i<NUM_REG; i++) {
+		// printf("before:#%s#\n", drive_gdb_reply_buffer);
 		idx = get_next_reg_name_and_size(&drive_gdb_reply_buffer, &gdb_idx);
-//		printf("after :#%s#\n", drive_gdb_reply_buffer);
-		if (idx < 0)
-		{
+		// printf("after :#%s#\n", drive_gdb_reply_buffer);
+		if (idx < 0) {
 			reg_infos[i].size = 0;
 			i--;
 			continue;
@@ -117,9 +116,13 @@ void init_gdb_regs(char * drive_gdb_reply_buffer)
 		get_gliss_reg_addr(size_data[idx].gliss_reg, real_state, &reg_infos[i].gliss_reg, &reg_infos[i].gliss_idx);
 	}
 }
-	
-void read_vars_this_instruction(char * drive_gdb_reply_buffer)
-{
+
+
+/**
+ * Read register after the current instruction.
+ * @param drive_gdb_reply_buffer	Buffer for GDB read.
+ */
+void read_vars_this_instruction(char *drive_gdb_reply_buffer) {
 	/* will temporary hold register values which are thus limited to 64 bits */
 	uint64_t *reg_val;
 
@@ -136,16 +139,14 @@ void read_vars_this_instruction(char * drive_gdb_reply_buffer)
 	while (i < nb_regs && (get_next_reg_value(&drive_gdb_reply_buffer, &reg_val[i++]) != -1));
 	
 	/* read gdb and gliss value for each reg */
-	for (i=0; i<NUM_REG; i++)
-	{
+	for (i=0; i<NUM_REG; i++) {
 		reg_infos[i].gdb = reg_val[reg_infos[i].gdb_idx];
 		reg_infos[i].gliss = get_gliss_reg(real_state, i);
 	}
 	
 	free(reg_val);
 
-	if(display_values)
-	{
+	if(display_values) {
 		for (i = 0; i < NUM_REG; i++)
 			if (reg_infos[i].size == 64)
 				printf(" %s = gdb %016llX  gliss %016llX\n", reg_infos[i].name, reg_infos[i].gdb, reg_infos[i].gliss);

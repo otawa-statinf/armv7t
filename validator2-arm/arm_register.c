@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "arm_register.h"
 #include "interface_code.h"
@@ -11,12 +12,12 @@ static unsigned int real_idx(PROC(_state_t) * st, unsigned int idx)
 	if (idx <= 7)
 		return idx;
 	else if (idx <= 12) {
-		if ((st->Ucpsr & 0x1F) == 17) /* mode == FIQ */
+		if ((st->APSR & 0x1F) == 17) /* mode == FIQ */
 			return idx + 8;
 		else
 			return idx;
 	} else if (idx <= 14) {
-		switch (st->Ucpsr & 0x1F) {
+		switch (st->APSR & 0x1F) {
 			case 19:	return idx + 10;
 			case 23:	return idx + 12;
 			case 17:	return idx + 8;
@@ -57,10 +58,14 @@ void get_gliss_reg_addr(char *desc, PROC(_state_t) * st, int *bank, int *idx)
 	else
 		*idx = 0;
 
-	if (strncmp("R", desc, 3) == 0)
+	if (strncmp("R", desc, 1) == 0)
 		*bank = REG_R;
-	else if (strncmp("Ucpsr", desc, 3) == 0)
+	else if (strncmp("APSR", desc, 4) == 0)
 		*bank = REG_UCPSR;
+	else {
+		fprintf(stderr, "FATAL: cannot find register %s\n", desc);
+		assert(0);
+	}
 }
 
 
@@ -70,6 +75,7 @@ uint64_t get_gliss_reg(PROC(_state_t) * st, int idx)
 	case REG_R:
 		return get_arm_reg(st, reg_infos[idx].gliss_idx);
 	case REG_UCPSR:
-		return st->Ucpsr;
+		return st->APSR;
 	}
+	assert(0);
 }

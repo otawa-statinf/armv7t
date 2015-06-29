@@ -6,6 +6,7 @@ main.c : main functions
 #define MAIN_C
 #define ISS_DISASM
 
+#include <assert.h>
 #include "interface_code.h"
 #include "arm_register.h"
 #include GLISS_API_H
@@ -14,10 +15,18 @@ main.c : main functions
 #include "../include/arm/loader.h"
 /*#include "io_module.h"*/
 
+/* DEBUG: for debugging only */
+#define PROC(x)		arm##x
 
 /* pipes to communicate with GDB */
 int to_gdb_pipe[2];
 int from_gdb_pipe[2];
+
+/* debugger path */
+char gdb_path[256];
+
+/* verbose mode */
+int verbose = 0;
 
 FILE * from_gdb;
 uint32_t gdb_pc;
@@ -41,18 +50,21 @@ pid_t drive_gdb_pid;
 void drive_gdb(); //la fonction qui exec() gdb
 int init_gdb(char *, char *);
 int init_gliss(char *);
-void gdb_disasm_error_report();
 char target_location[50];
 int exit_on_errors = 1;
 char gpname[200];
-//int init_registers = 1; 
+//int init_registers = 1;
 int instr_count;
 
-void catch_sigusr1(int sig)
-	{
+
+/**
+ * Cacth signal USR1.
+ */
+void catch_sigusr1(int sig) {
 	fprintf(stderr, "Program at 0x%08x, instruction number %d\n", gdb_pc, instr_count);
-	}
-	
+}
+
+
 void usage(char * pname)
 {
 	fprintf(stderr, "Usage: %s\t[-V|--version] [-h|--help] [--log|-l] [--values|-v] [--replies|-r] [--no-exit-error|-x] [--program|-p] [--dumps|-d] [target_host:port]\n", pname);
@@ -66,71 +78,73 @@ void usage(char * pname)
 			"\t--no-exit-error\tdo not exit on errors\n"
 			"\t--values\tdisplay registers values on screen\n"
 			"\t--version\tdisplay version number\n"
+			"\t-v|--erbose\tactivate verbose mode\n"
 		);
 }
-	
-void parse_commandline(int argc, char ** argv)
-	{
-		
+
+
+/**
+ * Parse the command line.
+ * @param argc	Argument count.
+ * @param argv	Argument list.
+ */
+void parse_commandline(int argc, char ** argv) {
 	int longindex;
 	char option;
 	extern int setenv (const char *name, const char *value, int overwrite);
+
+	/* argument definition */
 	struct option longopts[] = {
-
-		/*name                  arg             flag                    val */
-		{"version",     0,      NULL,   'V'},
-		{"help",        0,      NULL,   'h'},
-		{"log", 0, NULL,  'l'},
-		{"values", 0, NULL, 'v'},
-		{"replies", 0, NULL, 'r'},
-		{"no-exit-error", 0, NULL, 'x'},
-		{"program", 1, NULL, 'p'},
-		{"dumps", 0, NULL, 'd'},
-		//{"no-reg-init", 0, NULL, 'n'},
-		{NULL, 0, NULL, 0},
-		{"inst", 0, NULL, 'i'}
-		};
-
+		{ "version",     	0,  NULL,   'V' },
+		{ "help",        	0,  NULL,   'h' },
+		{ "log", 			0,	NULL,  	'l' },
+		{ "values", 		0, 	NULL, 	'w' },
+		{ "replies", 		0, 	NULL, 	'r' },
+		{ "no-exit-error",	0,	NULL,	'x' },
+		{ "program", 		1, 	NULL, 	'p'	},
+		{ "dumps", 			0, 	NULL, 	'd'	},
+		{ "verbose",		0,	NULL,	'v'	},
+		{ NULL, 			0, 	NULL, 	0	},
+		{ "inst", 			0, 	NULL, 	'i'	}
+	};
 	char *optstring = "Vhrlvxp:dni";
-	while ((option = getopt_long(argc, argv, optstring, longopts, &longindex)) != -1)
-	{
 
-		switch (option)
-		{
-			case 'V': printf("\n"); exit (1); break;
-			case 'h': usage(argv[0]); exit(1); break;
-			case 'i': display_inst = 1; break;
-			case 'l' : do_logging = 1; break;
-			case 'v' : display_values = 1; break;
-			case 'r' : display_replies = 1; break;
-			case 'x': exit_on_errors = 0; break;
-			case 'p': sprintf(gpname, "%s", optarg); break;
-			case 'd' : display_full_dumps = 1; break;
-			//case 'n' : /*init_registers = 0;*/ break;
-			default:
-				fprintf(stderr, "Unknown option %c\n", optopt);
-				usage(argv[0]);
-				exit(5);
+	/* parse argument */
+	while ((option = getopt_long(argc, argv, optstring, longopts, &longindex)) != -1)
+		switch (option) {
+		case 'V':	printf("\n"); exit (1); break;
+		case 'v':	verbose = 1; break;
+		case 'h': 	usage(argv[0]); exit(1); break;
+		case 'i': 	display_inst = 1; break;
+		case 'l' : 	do_logging = 1; break;
+		case 'w' : 	display_values = 1; break;
+		case 'r' : 	display_replies = 1; break;
+		case 'x': 	exit_on_errors = 0; break;
+		case 'p': 	sprintf(gpname, "%s", optarg); break;
+		case 'd' : 	display_full_dumps = 1; break;
+		default:
+			fprintf(stderr, "Unknown option %c\n", optopt);
+			usage(argv[0]);
+			exit(5);
 		}
-	}
-		
-	if ( optind < argc )
-	{
+
+	/* process free arguments */
+	if(optind < argc) {
 		printf("Using GDB debugger \"%s\"\n", argv[optind]);
-		sprintf(target_location, "%s", argv[optind]);
+		assert(strlen(argv[optind]) < sizeof(gdb_path));
+		strcpy(gdb_path, argv[optind]);
 	}
-	else 
-	{
+	else {
 		fprintf(stderr, "ERROR: No commandline parameter given for GDB debugger location\n");
 		usage(argv[0]);
 		exit(1);
 	}
 }
-	
+
 void disasm_error_report(char * drive_gdb_reply_buffer, PROC(_state_t) * state, PROC(_inst_t) * instr, int cpt, int do_exit)
 {
 	printf("PC : GDB=%08X, GLISS=%08X\n", gdb_pc, gliss_pc);
-	
+
 	char * reptr;
 
 	/* example of reply: */
@@ -149,7 +163,7 @@ void disasm_error_report(char * drive_gdb_reply_buffer, PROC(_state_t) * state, 
 		*reptr = '\n';
 		*(reptr+1)= '\0';
 	}
-	
+
 	reptr = strstr(drive_gdb_reply_buffer, "[{");
 	reptr += 2;
 	printf("====GDB disasm: ");
@@ -159,7 +173,7 @@ void disasm_error_report(char * drive_gdb_reply_buffer, PROC(_state_t) * state, 
 
 	/* now gliss disasm */
 	char dis[200];
-	if ( instr ) 
+	if ( instr )
 	{
 		/* only 1 instr */
 		uint32_t cod = PROC(_mem_read32)(PROC(_get_memory)(platform, ARM_MAIN_MEMORY), gliss_pc);
@@ -180,13 +194,13 @@ void disasm_error_report(char * drive_gdb_reply_buffer, PROC(_state_t) * state, 
 		}
 	}
 	/*dump_float_registers(real_state);*/
-	if ( exit_on_errors && do_exit ) exit(1);		
+	if ( exit_on_errors && do_exit ) exit(1);
 }
-	
+
 int init_gliss(char * drive_gdb_reply_buffer)
 {
 	arm_address_t exit_addr = 0;
-	
+
 	/* make the platform */
 	platform = PROC(_new_platform)();
 	if (platform == NULL) {
@@ -237,56 +251,71 @@ int init_gliss(char * drive_gdb_reply_buffer)
 	//leon_set_range_callback(leon_get_memory(platform, LEON_MAIN_MEMORY), 0X40300000, 0x40400000, &debug_callback);
 
 	send_gdb_cmd("-data-evaluate-expression $sp\n", drive_gdb_reply_buffer, display_replies);
-	printf("-data-eval-expr sp :%s\n", drive_gdb_reply_buffer);
 	uint32_t sp;
 	read_gdb_output_pc(drive_gdb_reply_buffer, &sp);
-	printf( " => gdb sp=%08X\n", sp);
+	printf( "INFO: gdb sp=%08X\n", sp);
 
-	/* 
-	 * let's read PC */
+	/*  let's read PC */
 	send_gdb_cmd("-data-evaluate-expression $pc\n", drive_gdb_reply_buffer, display_replies);
 	read_gdb_output_pc(drive_gdb_reply_buffer, &gdb_pc);
 	gliss_pc = real_state->GPR[15];
-
-	/* set gliss stack pointer with same value as gdb */
-	
+	printf( "INFO: gdb pc=%08X\n", gdb_pc);
+	if(gdb_pc != gliss_pc)
+		fprintf(stderr, "WARNING: GLISS (%08x) and GDB (%08x) PC are different: synchronization needed!\n", gliss_pc, gdb_pc);
 
 	return 0;
 }
 
-int init_gdb(char * drive_gdb_reply_buffer, char * target)
-{
-	/* Initialisation de GDB */
+
+/**
+ * Initialize GDB.
+ * @param drive_gdb_reply_buffer
+ * @param target
+ */
+int init_gdb(char *drive_gdb_reply_buffer, char *target) {
+
+	/* cleanup pipes */
 	close(to_gdb_pipe[0]);
 	close(from_gdb_pipe[1]);
 	from_gdb = fdopen(from_gdb_pipe[0], "r");
-	
-	/* wait for the command invite, discard the rest */
-	while ( ! strstr(drive_gdb_reply_buffer, "(gdb)") )
-	{
+
+	/* wait for the command prompt, discard the rest */
+	while(!strstr(drive_gdb_reply_buffer, "(gdb)")) {
 		memset(drive_gdb_reply_buffer, 0, 3999);
-		fgets(drive_gdb_reply_buffer, 3999, from_gdb);
-		printf(drive_gdb_reply_buffer);
+		char * r = fgets(drive_gdb_reply_buffer, 3999, from_gdb);
+		if(r  == NULL) {
+			fprintf(stderr, "ERROR: broken connection\n");
+			exit(1);
+		}
+		log_msg("GDB: %s", drive_gdb_reply_buffer);
 	}
 
+	/* command: -target-select sim */
 	char finalcmd[200];
 	snprintf(finalcmd, 199, "-target-select sim\n");
 	send_gdb_cmd(finalcmd, drive_gdb_reply_buffer, display_replies);
 	match_gdb_output(drive_gdb_reply_buffer, "^connected", IS_ERROR, "When connecting to target, ");
+
+	/* command: -target-download */
 	send_gdb_cmd("-target-download\n", drive_gdb_reply_buffer, display_replies);
 	match_gdb_output(drive_gdb_reply_buffer, "^done", IS_ERROR, "When connecting to simulator, ");
-	
-	/* now advancing gdb to _start */
+
+	/* command: -break-insert _start */
 	send_gdb_cmd("-break-insert _start\n", drive_gdb_reply_buffer, display_replies);
 	match_gdb_output(drive_gdb_reply_buffer, "^done", IS_ERROR, "When inserting breakpoint at \"_start\", ");
-	
+
+	/* command: -exec-run */
 	send_gdb_cmd("-exec-run\n", drive_gdb_reply_buffer, display_replies);
 	match_gdb_output(drive_gdb_reply_buffer, "^running", IS_ERROR, "When running until \"_start\", ");
-	
-	wait_for_gdb_output(drive_gdb_reply_buffer, 0);		
-	match_gdb_output(drive_gdb_reply_buffer, "*stopped,reason=\"breakpoint-hit\"", IS_ERROR, "While running until \"_start\", ");
 
-	return 0;	
+	/* wait "*stopped" answer */
+	int r;
+	do {
+		wait_for_gdb_output(drive_gdb_reply_buffer, 0);
+		r = match_gdb_output(drive_gdb_reply_buffer, "*stopped,reason=\"breakpoint-hit\"", IS_HANDLED_ELSEWHERE, "While running until \"_start\", ");
+	} while(r);
+
+	return 0;
 }
 
 /*void dump_stack(leon_address_t a, leon_state_t *state)
@@ -309,119 +338,151 @@ int init_gdb(char * drive_gdb_reply_buffer, char * target)
 	     i -= 4;
      }
 }*/
-	
-	
-int main(int argc, char ** argv)
-	{
+
+
+/**
+ * Validator main entry.
+ * @param argc	Argument count.
+ * @param argv	Argument list.
+ */
+int main(int argc, char ** argv) {
 	char drive_gdb_cmd_buffer[150];
-	memset(drive_gdb_cmd_buffer, 0, 150);
 	char drive_gdb_reply_buffer[4000];
+
+	/* initialization */
+	memset(drive_gdb_cmd_buffer, 0, 150);
 	memset(drive_gdb_reply_buffer, 0, 4000);
 	setvbuf(stdout, NULL, _IONBF, 0);
+
+	/* open log */
 	open_log_file("log");
+
+	/* parse arguments */
 	parse_commandline(argc, argv);
 
-	if ( ! strlen(gpname) )
-	{
+	/* handle program name */
+	if(!strlen(gpname)) {
 		fprintf(stderr, "ERROR: No test program given\n");
 		usage(argv[0]);
 		exit (1);
 	}
-		
+
 	/* creating pipes to redirect GDB I/O */
-	if ( pipe(to_gdb_pipe) )
-	{
+	if(pipe(to_gdb_pipe)) {
 		fprintf(stderr, "ERROR: Couldn't create pipe to communicate with gdb driving process\n");
 		exit(-1);
 	}
-	if ( pipe(from_gdb_pipe) )
-	{
+	if(pipe(from_gdb_pipe)) {
 		fprintf(stderr, "ERROR: Couldn't create pipe to communicate with gdb driving process\n");
 		exit(-1);
 	}
 
+	/* check program */
 	struct stat check_file;
-	if ( stat(gpname, &check_file))
-	{
+	if(stat(gpname, &check_file)) {
 		fprintf(stderr, "ERROR: Couldn't find test program %s\n", gpname);
 		usage(argv[0]);
 		exit(1);
 	}
-			
+
+	/* configure signal */
 	signal(SIGUSR1, catch_sigusr1);
-		
-		
-	
+
 	/* launching GDB */
-	if ( ! ( drive_gdb_pid = fork () ) )
+	if(verbose)
+		printf("INFO: starting GDB...\n");
+	if(!(drive_gdb_pid = fork()))
 		drive_gdb();
 
-
-	printf("Initializing GDB\n");
+	/* initialize GDB */
+	if(verbose)
+		printf("INFO: initializing GDB\n");
 	init_gdb(drive_gdb_reply_buffer, target_location);
-		
-	printf("Initializing Gliss\n");
+
+	/* initialize GLISS */
+	if(verbose)
+		printf("INFO: initializing Gliss\n");
 	init_gliss(drive_gdb_reply_buffer);
-	
+
 	/* after gliss and gdb are set, initialize the structure containing the infos about registers */
+	if(verbose)
+		printf("INFO: initializing GDB registers\n");
 	init_gdb_regs(drive_gdb_reply_buffer);
 
+	/* simulation initialization */
+	if(verbose)
+		printf("INFO: initializing GLISS simulator\n");
 	instr_count = 0;
+
+	/* initial synchronization */
+	int giveup_count = 0;
+	while(gliss_pc != gdb_pc) {
+
+		// check giveup
+		if(giveup_count == 16) {
+			fprintf(stderr, "ERROR: no synchronisation after %d steps. Giving up.\n", giveup_count);
+			return 1;
+		}
+		giveup_count++;
+
+		// execute
+
+	}
+
+	/* check initial state */
 	curinstr = PROC(_decode)(sim->decoder, real_state->GPR[15]);
 	read_vars_this_instruction(drive_gdb_reply_buffer);
 	compare_regs_this_instruction(drive_gdb_reply_buffer, real_state, curinstr, instr_count);
 	PROC(_free_inst)(curinstr);
-	
+
 	/* used to pause gdb while waiting for gliss2 to catch up */
 	int stall_gdb = 0;
-
-	while ( !arm_is_sim_ended(sim) ) 
-	{
+	if(verbose)
+		printf("INFO: starting cosimulation...\n");
+	while(!arm_is_sim_ended(sim))  {
 		instr_count++;
-		
+
 		/* update PCs */
 		send_gdb_cmd("-data-evaluate-expression $pc\n", drive_gdb_reply_buffer, display_replies);
 		read_gdb_output_pc(drive_gdb_reply_buffer, &gdb_pc);
 		gliss_pc = real_state->GPR[15];
 		//printf("\nAbout to execute inst %d, GDB: PC=%08X, GLISS: PC=%08X\n", instr_count, gdb_pc, gliss_pc);
 
-		if (! stall_gdb)
-		{
+		if(!stall_gdb) {
 			sprintf(drive_gdb_cmd_buffer, "-data-disassemble -s 0x%08X -e 0x%08X -- 0\n", gdb_pc, gdb_pc+4);
 			send_gdb_cmd(drive_gdb_cmd_buffer, drive_gdb_reply_buffer, 0);
-			if ((instr_count % 50000) == 0)
-			{
+			if((instr_count % 50000) == 0) {
 				printf("\nAbout to execute inst %d, GDB: PC=%08X, GLISS: PC=%08X\n", instr_count, gdb_pc, gliss_pc);
 				disasm_error_report(drive_gdb_reply_buffer, NULL, NULL, 1, 0);
 			}
 		}
-		
-		/* for leon only: */
-		/* GDB steps automaticaly over annuled instr, gliss2 doesn't do that */
-		/* so we have to make sure GDB waits for GLISS2 in those cases */
-		
+
 		/* GDB step */
-		if (! stall_gdb)
-		{
+		if(!stall_gdb) {
 			send_gdb_cmd("-exec-step-instruction\n", drive_gdb_reply_buffer, display_replies);
 			match_gdb_output(drive_gdb_reply_buffer, "^running", IS_ERROR, "When trying to advance of one step, ");
 
-			wait_for_gdb_output(drive_gdb_reply_buffer, 0);
-			if ( ! match_gdb_output(drive_gdb_reply_buffer, "*stopped,reason=\"exited", IS_HANDLED_ELSEWHERE, NULL))
-			{
-				printf("Program %s\n", drive_gdb_reply_buffer + 1 );
-				break;
+			while(1) {
+				wait_for_gdb_output(drive_gdb_reply_buffer, verbose);
+				if(!match_gdb_output(drive_gdb_reply_buffer, "*stopped,reason=\"", IS_HANDLED_ELSEWHERE, NULL)) {
+					if(!match_gdb_output(drive_gdb_reply_buffer, "*stopped,reason=\"exited", IS_HANDLED_ELSEWHERE, NULL)) {
+						printf("Program %s\n", drive_gdb_reply_buffer + 1 );
+						return 1;
+					}
+					else if(!match_gdb_output(drive_gdb_reply_buffer, "*stopped,reason=\"end-stepping-range\"", IS_HANDLED_ELSEWHERE, NULL))
+						break;
+					else {
+						fprintf(stderr, "ERROR: unknown stop reason: %s", &drive_gdb_reply_buffer[16]);
+						return 1;
+					}
+				}
 			}
-		
-			match_gdb_output(drive_gdb_reply_buffer, "*stopped,reason=\"end-stepping-range\"", IS_ERROR, "When trying to advance of one step, ");
 		}
-		/*else
-			printf("====Annulled instruction, GDB inhibited to wait for GLISS2\n");*/
-				
+
 		/* GLISS step */
-		if (display_values) printf("Before instr %10d, PC gdb %08X gliss %08X\n", instr_count, gdb_pc, gliss_pc);
-		if ( !stall_gdb && (gliss_pc != gdb_pc))
-		{
+		if(display_values)
+			printf("Before instr %10d, PC gdb %08X gliss %08X\n", instr_count, gdb_pc, gliss_pc);
+		if(!stall_gdb && (gliss_pc != gdb_pc)) {
 			fprintf(stderr, "Gliss and GDB PCs differ : gdb 0x%08x gliss 0x%08x\n", gdb_pc, gliss_pc);
 			fprintf(stdout, "Assembly follows\n");
 			sprintf(drive_gdb_cmd_buffer, "-data-disassemble -s 0x%08X -e 0x%08X -- 0\n", gdb_pc, gdb_pc+4);
@@ -434,22 +495,22 @@ int main(int argc, char ** argv)
 		if(display_inst) {
 			char buf[256];
 			PROC(_disasm)(buf, curinstr);
-			printf("%08x: %s\n", real_state->GPR[15], buf);			
+			printf("%08x: %s\n", real_state->GPR[15], buf);
 		}
 		PROC(_step)(sim);
 		fflush(stdout);		/* DEBUG */
-		
+
 		read_vars_this_instruction(drive_gdb_reply_buffer);
 		//dump_all_windows(real_state);
 		if (! stall_gdb)
 			compare_regs_this_instruction(drive_gdb_reply_buffer, real_state, curinstr, instr_count);
 
-			
+
                 PROC(_free_inst)(curinstr);
 	}
-		
-		
-		
+
+
+
 	/*struct rusage statistiques;
 	getrusage(RUSAGE_SELF, & statistiques);
 	printf("User time : %ld s %ld us\n", statistiques.ru_utime.tv_sec, statistiques.ru_utime.tv_usec);
@@ -476,44 +537,45 @@ int main(int argc, char ** argv)
 	return 0;
 	}
 
-void drive_gdb()
-	{
-	char *gdb_argv[] = {GNU_TARGET"gdb", "--interpreter", "mi",  "--quiet", gpname, NULL};
+
+/**
+ * Run the debugger from the current process (killing it).
+ * Never return.
+ */
+void drive_gdb(void) {
+	char *gdb_argv[] = {gdb_path, "--interpreter", "mi",  "--quiet", gpname, NULL};
 	setvbuf(stdout, NULL, _IONBF, 0);
 	setvbuf(stdin, NULL, _IONBF, 0);
 	close(to_gdb_pipe[1]);
-	
+
 	/* no logfile needed */
 	close_log_file();
-	
+
 	/* redirecting stdin */
-	if ( dup2(to_gdb_pipe[0], STDIN_FILENO) == -1 )
-		{
+	if(dup2(to_gdb_pipe[0], STDIN_FILENO) == -1 ) {
 		fprintf(stderr, "ERROR: Couldn't dup2() GDB pipe to stdin\n");
 		exit(-1);
-		}
+	}
 	close(to_gdb_pipe[0]);
-
-	
 	close(from_gdb_pipe[0]);
+
 	/* redirecting stdout */
-	if ( dup2(from_gdb_pipe[1], STDOUT_FILENO) == -1 )
-		{
+	if(dup2(from_gdb_pipe[1], STDOUT_FILENO) == -1 ) {
 		fprintf(stderr, "ERROR: Couldn't dup2() GDB pipe to stdout\n");
 		exit(-1);
-		}
+	}
 	close(from_gdb_pipe[1]);
 
-
 	/* now we launch GDB with M/I interpreter */
-	printf("execvp(%s)", GDB_NAME);
-	if ( execvp(GDB_NAME, gdb_argv) )
-		{
-		perror("GDB execvp()");
-		exit(-1);
-		}
-	}
+	printf("execvp(%s)\n", gdb_argv[0]);
+	execvp(gdb_argv[0], gdb_argv);
+	perror("ERROR: running gdb");
 
+	/* cleaning pipes */
+	close(to_gdb_pipe[0]);
+	close(from_gdb_pipe[1]);
+	exit(1);
+}
 
 #undef MAIN_C
-	
+
