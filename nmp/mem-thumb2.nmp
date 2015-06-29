@@ -289,23 +289,26 @@ op LDRB_imm_T2(Rn: REG_INDEX, Rt: REG_INDEX, imm12: card(12))
 	add = 1
 	wback = 0
 	
-op LDRB_imm_T3(Rn: REG_INDEX, Rt: REG_INDEX, imm8: card(8), PUW: enum(0..5, 7))
+op LDRB_imm_T3(Rn: REG_INDEX, Rt: REG_INDEX, imm8: card(8), P_U_W: enum(0..5, 7))
 	// TODO ranging effects
 	//		Rt = 1111 && P = 1 && U = 0 && W = 0 -> PLD;
 	//		Rn = 1111 -> LDRB (literal)
 	//		P = 0 && W = 0 -> UNDEFINED;
-	ITCOND = "f_get_update_ITSTATE"()	
-	image = format("11111 00 0 0 00 1 %s  %s 1 %3b %8b", Rn, Rt, PUW, imm8)
+	ITCOND = "f_get_update_ITSTATE"()
+	image = format("11111 00 0 0 00 1 %s  %s 1 %3b %8b", Rn, Rt, P_U_W, imm8)
+	P = P_U_W<2..2>
+	U = P_U_W<1..1>
+	W = P_U_W<0..0>
 	syntax = 
-		if PUW<2..2> then format("ldrb%s %s, [%s, #%s0x%x]%s", op_cond_syntax_new(ITCOND), Rt, Rn, if PUW<1..1> then '' else '-' endif, imm8, if PUW<0..0> then '!' else '' endif) 
-		else format("ldrb%s %s, [%s], #%s0x%x", op_cond_syntax_new(ITCOND), Rt, Rn, if PUW<1..1> then '' else '-' endif, imm8) endif
+		if P then format("ldrb%s %s, [%s, #%s0x%x]%s", op_cond_syntax_new(ITCOND), Rt, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif) 
+		else format("ldrb%s %s, [%s], #%s0x%x", op_cond_syntax_new(ITCOND), Rt, Rn, if U then '' else '-' endif, imm8) endif
 	condition = 1
 	t = Rt
 	n = Rn
 	imm32 = imm8
-	index = PUW<2..2>
-	add = PUW<1..1>
-	wback = PUW<0..0>
+	index = P
+	add = U
+	wback = W
 	// if t == 13 || (t == 15 && W == '1') || (wback && n == t) then UNPREDICTABLE;
 
 op STR_imm_Thumb(x: STR_imm_Thumb_list)
