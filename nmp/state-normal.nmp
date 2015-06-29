@@ -87,7 +87,7 @@ reg IFLAG [1, u1] alias  = Ucpsr<7..7>		// Disable IRQ interrupts when it is set
 reg FFLAG [1, u1] alias  = Ucpsr<6..6>		// Disable FIQ interrupts whenit is set
 reg TFLAG [1, u1] alias	 = Ucpsr<5..5>		// If T=0 Indicates ARM execution else if T=1 indicates Thumb execution
 reg TBIT [1, u1]  alias	 = Ucpsr<5..5>
-reg MBITS [1, u5] alias  = Ucpsr<4..0>		//Determine the mode in which the processor operates
+reg MBITS [1, u5] alias  = APSR<4..0>		//Determine the mode in which the processor operates
 reg GEBITS[1, card(4)] alias = CPSR<19..16> 
 
 // ISETSTATE definitions

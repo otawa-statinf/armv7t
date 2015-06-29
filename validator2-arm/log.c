@@ -26,12 +26,24 @@ void close_log_file()
 	{
 	fclose(logfile);
 	}
-	
-void log_msg(char * fmt, ...)
-	{
-	if ( ! do_logging ) return;
-	va_list ap;
-	va_start(ap, fmt);
-	vfprintf(logfile, fmt, ap);
-	va_end(ap);
+
+extern int verbose;
+
+void log_msg(char * fmt, ...) {
+
+	// logging
+	if(do_logging) {
+		va_list ap;
+		va_start(ap, fmt);
+		vfprintf(logfile, fmt, ap);
+		va_end(ap);
 	}
+
+	// just verbose
+	if(verbose) {
+		va_list ap;
+		va_start(ap, fmt);
+		vfprintf(stderr, fmt, ap);
+		va_end(ap);
+	}
+}

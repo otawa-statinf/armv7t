@@ -7,36 +7,44 @@
 #include "internal.h"
 #include <stdio.h>
 
+#define PROC(x)	arm##x
 
-void compare_regs_this_instruction(char *drive_gdb_reply_buffer, PROC(_state_t) *real_state, PROC(_inst_t) *instr, int instr_count)
-{
+
+/**
+ * Compare the current state of GDB and GLISS.
+ * @param drive_gdb_reply_buffer	Buffer to get lines from GDB.
+ * @param real_state				GLISS State.
+ * @param instr						Current instruction.
+ * @param instr_count				Instruction count.
+ */
+void compare_regs_this_instruction(char *drive_gdb_reply_buffer, PROC(_state_t) *real_state, PROC(_inst_t) *instr, int instr_count) {
 	int i;
 
-	for (i = 0; i < NUM_REG; i++)
-	{
-		if (reg_infos[i].relative)
-		{
-			if (instr_count && ((reg_infos[i].gliss - reg_infos[i].gliss_last) != (reg_infos[i].gdb - reg_infos[i].gdb_last)))
-			{
+	// compare each register
+	for(i = 0; i < NUM_REG; i++) {
+
+		// relative value register
+		if(reg_infos[i].relative) {
+			if(instr_count && ((reg_infos[i].gliss - reg_infos[i].gliss_last) != (reg_infos[i].gdb - reg_infos[i].gdb_last))) {
 				/* warning: erroneous display if difference doesn't fit on 32 bits */
 				if (reg_infos[i].size == 64)
-					fprintf(stdout, "\n\nAfter 0x%08x (instruction #%i), register %s has not changed by the same amount: gdb %016llX\tgliss %016llX\n",
+					fprintf(stdout, "\n\n0x%08x (instruction #%i), register %s has not changed by the same amount: gdb %016llX\tgliss %016llX\n",
 						gdb_pc, instr_count, reg_infos[i].name, reg_infos[i].gdb - reg_infos[i].gdb_last, reg_infos[i].gliss - reg_infos[i].gliss_last);
 				else
-					fprintf(stdout, "\n\nAfter 0x%08x (instruction #%i), register %s has not changed by the same amount: gdb %08llX\tgliss %08llX\n",
+					fprintf(stdout, "\n\n0x%08x (instruction #%i), register %s has not changed by the same amount: gdb %08llX\tgliss %08llX\n",
 						gdb_pc, instr_count, reg_infos[i].name, reg_infos[i].gdb - reg_infos[i].gdb_last, reg_infos[i].gliss - reg_infos[i].gliss_last);
 				dump_regs();
-				fprintf(stdout, "Assembly follows\\n");
+				fprintf(stdout, "Assembly follows\n");
 				send_gdb_cmd("-data-disassemble -s \"$pc\" -e \"$pc + 4\" -- 0\n", drive_gdb_reply_buffer, 0);
 				disasm_error_report(drive_gdb_reply_buffer, real_state, instr, 1, 1);
 			}
 		}
-		else
-		if (reg_infos[i].gliss != reg_infos[i].gdb)
-		{
-			if ( instr_count ) 
+
+		// absolute value register
+		else if (reg_infos[i].gliss != reg_infos[i].gdb) {
+			if ( instr_count )
 				fprintf(stdout, "\n\nAfter 0x%08x (instruction #%i), register %s differs\n", gdb_pc, instr_count, reg_infos[i].name);
-			else 
+			else
 				fprintf(stdout, "\n\nAt initialization (0x%08x), register %s differs\n", gdb_pc, reg_infos[i].name);
 
 			printf("GLISS\t\t\t\t\t\tGDB\nBEFORE               AFTER              BEFORE               AFTER\n\n");
