@@ -27,6 +27,7 @@ type u5    = card(5)
 type u7    = card(7)
 type u11   = card(11)
 type u12   = card(12)
+type u13   = card(13)
 type u24   = card(24)
 
 type address_t = int(32)

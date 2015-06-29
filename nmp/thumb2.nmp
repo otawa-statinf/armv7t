@@ -38,30 +38,37 @@ op thumb2_32(x: thumb2_32_list)
 	action = {
 		NPC = PC + 4;
 		PC = PC + 8;
-		x.action;
+		if ConditionPassed then
+			x.action;
+		endif;
+		if InITBlock then 
+			ITAdvance; 
+		endif;
 		PC = NPC;
 	}
 
-op thumb2_32_list = fp
-	| AND_imm_T1
-	| EOR_imm_T1
-	| BL_imm_T1
-	| B_T3
-	| B_T4
+op thumb2_32_list = 
+	fp
+	// | AND_imm_T1 // Shadowed by the work from Jerabek
+	//| EOR_imm_T1 // Shadowed by the work from Jerabek
+	//| BL_imm_T1 // Shadowed by the work from Jerabek
+	//| B_T3 // Shadowed by the work from Jerabek
+	//| B_T4 // Shadowed by the work from Jerabek
 	| TBB_TBH
-	| ADD_reg_T3
-	| ADD_imm_Thumb
-	| SUB_imm_Thumb
-	| BIC_imm_T1
-	| CLZ_T1
+	//| ADD_reg_T3 // Shadowed by the work from Jerabek
+	//| ADD_imm_Thumb // Shadowed by the work from Jerabek
+	//| SUB_imm_Thumb // Shadowed by the work from Jerabek
+	//| BIC_imm_T1 // Shadowed by the work from Jerabek
+	//| CLZ_T1 // Shadowed by the work from Jerabek
 	| BLX_imm_T2
 	| mem_thumb2
 	| LSL_reg_T2
 	| MUL_T2
-	| MOV_immediate
-	| MOVT_T1
-	| BFIC_T1
+	//| MOV_immediate // Shadowed by the work from Jerabek
+	//| MOVT_T1 // Shadowed by the work from Jerabek
+	//| BFIC_T1 // Shadowed by the work from Jerabek
 	| RSB_imm_T2
+	| JERABEK
 
 op LSL_reg_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
 	image  = format("11111 010 0 00 %s %s 1111 %s 0 000 %s", S, rn, rd, rm)
@@ -355,7 +362,7 @@ op CLZ_T1(Rd: REG_INDEX, Rm: REG_INDEX)
 		endif;
 	}
 
-/*op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), imm11: card(11))
+op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), imm11: card(11))
 	imm32 = SignExtend(S :: J2 :: J1 :: imm6 :: imm11 :: 0b0, 11)
 	target = __IADDR + imm32 + 4
 	syntax =
@@ -373,79 +380,8 @@ op CLZ_T1(Rd: REG_INDEX, Rm: REG_INDEX)
 				BranchWritePC(PC + imm32);
 			endif;
 		endif;
-	}*/
-
-// Modified version of the code from Thomas Jerabek (https://github.com/jerabek/ARMv7-Loader)
-canon u8 "f_set_ITSTATE"(u8)
-canon u8 "f_get_ITSTATE"()
-canon u8 "f_get_update_ITSTATE"()
-canon u8 "f_get_C"()
-canon u32 "Decode_and_Shift"(u8, u8, u32, u8)
-canon u32 "f_ROR"(u32,int(32))
-op B_T3(S: setS, j1: card(1), j2: card(1), cond: condition, imm6: card(6), imm11: card(11))
-	ITCOND = "f_get_update_ITSTATE"()
-	imm4 = imm11<3..0>
- 	//SignExtend(S:J2:J1:imm6:imm11:'0', 32) -> see old armv7 reference manual(2007!!)
-	addr = __IADDR + 4 + SignExtend(S::j2::j1::imm6::imm11::0<0..0>,32)
-	syntax =
-		if (S == 0b0) && (cond.value == 0b1111) && (imm6 == 0b101111) && (j1 == 0b0) then
-			format("mrs%s %s, %s", op_cond_syntax_new(ITCOND), syntax_reg(1,j2::imm11<10..8>), sysm_syntax(imm11<7..0>))
-		else if (S == 0b0) && (cond.value == 0b1110) && (imm6<5..4> == 0b00) && (j1 == 0b0) && (imm11<9..8> == 0b00) then
-			format("msr%s %s%s, %s", op_cond_syntax_new(ITCOND), sysm_syntax(imm11<7..0>), msr_bit_syntax(j2::imm11<10..10>), syntax_reg(1,imm6<3..0>))
-		else if (cond.value == 0b1110) && (imm6<5..4> == 0b10) && (imm11<10..8> == 0b000) then
-			switch(imm11<4..0>) {
-					case 0: format("nop%s.w",op_cond_syntax_new(ITCOND))
-					case 1: format("yield%s.w",op_cond_syntax_new(ITCOND))
-					case 2: format("wfe%s.w",op_cond_syntax_new(ITCOND))
-					case 3: format("wfi%s.w",op_cond_syntax_new(ITCOND))
-					case 4: format("sev%s.w",op_cond_syntax_new(ITCOND))
-					default: if (imm11<7..4> == 0b1111) then format("dbg%s #%d",op_cond_syntax_new(ITCOND),imm4) else "undefined" endif
-				}
-		else if (cond.value == 0b1110) && (imm6<5..4> == 0b11) then
-			switch(imm11<7..4>) {
-					case 0b0010: format("clrex%s",op_cond_syntax_new(ITCOND))
-					case 0b0100: format("dsb%s %s",op_cond_syntax_new(ITCOND),if (imm4 == 0b1111) then "sy" else format("#%d",imm4) endif)
-					case 0b0101: format("dmb%s %s",op_cond_syntax_new(ITCOND),if (imm4 == 0b1111) then "sy" else format("#%d",imm4) endif)
-					case 0b0110: format("isb%s %s",op_cond_syntax_new(ITCOND),if (imm4 == 0b1111) then "sy" else format("#%d",imm4) endif)
-					default: "undefined_B_T3"
-				}
-		else
-			format("b%s.w %08x", cond, addr)
-		endif	
-		endif
-		endif	
-		endif		
-
-	image = format("11110 %s %s %6b 10 %1b 0 %1b %11b",  S, cond, imm6, j1, j2, imm11)
-	action = {
-		if (S == 0b0) && (cond.value == 0b1111) && (imm6 == 0b101111) && (j1 == 0b0) then
-			//mrs
-		else if (S == 0b0) && (cond.value == 0b1110) && (imm6<5..4> == 0b00) && (j1 == 0b0) && (imm11<9..8> == 0b00) then
-			//msr
-		else if (cond.value == 14) && (imm6<5..4> == 0b10) && (imm11<10..8> == 0b000) then
-			switch(imm11<4..0>) {
-					case 0: // nop: do nothing
-					case 1: //"yield" Hint_Yield();
-					case 2: //"wfe" if EventRegistered() then ClearEventRegister(); else WaitForEvent();
-					case 3: //"wfi" WaitForInterrupt();
-					case 4: //"sev" Hint_SendEvent();
-					default: if (imm11<7..4> == 0b1111) then /*"dbg"*/ else /*"undefined"*/ endif;
-				};
-		else if (cond.value == 14) && (imm6<5..4> == 0b11) then
-			switch(imm11<7..4>) {
-					case 0b0010: //clrex: ClearExclusiveLocal(int processorid)
-					case 0b0100: //dsb: DataSynchronizationBarrier(imm3);
-					case 0b0101: //dmb: DataMemoryBarrier(imm3);
-					case 0b0110: //isb: InstructionSynchronizationBarrier(imm3);
-					default: //undefined
-				};
-		else
-			BranchWritePC(addr);
-		endif;	
-		endif;
-		endif;	
-		endif;
 	}
+
 
 op B_T4(S: card(1), imm10: card(10), J1: card(1), J2: card(1), imm11: card(11))
 	imm32 = SignExtend(S :: J1 :: J2 :: imm10 :: imm11 :: 0b0, 7)
@@ -583,3 +519,776 @@ op RSB_imm_T2(i: card(1), S: setS, Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), 
 			endif;
 		endif;
 	}
+	
+
+
+/************************************************************************
+ * The following are slightly changed from the work of Thomas Jerabek.  *
+ * (https://github.com/jerabek/ARMv7-Loader)                            *
+ * Although they don't conform to newest coding standads, they are      *
+ * imported for fast implementation.								    *
+ ************************************************************************/
+
+canon u8 "f_get_C"()
+canon u32 "Decode_and_Shift"(u8, u8, u32, u8)
+canon u32 "f_ROR"(u32,int(32))
+
+var TMP_USHIFTED1[1, u32]
+var TMP_USHIFTED2[1, u32]
+var TMP_USHIFTED3[1, u32]
+
+macro ROR_CFLAG(v, n) = ((v) >> (n - 1))<0..0>
+
+macro ThumbExpandImm_C_jer(imm12) = \
+	if imm12<11..10> == 0b00 then \
+		switch(imm12<9..8>) { \
+		case 0b00: ZeroExtend(imm12<7..0>, 32) \
+		case 0b01: 0b00000000 :: imm12<7..0> :: 0b00000000 :: imm12<7..0> \
+		case 0b10: imm12<7..0> :: 0b00000000 :: imm12<7..0> :: 0b00000000 \
+		case 0b11: imm12<7..0> :: imm12<7..0> :: imm12<7..0> :: imm12<7..0> \
+		} \
+	else \
+		"f_ROR"(ZeroExtend(0b1 :: imm12<6..0>, 32),coerce(u32,imm12<11..7>)) \
+	endif
+	
+macro Align_Int(n,v) = v * (n/v)
+
+//TODO replace ROR_CFLAG by f_ROR_C
+macro ThumbExpandImm_CFLAG(imm12) = \
+	if imm12<11..0> == 0b00 then CFLAG \
+	else ROR_CFLAG(ZeroExtend(0b1 :: imm12<6..0>, 32), imm12<11..7>) \
+	endif
+
+macro first_bit_on13(v16) = \
+	if v16<0..0> == 1 then 15 else \
+	if v16<1..1> == 1 then 14 else \
+	if v16<2..2> == 1 then 13 else \
+	if v16<3..3> == 1 then 12 else \
+	if v16<4..4> == 1 then 11 else \
+	if v16<5..5> == 1 then 10 else \
+	if v16<6..6> == 1 then 9 else \
+	if v16<7..7> == 1 then 8 else \
+	if v16<8..8> == 1 then 7 else \
+	if v16<9..9> == 1 then 6 else \
+	if v16<10..10> == 1 then 5 else \
+	if v16<11..11> == 1 then 4 else \
+	if v16<12..12> == 1 then 3 else \
+	-1 endif endif endif endif endif endif endif endif endif endif endif endif endif \
+	
+mode THUMB2_REG_LIST(r: u13) = r
+	image  = format( "%13b", r)
+	start = first_bit_on13(r)
+	syntax = if start == -1 then "" else
+		format("%s%s%s%s%s%s%s%s%s%s%s%s%s",
+			syntax_reg_format(0, r),
+			syntax_reg_format(1, r),
+			syntax_reg_format(2, r),
+			syntax_reg_format(3, r),
+			syntax_reg_format(4, r),
+			syntax_reg_format(5, r),
+			syntax_reg_format(6, r),
+			syntax_reg_format(7, r),
+			syntax_reg_format(8, r),
+			syntax_reg_format(9, r),
+			syntax_reg_format(10, r),
+			syntax_reg_format(11, r),
+			syntax_reg_format(12, r)
+		) endif
+
+	
+op JERABEK = ADC_thumb2 | ADD_thumb2 |AND_thumb2 | ASR_thumb2 | MOV_ORR_thumb2 
+	| MOVT_thumb2 | B_thumb2 | BFC_BFI_thumb2 |BIC_thumb2 | BL_thumb2 
+	| CDP_CDP2_thumb2 | CLZ_thumb2 | CMP_thumb2 | EOR_thumb2 
+	/*| LDM_thumb2 */ | LDMDB_thumb2
+	// | LDR_thumb2 | LDRB_thumb2 | Load_Store_dual_exclusive_table_branch_thumb2 | LDRH_thumb2 | LDRSB_thumb2 | LDRSH_thumb2 | LSL_thumb2 | LSR_thumb2 | MCR_MCR2_thumb2 | MCRR_MCRR2_thumb2 | MLA_MUL_thumb2 | MLS_thumb2 
+//| MOV_ORR_thumb2 | MOVT_thumb2 
+//| MRC_MRC2_thumb2 | MRRC_MRRC2_thumb2 | MVN_ORN_thumb2 | PKHBT_PKHTB_thumb2 |/* POP_thumb2 |*/ PUSH_thumb2 | QADD_thumb2 | QADD16_thumb2 | QADD8_thumb2 | QASX_thumb2 | QDADD_thumb2 | QDSUB_thumb2 | QSAX_thumb2 | QSUB_thumb2 | QSUB16_thumb2 | QSUB8_thumb2 | RBIT_thumb2 | REV_thumb2 | REV16_thumb2 | REVSH_thumb2 | ROR_thumb2 | RSB_thumb2 | SADD16_thumb2 | SADD8_thumb2 | SASX_thumb2 | SBC_thumb2 | SBFX_thumb2 | SDIV_thumb2 | SEL_thumb2 | SHADD16_thumb2 | SHADD8_thumb2 | SHASX_thumb2 | SHSAX_thumb2 | SHSUB16_thumb2 | SHSUB8_thumb2 | SMLABB_SMULBB_thumb2 | SMLAD_SMUAD_thumb2 | SMLAL_thumb2 | SMLALBB_thumb2 | SMLALD_thumb2 | SMLAWB_SMULWB_thumb2 | SMLSD_SMUSD_thumb2 | SMLSLD_thumb2 | SMMLA_SMMUL_thumb2 | SMMLS_thumb2 | SMULL_thumb2 | SSAT_SSAT16_thumb2 | SSAX_thumb2 | SSUB16_thumb2 | SSUB8_thumb2 | /* STC_thumb2 | STC2_thumb2 |*/ STM_thumb2 | /*STMDB_thumb2 | */ STR_thumb2 | STRB_thumb2 | STRH_thumb2 | SUB_thumb2 | SXTAB_SXTB_thumb2 | SXTAB16_SXTB16_thumb2 | SXTAH_SXTH_thumb2 | UADD16_thumb2 | UADD8_thumb2 | UASX_thumb2 | UBFX_thumb2 | UDIV_thumb2 | UHADD16_thumb2 | UHADD8_thumb2 | UHASX_thumb2 | UHSAX_thumb2 | UHSUB16_thumb2 | UHSUB8_thumb2 | UMAAL_thumb2 | UMLAL_thumb2 | UMULL_thumb2 | UQADD16_thumb2 | UQADD8_thumb2 | UQASX_thumb2 | UQSAX_thumb2 | UQSUB16_thumb2 | UQSUB8_thumb2 | USADA8_USAD8_thumb2 | USAT_USAT16_thumb2 | USAX_thumb2 | USUB16_thumb2 | USUB8_thumb2 | UXTAB_UXTB_thumb2 | UXTAB16_UXTB16_thumb2 | UXTAH_UXTH_thumb2/* | VABS_thumb2 | VADD_thumb2 | VCMP_thumb2 | VCVT_thumb2 | VCVT_fbits_thumb2 | VCVTB_thumb2 | VDIV_thumb2 | VFMA_thumb2 | VFNMA_thumb2 | VLDM_thumb2 | VLDR_thumb2 | VLMA_thumb2 | VMOV_thumb2 | VMRS_thumb2 | VMSR_thumb2 | VMUL_thumb2 | VNEG_thumb2 | VNMLA_thumb2 | VNMUL_thumb2 | VPOP_thumb2 | VPUSH_thumb2 | VSQRT_thumb2 | VSTM_thumb2 | VSTR_thumb2 | VSUB_thumb2 | WFE_thumb2 | WFI_thumb2 | YIELD_thumb2 */
+
+
+op ADC_thumb2 = ADC_imm_thumb2 | ADC_reg_thumb2
+
+op ADC_imm_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm12 = i :: imm3 :: imm8
+	imm32 = ThumbExpandImm_C_jer(imm12)
+	syntax = format("adc%s%s.w %s, %s, #%u",S,op_cond_syntax_new(ITCOND), rd, rn, imm32)
+	image = format("11110 %1b 0 1010 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
+	action = {
+		ADC(rd,rn,imm32);	
+	}
+
+op ADC_reg_thumb2( S: setS, rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, imm3: card(3), imm2: card(2), t: card(2))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm5 = imm3 :: imm2
+	syntax = format("adc%s%s.w %s, %s, %s%s",S,op_cond_syntax_new(ITCOND), rd, rn, rm, DecodeImmShift_syntax(t,imm5))
+	image = format("11101 01 1010 %s %s 0 %3b %s %2b %2b %s", S, rn, imm3, rd, imm2, t, rm)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rm);
+		TMP_USHIFTED1 = "Decode_and_Shift"(t,imm5,TMP_REG1,CFLAG);
+		CFLAG = "f_get_C"();
+		ADC(rd,rn,TMP_USHIFTED1);
+	}
+
+	
+op ADD_thumb2 = ADD_imm_T3_thumb2 | ADD_imm_T4_thumb2 | ADD_reg_thumb2
+
+op ADD_imm_T3_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm12 = i :: imm3 :: imm8
+	imm32 = ThumbExpandImm_C_jer(imm12)
+	syntax = 
+		if (rd.number == 0b1111) && (S == 0b1) then
+			format("cmn%s.w %s,#%u",op_cond_syntax_new(ITCOND), rn, imm32)
+		else
+		if (rn.number == 0b1101) then
+			format("add%s%s.w %s, sp, #%u",S,op_cond_syntax_new(ITCOND), rd, imm32)
+		else
+			format("add%s%s.w %s, %s, #%u",S,op_cond_syntax_new(ITCOND), rd, rn, imm32)
+		endif
+		endif
+	image = format("11110 %1b 0 1000 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
+	action = {
+		if (rd.number == 0b1111) && (S == 0b1) then //if rd == 0b1111 && S == 1 then SEE CMN(immediate)
+			CMN(rn,imm32);
+		else	// if rd == 0b1101 then SEE ADD (SP plus immediate) -> same as ADD immT3 with rd=SP
+			SBIT = S;
+			ADD(rd,rn,imm32);
+		endif;	
+	}
+
+op ADD_imm_T4_thumb2(i: card(1), rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm12 = i :: imm3 :: imm8
+	imm32 = ZeroExtend(imm12,32)
+	syntax = if (rn.number == 0b1111) then
+			format("adr%s.w %s, %s, #%d",op_cond_syntax_new(ITCOND), rd, rn, imm32)
+		else
+		if (rn.number == 0b1101) then
+			format("addw%s %s, sp, #%d",op_cond_syntax_new(ITCOND), rd, imm32)
+		else
+			format("addw%s %s, %s, #%d ",op_cond_syntax_new(ITCOND), rd, rn, imm32)
+		endif
+		endif
+	image = format("11110 %1b 1 0000 0 %s 0 %3b %s %8b", i, rn, imm3, rd, imm8)
+	action = {		
+		TMP_UREG1 = Get_ARM_GPR(rd);
+		if (rn.number == 0b1111) then //if rd == 0b1111 then SEE ADR; endif;
+			if (i == 0b1) then
+				TMP_UREG2 = Align_Int(PC,4) + imm32;
+			else
+				TMP_UREG2 = Align_Int(PC,4) - imm32;
+			endif;
+			Set_ARM_GPR(rd,TMP_UREG2);
+		else	//if rd == 0b1101 then SEE ADD (SP plus immediate) -> same as ADD imm with rd=SP
+			SBIT = 0;
+			ADD(rd,rn,imm32);
+		endif;			
+	}
+
+op ADD_reg_thumb2(S: setS, rd : REG_INDEX, rn : REG_INDEX, rm: REG_INDEX, imm3: card(3), t: card(2), imm2: card(2))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm5 = imm3 :: imm2	
+	syntax = 
+		if (rd.number == 0b1111) && (S == 0b1) then
+			format("cmn%s.w %s, %s%s",op_cond_syntax_new(ITCOND), rn, rm, DecodeImmShift_syntax(t,imm5))
+		else
+		if (rn.number == 0b1101) then
+			format("add%s%s.w %s, sp, %s%s",S,op_cond_syntax_new(ITCOND), rd, rm,DecodeImmShift_syntax(t,imm5))
+		else
+			format("add%s%s.w %s, %s, %s%s",S,op_cond_syntax_new(ITCOND), rd, rn, rm,DecodeImmShift_syntax(t,imm5))
+		endif
+		endif
+	image = format("11101 01 1000 %s %s 0 %3b %s %2b %2b %s", S, rn, imm3, rd, imm2, t, rm)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rm);
+		TMP_USHIFTED1 = "Decode_and_Shift"(t,imm5,TMP_REG1,CFLAG);
+		//if rd == 0b1111 && S == 1 then SEE CMN(register)
+		if (rd.number == 0b1111) && (S == 0b1) then
+			CMN(rn,TMP_USHIFTED1);
+		else	//if rd == 0b1101 then SEE ADD (SP plus register) -> same as ADDreg rd=SP
+			ADD(rd,rn,TMP_USHIFTED1);
+		endif;
+	}
+
+
+op AND_thumb2 = AND_imm_thumb2 | AND_reg_thumb2
+
+op AND_imm_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm12 = i :: imm3 :: imm8
+	imm32 = ThumbExpandImm_C_jer(imm12)
+	syntax = if (rd.number == 0b1111) && (S == 0b1) then
+			format("tst%s.w %s, #%u",op_cond_syntax_new(ITCOND), rn, imm32) // TST<c> <Rn>,#<const>
+		else
+			format("and%s%s.w %s, %s, #%u",S,op_cond_syntax_new(ITCOND), rd, rn, imm32)
+		endif
+	image = format("11110 %1b 0 0000 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
+	action = {
+		// if rd == 0b1111 && S == 1 then SEE TST(immediate); endif;
+		TMP_REG1 = Get_ARM_GPR(rn) & imm32;
+		Set_ARM_GPR(rd,TMP_REG1);
+
+		if S == 1 then 
+			NFLAG = TMP_REG1<31..31>;
+			if TMP_REG1 == 0 then
+				ZFLAG = 1; 
+			else 
+				ZFLAG = 0; 
+			endif; 
+			CFLAG = ThumbExpandImm_CFLAG(imm12);	
+		endif; 	
+	}
+
+op AND_reg_thumb2(S: setS, rd : REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, imm3: card(3), t: card(2), imm2: card(2) )
+	ITCOND = "f_get_update_ITSTATE"()
+	imm5 = imm3 :: imm2
+	syntax = if(rd.number == 0b1111)  && (S == 0b1) then
+		 	format("tst%s.w %s, %s%s",op_cond_syntax_new(ITCOND), rn, rm, DecodeImmShift_syntax(t,imm5)) // TST<c>.W <Rn>,<Rm>{,<shift>}
+		else
+			format("and%s%s.w %s, %s, %s%s",S,op_cond_syntax_new(ITCOND), rd, rn, rm, DecodeImmShift_syntax(t,imm5))
+		endif
+	image = format("11101 01 0000 %s %s 0 %3b %s %2b %2b %s", S, rn, imm3, rd, imm2, t, rm)
+	action = {
+		// if rd == 0b1111 && S == 1 then SEE TSTreg
+		TMP_REG1 = Get_ARM_GPR(rm);
+		TMP_USHIFTED1 = "Decode_and_Shift"(t,imm5,TMP_REG1,CFLAG);
+
+		TMP_REG2 = Get_ARM_GPR(rn) & TMP_USHIFTED1;
+		Set_ARM_GPR(rd,TMP_REG2);
+
+		if S == 1 then 
+			NFLAG = TMP_REG2<31..31>;
+			if TMP_REG2 == 0 then
+				ZFLAG = 1; 
+			else 
+				ZFLAG = 0; 
+			endif; 
+			CFLAG = "f_get_C"();	
+		endif; 	
+	}
+
+
+op ASR_thumb2 = /*ASR_imm_thumb2 |*/ ASR_reg_thumb2
+
+/*
+see MOV_ORR_reg_thumb2
+//op ASR_imm_thumb2(S: setS, rd: REG_INDEX, rm: REG_INDEX, imm3: card(3), imm2: card(2))
+	imm5 = imm3 :: imm2
+	syntax = format("asr%s.w %s, %s, #%d", S, rd, rm, imm5)
+	image = format("11101 01 0010 %s 1111 0 %3b %s %2b 10 %s",  S, imm3, rd, imm2, rm)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rm);
+		TMP_USHIFTED1 = "Decode_and_Shift"(ASR,imm5,TMP_REG1,CFLAG);
+
+		Set_ARM_GPR(rd,TMP_USHIFTED1);
+
+		if S == 1 then 
+			NFLAG = TMP_REG1<31..31>;
+			if TMP_REG1 == 0 then
+				ZFLAG = 1; 
+			else 
+				ZFLAG = 0; 
+			endif; 
+			CFLAG = "f_get_C"();	
+		endif; 	
+	}
+*/
+
+op ASR_reg_thumb2(S: setS, rd : REG_INDEX, rm: REG_INDEX, rn: REG_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("asr%s%s.w %s, %s, %s",S,op_cond_syntax_new(ITCOND), rd, rn, rm)
+	image = format("11111 010 0 10 %s %s 1111 %s 0 000 %s", S, rn, rd, rm)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rn);
+		TMP_REG2 = Get_ARM_GPR(rm);
+		TMP_USHIFTED1 = "Decode_and_Shift"(ASR,TMP_REG2,TMP_REG1,CFLAG);
+
+		Set_ARM_GPR(rd,TMP_USHIFTED1);
+
+		if S == 1 then 
+			NFLAG = TMP_REG1<31..31>;
+			if TMP_REG1 == 0 then
+				ZFLAG = 1; 
+			else 
+				ZFLAG = 0; 
+			endif; 
+			CFLAG = "f_get_C"();	
+		endif; 	
+	}
+
+
+// CPY is a pre-UAL synonym for MOV (register)
+
+op MOV_ORR_thumb2 = MOV_ORR_imm_T2_thumb2 | MOV_imm_T3_thumb2 | MOV_ORR_reg_thumb2
+
+op MOV_ORR_imm_T2_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX,imm3: card(3), imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm12 = i :: imm3 :: imm8
+	imm32 = ThumbExpandImm_C_jer(imm12)
+	syntax = 
+		if (rn.number == 0b1111) then
+			format("mov%s%s.w %s, #%u", S,op_cond_syntax_new(ITCOND), rd, imm32)
+		else
+			format("orr%s%s.w %s,%s,#%u", S,op_cond_syntax_new(ITCOND), rd, rn, imm32)
+		endif
+	image = format("11110 %1b 0 0010 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
+	action = {
+		// MOV(immediate)
+		if(rn.number == 0b1111) then		
+			TMP_UREG2 = imm32;
+		else	// ORR(immediate)
+			TMP_UREG1 = Get_ARM_GPR(rn);
+			TMP_UREG2 = TMP_UREG1 | imm32;
+		endif;
+
+		Set_ARM_GPR(rd,TMP_UREG2);
+
+		if (S == 1) then
+			NFLAG = TMP_UREG2<31..31>;
+			if imm32 == 0 then
+				ZFLAG = 1; 
+			else 
+				ZFLAG = 0; 
+			endif; 
+			CFLAG = ThumbExpandImm_CFLAG(imm12);
+		endif;
+	}
+
+op MOV_imm_T3_thumb2(i: card(1), rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm16 = imm4 :: i :: imm3 :: imm8
+	imm32 = ZeroExtend(imm16, 32)
+	syntax = format("movw%s %s, #%d",op_cond_syntax_new(ITCOND), rd, imm16)
+	image = format("11110 %1b 10 0 1 0 0 %4b 0 %3b %s %8b", i, imm4, imm3, rd, imm8)
+	action = {
+		Set_ARM_GPR(rd,imm32);
+	}
+
+//TODO MOV(shifted register) -> canonical form!(ASR, LSL, LSR,...)
+op MOV_ORR_reg_thumb2(S: setS, rd: REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm2: card(2), t: card(2))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm5 = imm3 :: imm2	
+	syntax =
+		if (rn.number == 0b1111) then			
+			switch(t) {
+				case 0b00: if (imm5 == 0b00000) then format("mov%s%s.w %s, %s", S,op_cond_syntax_new(ITCOND), rd, rm)
+					   else format("lsl%s%s.w %s,%s,#%d", S,op_cond_syntax_new(ITCOND), rd, rm, imm5) endif
+				case 0b01: format("lsr%s%s.w %s,%s,#%d", S,op_cond_syntax_new(ITCOND), rd, rm, imm5)
+				case 0b10: format("asr%s%s.w %s, %s, #%d", S,op_cond_syntax_new(ITCOND), rd, rm, if(imm5==0b00000) then 32 else imm5 endif)
+				case 0b11: if (imm5 == 0b00000) then format("rrx%s%s.w %s, %s", S,op_cond_syntax_new(ITCOND), rd, rm)
+					   else format("ror%s%s.w %s, %s, #%d", S,op_cond_syntax_new(ITCOND), rd, rm, imm5) endif
+			}
+		else
+			format("orr%s.w %s,%s,%s%s", S, rd, rn, rm, DecodeImmShift_syntax(t,imm5))
+		endif
+	image = format("11101 01 0010 %s %s 0 %3b %s %2b %2b %s", S, rn, imm3, rd, imm2, t, rm)
+	action = {
+		TMP_UREG1 = Get_ARM_GPR(rm);
+		TMP_USHIFTED1 = "Decode_and_Shift"(t,imm5,TMP_UREG1,CFLAG);
+		// MOV(register)
+		if(rn.number == 0b1111) then
+			if (rd.number == 0b1111) then		
+				BranchWritePC(TMP_UREG1); // ALUWritePC(x);		
+			else			
+				TMP_UREG2 = TMP_USHIFTED1;
+			endif;
+		else	// ORR(register)
+			TMP_UREG1 = Get_ARM_GPR(rn);
+			TMP_UREG2 = TMP_UREG1 | TMP_USHIFTED1;
+		endif;
+
+		if !((rn.number == 0b1111) && (rd.number != 0b1111)) then	
+			Set_ARM_GPR(rd,TMP_UREG2);
+			if (S == 1) then
+				NFLAG = TMP_UREG2<31..31>;
+				if imm32 == 0 then
+					ZFLAG = 1; 
+				else 
+					ZFLAG = 0; 
+				endif; 
+				CFLAG = "f_get_C"();
+			endif;
+		endif;
+	}
+
+
+op MOVT_thumb2(i: card(1), rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm16 = imm4 :: i :: imm3 :: imm8
+	syntax = format("movt%s %s,#%d",op_cond_syntax_new(ITCOND),  rd, imm16)
+	image = format("11110 %1b 10 1 1 0 0 %4b 0 %3b %s %8b", i, imm4, imm3, rd, imm8)
+	action = {	
+		TMP_UREG1 = Get_ARM_GPR(rd);
+		TMP_UREG1<31..16> = imm16;	// change top; no affect to bottom halfword
+		Set_ARM_GPR(rd,TMP_UREG1);
+	}
+
+
+op B_thumb2 = B_T3_thumb2 //| B_T4_thumb2
+
+op B_T3_thumb2(S: setS, j1: card(1), j2: card(1), cond: condition, imm6: card(6), imm11: card(11))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm4 = imm11<3..0>
+ 	//SignExtend(S:J2:J1:imm6:imm11:'0', 32) -> see old armv7 reference manual(2007!!)
+	addr = __IADDR + 4 + SignExtend(S::j2::j1::imm6::imm11::0<0..0>,32)
+	syntax =
+		if (S == 0b0) && (cond.value == 0b1111) && (imm6 == 0b101111) && (j1 == 0b0) then
+			format("mrs%s %s, %s", op_cond_syntax_new(ITCOND), syntax_reg(1,j2::imm11<10..8>), sysm_syntax(imm11<7..0>))
+		else if (S == 0b0) && (cond.value == 0b1110) && (imm6<5..4> == 0b00) && (j1 == 0b0) && (imm11<9..8> == 0b00) then
+			format("msr%s %s%s, %s", op_cond_syntax_new(ITCOND), sysm_syntax(imm11<7..0>), msr_bit_syntax(j2::imm11<10..10>), syntax_reg(1,imm6<3..0>))
+		else if (cond.value == 0b1110) && (imm6<5..4> == 0b10) && (imm11<10..8> == 0b000) then
+			switch(imm11<4..0>) {
+					case 0: format("nop%s.w",op_cond_syntax_new(ITCOND))
+					case 1: format("yield%s.w",op_cond_syntax_new(ITCOND))
+					case 2: format("wfe%s.w",op_cond_syntax_new(ITCOND))
+					case 3: format("wfi%s.w",op_cond_syntax_new(ITCOND))
+					case 4: format("sev%s.w",op_cond_syntax_new(ITCOND))
+					default: if (imm11<7..4> == 0b1111) then format("dbg%s #%d",op_cond_syntax_new(ITCOND),imm4) else "undefined" endif
+				}
+		else if (cond.value == 0b1110) && (imm6<5..4> == 0b11) then
+			switch(imm11<7..4>) {
+					case 0b0010: format("clrex%s",op_cond_syntax_new(ITCOND))
+					case 0b0100: format("dsb%s %s",op_cond_syntax_new(ITCOND),if (imm4 == 0b1111) then "sy" else format("#%d",imm4) endif)
+					case 0b0101: format("dmb%s %s",op_cond_syntax_new(ITCOND),if (imm4 == 0b1111) then "sy" else format("#%d",imm4) endif)
+					case 0b0110: format("isb%s %s",op_cond_syntax_new(ITCOND),if (imm4 == 0b1111) then "sy" else format("#%d",imm4) endif)
+					default: "undefined_B_T3"
+				}
+		else
+			format("b%s.w %08x", cond, addr)
+		endif	
+		endif
+		endif	
+		endif		
+
+	image = format("11110 %s %s %6b 10 %1b 0 %1b %11b",  S, cond, imm6, j1, j2, imm11)
+	action = {
+		if (S == 0b0) && (cond.value == 0b1111) && (imm6 == 0b101111) && (j1 == 0b0) then
+			//mrs
+		else if (S == 0b0) && (cond.value == 0b1110) && (imm6<5..4> == 0b00) && (j1 == 0b0) && (imm11<9..8> == 0b00) then
+			//msr
+		else if (cond.value == 14) && (imm6<5..4> == 0b10) && (imm11<10..8> == 0b000) then
+			switch(imm11<4..0>) {
+					case 0: // nop: do nothing
+					case 1: //"yield" Hint_Yield();
+					case 2: //"wfe" if EventRegistered() then ClearEventRegister(); else WaitForEvent();
+					case 3: //"wfi" WaitForInterrupt();
+					case 4: //"sev" Hint_SendEvent();
+					default: if (imm11<7..4> == 0b1111) then /*"dbg"*/ else /*"undefined"*/ endif;
+				};
+		else if (cond.value == 14) && (imm6<5..4> == 0b11) then
+			switch(imm11<7..4>) {
+					case 0b0010: //clrex: ClearExclusiveLocal(int processorid)
+					case 0b0100: //dsb: DataSynchronizationBarrier(imm3);
+					case 0b0101: //dmb: DataMemoryBarrier(imm3);
+					case 0b0110: //isb: InstructionSynchronizationBarrier(imm3);
+					default: //undefined
+				};
+		else
+			BranchWritePC(addr);
+		endif;	
+		endif;
+		endif;	
+		endif;
+	}
+
+//S::j1::j2::imm10::imm11::0b0
+op B_T4_thumb2(S: setS, j1: card(1), j2: card(1), imm10: card(10), imm11: card(11))
+	ITCOND = "f_get_update_ITSTATE"()
+	addr = __IADDR + 4 + SignExtend(S :: ~(j1 ^ S) :: ~(j2 ^ S) :: imm10 :: imm11 :: 0<0..0>,32)
+	syntax = format("b%s.w %08x",op_cond_syntax_new(ITCOND), addr)
+	image = format("11110 %s %10b 10 %1b 1 %1b %11b",  S, imm10, j1, j2, imm11)
+	action = {
+		BranchWritePC(addr);
+	}
+
+
+op BFC_BFI_thumb2(rn: REG_INDEX, rd: REG_INDEX, msb: card(5), imm3: card(3), imm2: card(2))
+	imm5 = imm3 :: imm2 // lsb
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = 
+		if (rn.number == 0b1111) then format("bfc%s %s,#%d,#%d", op_cond_syntax_new(ITCOND), rd, imm5, msb-imm5+1) 
+		else format("bfi%s %s,%s,#%d,#%d", op_cond_syntax_new(ITCOND), rd, rn, imm5, msb-imm5+1)
+		endif
+	image = format("11110 0 11 011 0 %s 0 %3b %s %2b 0 %5b", rn, imm3, rd, imm2, msb)
+	action = {
+			TMP_UREG1 = Get_ARM_GPR(rn);
+			TMP_UREG2 = Get_ARM_GPR(rd);
+			if (msb >= imm5) then
+				if (rn.number == 0b1111) then // bfc operation
+					TMP_UREG2<msb..imm5> = ZeroExtend(0,32);
+				else // bfi operation
+					TMP_UREG2<msb..imm5> = TMP_UREG1<(msb-imm5)..0>;
+				endif;
+				Set_ARM_GPR(rd,TMP_UREG2);
+			else
+				// UNPREDICTABLE;
+			endif;
+	}
+
+
+op BIC_thumb2 = BIC_imm_thumb2 | BIC_reg_thumb2
+
+op BIC_imm_thumb2(i: card(1), S: setS, rn: REG_INDEX, rd: REG_INDEX, imm8: card(8), imm3: card(3))
+	imm12 = i :: imm3 :: imm8
+	imm32 = ThumbExpandImm_C_jer(imm12)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("bic%s%s.w %s,%s,#%u",S,op_cond_syntax_new(ITCOND), rd, rn, imm32)
+	image = format("11110 %1b 0 0001 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rn) & ~imm32;
+		Set_ARM_GPR(rd,TMP_REG1);
+
+		if S == 1 then 
+			NFLAG = TMP_REG1<31..31>;
+			if TMP_REG1 == 0 then
+				ZFLAG = 1; 
+			else 
+				ZFLAG = 0; 
+			endif; 
+			CFLAG = ThumbExpandImm_CFLAG(imm12);	
+		endif; 	
+	}
+
+op BIC_reg_thumb2(S: setS, rd : REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, imm3: card(3), t: card(2), imm2: card(2) )
+	imm5 = imm3 :: imm2
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("bic%s%s.w %s, %s, %s%s",S,op_cond_syntax_new(ITCOND), rd, rn, rm, DecodeImmShift_syntax(t,imm5))
+	image = format("11101 01 0001 %s %s 0 %3b %s %2b %2b %s", S, rn, imm3, rd, imm2, t, rm)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rm);
+		TMP_USHIFTED1 = "Decode_and_Shift"(t,imm5,TMP_REG1,CFLAG);
+
+		TMP_REG2 = Get_ARM_GPR(rn) & ~TMP_USHIFTED1;
+		Set_ARM_GPR(rd,TMP_REG2);
+
+		if S == 1 then 
+			NFLAG = TMP_REG2<31..31>;
+			if TMP_REG2 == 0 then
+				ZFLAG = 1; 
+			else 
+				ZFLAG = 0; 
+			endif; 
+			CFLAG = "f_get_C"();	
+		endif; 	
+	}
+
+
+op BL_thumb2(S: setS, j1: card(1), j2: card(1), imm10: card(10), imm11: card(11))
+	addr = __IADDR + 4 + SignExtend(S :: ~(j1 ^ S) :: ~(j2 ^ S) :: imm10 :: imm11 :: 0<0..0>,32)	
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("bl%s %08x",op_cond_syntax_new(ITCOND), addr)
+	image = format("11110 %s %10b 11 %1b 1 %1b %11b",  S, imm10, j1, j2, imm11)
+	action = {
+		//TODO targetInstrSet = CurrentInstrSet; if(InITBlock() &&......
+		next_instr_addr = PC;
+		LR = next_instr_addr<31..1> :: 1<0..0>;
+		BranchWritePC(addr); 
+	}
+
+
+op CDP_CDP2_thumb2(opc0: card(1), opc1: card(4), CRn: card(4), CRd: card(4), coproc: enum(0..9, 12..15), opc2: card(3),CRm: card(4))
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("cdp%s%s %d, %d, cr%d, cr%d, cr%d, {%d}",op_cond_syntax_new(ITCOND), if(opc0==0b1) then "2" else "" endif, coproc, opc1, CRd, CRn,CRm, opc2)
+	image = format("111%1b 1110 %4b %4b %4b %4b %3b 0 %4b",opc0, opc1, CRn, CRd, coproc, opc2, CRm)
+	action = {
+		//TODO
+		//cp = UInt(coproc);
+		//if ConditionPassed() then
+		//EncodingSpecificOperations();
+		//if !Coproc_Accepted(cp, ThisInstr()) then
+		//GenerateCoprocessorException();
+		//else
+		//Coproc_InternalOperation(cp, ThisInstr());
+			
+	}
+
+
+op CLZ_thumb2(rd : REG_INDEX, rm: REG_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("clz%s %s, %s",op_cond_syntax_new(ITCOND), rd, rm)
+	image = format("11111 010 1 011 %s 1111 %s 1 000 %s", rm, rd, rm)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rm);
+
+		TMP_REG2 = 30; //CountLeadingZeroBits(TMP_REG1);
+		Set_ARM_GPR(rd,TMP_REG2);	
+	}
+
+
+// see ADD imm and ADD reg
+/*op CMN_thumb2 = CMN_imm_thumb2 | CMN_reg_thumb2
+
+op CMN_imm_thumb2(i: card(1), rn: REG_INDEX, imm8: card(8), imm3: card(3))
+	imm12 = i :: imm3 :: imm8
+	imm32 = ThumbExpandImm_C_jer(imm12)
+	syntax = format("cmn %s,#%d", rn, imm32)
+	image = format("11110 %1b 0 1000 1 %s 0 %3b 1111 %8b", i, rn, imm3, imm8)
+	action = {
+		CMN(rn,imm32);	
+	}
+
+op CMN_reg_thumb2(rm: REG_INDEX, rn: REG_INDEX, imm3: card(3), t: card(2), imm2: card(2) )
+	imm5 = imm3 :: imm2
+	syntax = format("cmn.w %s, %s{,%d}", rn, rm, TMP_USHIFTED2)
+	image = format("11101 01 1000 1 %s 0 %3b 1111 %2b %2b %s", rn, imm3, imm2, t, rm)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rm);
+		TMP_USHIFTED1 = "Decode_and_Shift"(t,imm5,TMP_REG1,CFLAG);
+		CMN(rn,TMP_USHIFTED1);	
+	}
+*/
+
+
+op CMP_thumb2 = CMP_imm_thumb2 | CMP_reg_thumb2
+
+op CMP_imm_thumb2(i: card(1), rn: REG_INDEX, imm8: card(8), imm3: card(3))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm12 = i :: imm3 :: imm8
+	imm32 = ThumbExpandImm_C_jer(imm12)
+	syntax = format("cmp%s.w %s,#%u",op_cond_syntax_new(ITCOND), rn, imm32)
+	image = format("11110 %1b 0 1101 1 %s 0 %3b 1111 %8b", i, rn, imm3, imm8)
+	action = {
+		CFLAG = 1;
+		CMP(rn,imm32);	
+	}
+
+op CMP_reg_thumb2(rm: REG_INDEX, rn: REG_INDEX, imm3: card(3), t: card(2), imm2: card(2) )
+	ITCOND = "f_get_update_ITSTATE"()
+	imm5 = imm3 :: imm2
+	syntax = format("cmp%s.w %s, %s%s",op_cond_syntax_new(ITCOND), rn, rm, DecodeImmShift_syntax(t,imm5))
+	image = format("11101 01 1101 1 %s 0 %3b 1111 %2b %2b %s", rn, imm3, imm2, t, rm)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rm);
+		TMP_USHIFTED1 = "Decode_and_Shift"(t,imm5,TMP_REG1,CFLAG);
+		CFLAG = "f_get_C"();
+		CMP(rn,TMP_USHIFTED1);	
+	}
+
+
+op EOR_thumb2 = EOR_imm_thumb2 | EOR_reg_thumb2
+
+op EOR_imm_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm12 = i :: imm3 :: imm8
+	imm32 = ThumbExpandImm_C_jer(imm12)
+	syntax =
+		if (rd.number == 0b1111) && (S == 1) then
+			format("teq%s %s, #%u",op_cond_syntax_new(ITCOND),  rn, imm32)	// TEQ (immediate)
+		else
+			format("eor%s%s.w %s, %s, #%u",S,op_cond_syntax_new(ITCOND), rd, rn, imm32)	// EOR (immediate)
+		endif
+	image = format("11110 %1b 0 0100 %s %s 0 %3b %s %8b", i, S, rn, imm3, rd, imm8)
+	action = {
+		// if rd.number == 0b1111 && S == 1 then SEE TEQ (immediate); endif;
+		// if rd.number == 13 || (rd.number == 15 && S == 0) then UNPREDICTABLE; endif;
+		
+		TMP_UREG1 = Get_ARM_GPR(rn);
+		TMP_UREG2 = TMP_UREG1 ^ imm32;
+
+		if (rd.number != 0b1111) then
+			Set_ARM_GPR(rd,TMP_UREG2);
+		endif;
+
+		if (S == 1) || (rd.number == 0b1111) then
+			NFLAG = TMP_UREG2<31..31>;
+			if TMP_UREG2 == 0 then
+				ZFLAG = 1; 
+			else 
+				ZFLAG = 0; 
+			endif; 
+			CFLAG = ThumbExpandImm_CFLAG(imm12);
+		endif;
+	}
+
+
+op EOR_reg_thumb2(S: setS, rn: REG_INDEX, rm: REG_INDEX, rd: REG_INDEX, t: card(2), imm3: card(3), imm2: card(2))
+	ITCOND = "f_get_update_ITSTATE"()
+	imm5 = imm3 :: imm2
+	syntax = if (rd.number == 0b1111) && (S == 1) then
+			format("teq%s %s,%s%s",op_cond_syntax_new(ITCOND), rn, rm, DecodeImmShift_syntax(t, imm5))	// TEQ (register)		
+		else
+			format("eor%s%s.w %s, %s, %s%s",S,op_cond_syntax_new(ITCOND), rd, rn, rm, DecodeImmShift_syntax(t, imm5)) // EOR (register)
+		endif
+	image = format("11101 01 0100 %s %s 0 %3b %s %2b %2b %s", S, rn, imm3, rd, imm2, t, rm)
+	action = {
+		// if rd.number == 0b1111 && S == 1 then SEE TEQ (register); endif;
+		// if rd.number == 13 || (rd.number == 15 && S == 0) then UNPREDICTABLE; endif;
+		TMP_REG1 = Get_ARM_GPR(rm);
+		TMP_USHIFTED1 = "Decode_and_Shift"(t,imm5,TMP_REG1,CFLAG);
+
+		TMP_UREG1 = Get_ARM_GPR(rn);
+		TMP_UREG2 = TMP_UREG1 ^ TMP_USHIFTED1;
+
+		if (rd.number != 0b1111) then
+			Set_ARM_GPR(rd,TMP_UREG2);
+		endif;
+
+		if (S == 1) || (rd.number == 0b1111) then
+			NFLAG = TMP_UREG2<31..31>;
+			if TMP_UREG2 == 0 then
+				ZFLAG = 1; 
+			else 
+				ZFLAG = 0; 
+			endif; 
+			CFLAG = "f_get_C"();
+		endif;
+	}
+
+
+op LDMDB_thumb2(M: card(1), P: card(1), rn: REG_INDEX, llist: THUMB2_REG_LIST, W: card(1))
+	ITCOND = "f_get_update_ITSTATE"()
+   syntax = format("ldmdb%s %s%s, {%s}",op_cond_syntax_new(ITCOND), rn,
+   	if W then "!" else "" endif, llist.syntax)
+   image = format("11101 00 100 %1b 1 %s %1b %1b 0 %s", W, rn, P, M, llist.image)
+   action = {
+		//reg_list.action;
+		TMP_REGLIST = P::M::0b0::llist;		  
+		//Compute number of set bits in the register list to compute the start address
+		TMP_IMM16  = 0;
+		TMP_SETBIT = 0;
+		B15SET = 0;
+		TMP_REG1 = Get_ARM_GPR(rn);
+		number_of_set_bits_in;
+		TMP_START_ADDR = TMP_REG1; 
+		TMP_END_ADDR = TMP_REG1 - (TMP_SETBIT * 4);
+		TMP_IMM16 = 0;
+		boucle;
+		GPR[rn] = TMP_REG1 + TMP_SETBIT * 4; 
+
+		if (B15SET == 1) then
+			LoadWritePC(TMP_START_ADDR);
+		endif;
+		if (W == 0b1) && (TMP_SETBIT == 0) then
+                  Set_ARM_GPR(rn, TMP_END_ADDR);
+		endif;
+   //Note that the assert mode is not implemented, programmer may take
+  //		  care of the address in paramater !                            
+             }
+
+   number_of_set_bits_in = {
+	     //Count the amount of bits into the list
+             if (TMP_IMM16 != 16) then
+		  if (TMP_REGLIST & 1 == 1) then
+		     TMP_SETBIT = TMP_SETBIT + 1;
+		     if (TMP_IMM16 == 15) then
+			B15SET = 1;
+		     endif;		     
+		  endif;
+		  TMP_REGLIST = TMP_REGLIST >> 1;
+		  TMP_IMM16 = TMP_IMM16 + 1;
+		  number_of_set_bits_in;
+	       endif;
+	       }  
+
+    boucle = {
+               if (TMP_IMM16 != 15) then
+                    if (TMP_REGLIST & 1 == 1) then
+		        SetWord(TMP_START_ADDR,GPR[TMP_IMM16]);
+			TMP_START_ADDR = TMP_START_ADDR + 4;
+		    endif;
+		  TMP_REGLIST = TMP_REGLIST >> 1;
+                  TMP_IMM16 = TMP_IMM16 + 1;
+	          boucle;
+                endif;
+               }
+

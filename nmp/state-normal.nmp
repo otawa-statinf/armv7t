@@ -102,12 +102,13 @@ macro SelectInstrSet(iset) = ISETSTATE = iset
 
 // ITSTATE definitions
 // TODO alias does not support concatenation?
-macro ITSTATE = (CPSR<15..10> :: CPSR<26..25>)
+//macro ITSTATE = (CPSR<15..10> :: CPSR<26..25>)
+reg ITSTATE[1, u8]
 macro ITSTATE_COND = ITSTATE<7..5>
 macro ITSTATE_MASK = ITSTATE<4..0>
 
 macro ITAdvance = if ITSTATE<2..0> == 0 then ITSTATE = 0; else ITSTATE<4..0> = ITSTATE<4..0> << 1; endif
-macro InITBlock = (ITSTATE.IT<3..0> != 0)
+macro InITBlock = (ITSTATE<3..0> != 0)
 macro LastInITBlock = (ITSTATE<3..0> == 0b1000)
 
 // ASPR aliases
@@ -235,4 +236,7 @@ op init ()
 		
 		// sp init for validator (same value as gdb)
 		GPR[13 + 10] = 0x800;
+
+		// Jerabek IT init	
+		ITSTATE = 0x00;
 	 }

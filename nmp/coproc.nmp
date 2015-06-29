@@ -1,3 +1,5 @@
+op coproc = STC | LDC_imm | MRC_MRC2
+
 op STC(x: STC_list)
 	syntax = x.syntax
 	image = x.image
@@ -108,7 +110,6 @@ op MRC_MRC2(x: MRC_MRC2_list)
 op MRC_MRC2_list = MRC_T1
 
 op MRC_T1(opc1: card(3), CRn: card(4), Rt: REG_INDEX, coproc: enum(0..9, 12..15), opc2: card(3), CRm: card(4))
-	// TODO! Why opc1 and  UInt(coproc) are swapped in position?!?
 	syntax = format("mrc %d, %d, %s, cr%d, cr%d, %d", UInt(coproc), opc1, Rt, CRn, CRm, opc2)
 	image = format("1110 1110 %3b 1 %4b  %s %4b %3b 1 %4b", opc1, CRn, Rt, coproc, opc2, CRm)
 	t = UInt(Rt)

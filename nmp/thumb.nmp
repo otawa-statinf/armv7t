@@ -19,6 +19,11 @@
 //                                                                         //
 //**************************************************************************//
 
+// From Jerabek
+canon u8 "f_set_ITSTATE"(u8)
+canon u8 "f_get_ITSTATE"()
+canon u8 "f_get_update_ITSTATE"()
+
 let UNPREDICTABLE =0b11111111111111111111111111111111
 
 mode IMM3(n: u3) = n
@@ -141,19 +146,27 @@ op thumb1(x: thumb1_list)
 	action = {
 		NPC = PC + 2;
 		PC = PC + 2;
-		x.action;
+		if ConditionPassed then
+			x.action;
+		endif;
+		if InITBlock then 
+			ITAdvance; 
+		endif;
 		PC = NPC;
 	}
 
 op thumb1_list =
 	  ADD_thumb | AND_thumb | ASR_thumb
-	| B_thumb | B_thumb_T2 | BIC_thumb 
+	| B_thumb | B_thumb_T2 | BIC_thumb | BKPT_thumb 
 	| BLX_thumb | BX_thumb | CBNZ_CBZ_thumb| COMPARE_thumb | EOR_thumb | LDMIA_thumb 
 	| LDR_thumb | LDRB_thumb | LDRH_thumb | LDRS_thumb | LSL_thumb 
 	| LSR_thumb | MUL_thumb | MVN_thumb | NEG_thumb 
-	| ORR_thumb | POP_thumb | PUSH_thumb | ROR_thumb | SBC_thumb
+	| ORR_thumb | POP_thumb | PUSH_thumb | REV_thumb | REV16_thumb | REVSH_thumb 
+	| ROR_thumb | SBC_thumb
 	| STMIA_thumb | STR_thumb | STRB_thumb | STRH_thumb | SUB_thumb
-	| TST_thumb  |  MOV_thumb | NOP_thumb
+	| SXTB_thumb | SXTH_thumb
+	| TST_thumb  |  MOV_thumb //| NOP_thumb // Shadowed by the work from Jerabek
+	| NOP_thumb_jer
 
 
 ///////////////////////////////////////////
@@ -167,7 +180,8 @@ op ADD_thumb = ADC_thumb | ADD_imm1_thumb | ADD_imm2_thumb | ADD_imm3_thumb
 
        
 op ADC_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX)
-	syntax = format("adcs %s, %s",  rd.syntax, rn.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("adc%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rn.syntax)
 	image = format("0100000101%s%s", rn.image, rd.image)
 	action = {
 		TMP_REG1 = Get_THUMB_GPR(rd);
@@ -186,11 +200,12 @@ op ADC_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX)
 	}
 
 op ADD_imm1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm:IMM3)
+	ITCOND = "f_get_update_ITSTATE"()
 	syntax = 
 		if imm == 0 then
-			format("movs %s, %s", rd.syntax, rn.syntax)
+			format("mov%s %s, %s",op_cond_syntax_16(ITCOND),  rd.syntax, rn.syntax)
 		else
-			format("adds %s, %s, %s", rd.syntax, rn.syntax, imm.syntax)
+			format("add%s %s, %s, %s",op_cond_syntax_16(ITCOND),  rd.syntax, rn.syntax, imm.syntax)
 		endif
 	image = format("0001110%s%s%s", imm.image, rn.image, rd.image)
 	action = {
@@ -210,7 +225,8 @@ op ADD_imm1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm:IMM3)
 	}
 
 op ADD_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
-	syntax = format("adds %s, %s", rd.syntax,imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("add%s %s, %s",op_cond_syntax_16(ITCOND),  rd.syntax,imm.syntax)
 	image = format("00110%s%s", rd.image, imm.image)
 	action = {
 		TMP_REG1 = Get_THUMB_GPR(rd);
@@ -228,7 +244,8 @@ op ADD_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
 	}
 
 op ADD_reg1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
-	syntax = format("adds %s, %s, %s", rd.syntax, rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("add%s %s, %s, %s",op_cond_syntax_16(ITCOND),  rd.syntax, rn.syntax, rm.syntax)
 	image = format("0001100%s%s%s", rm.image, rn.image, rd.image)
 	action = {
 		TMP_REG1 = Get_THUMB_GPR(rm);
@@ -248,7 +265,8 @@ op ADD_reg1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm: REG_THUMB_IND
 	}
 
 op ADD_reg2_thumb( rd : REG_INDEX, rm: REG_INDEX)
-	syntax = format("add %s, %s", rd.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("add%s %s, %s",op_cond_syntax_new(ITCOND),  rd.syntax, rm.syntax)
 	image = format("01000100%1b%s%3b", rd.number<3..3>, rm.image, rd.number<2..0>)
 	action = {
 		TMP_REG1 = Get_ARM_GPR(rm);
@@ -257,29 +275,34 @@ op ADD_reg2_thumb( rd : REG_INDEX, rm: REG_INDEX)
 	}
 
 op ADD_imm3_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
-	syntax = format("add %s, pc, %s", rd.syntax,imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("add%s %s, pc, %s",op_cond_syntax_new(ITCOND),  rd.syntax,imm.syntax)
 	image = format("10100%s%s", rd.image, imm.image)
 	action = {
 		GPR[rd] = ((__IADDR + 4) & 0xfffffffc) + (coerce(u32, imm) << 2);
 	}
 
+// ADD SP plus immediate
 op ADD_imm4_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
-	syntax = format("add %s, sp, %s", rd.syntax,imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("add%s %s, sp, %s",op_cond_syntax_new(ITCOND),  rd.syntax,imm.syntax)
 	image = format("10101%s%s", rd.image, imm.image)
 	action = {
 		GPR[rd] = Get_ARM_GPR(13) + (coerce(u32, imm) << 2);
 	}
 
-
+// ADD SP plus immediate
 op ADD_imm5_thumb( imm: IMM7)
-	syntax = format("add sp, sp, #%d", imm * 4)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("add%s sp, sp, #%d",op_cond_syntax_new(ITCOND),  imm * 4)
 	image = format("101100000%s", imm.image)
 	action = {
 		Set_ARM_GPR(13, Get_ARM_GPR(13) + (coerce(u32, imm) << 2));
 	}
 
 op AND_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("ands %s, %s", rd.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("and%s %s, %s",op_cond_syntax_16(ITCOND),  rd.syntax, rm.syntax)
 	image = format("0100000000%s%s", rm.image, rd.image)
 	action = {
 		TMP_REG1 = GPR[rd] & GPR[rm];
@@ -295,7 +318,8 @@ op AND_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 op ASR_thumb = ASR1_thumb | ASR2_thumb
 
 op ASR1_thumb(rd : REG_THUMB_INDEX, rm:REG_THUMB_INDEX, imm : IMM5 )
-	syntax = format("asrs %s, %s, %s", rd.syntax, rm.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("asr%s %s, %s, %s",op_cond_syntax_16(ITCOND),  rd.syntax, rm.syntax, imm.syntax)
 	image = format("00010%s%s%s", imm.image, rm.image,rd.image)
 	action = {
 		if imm == 0 then
@@ -321,7 +345,8 @@ op ASR1_thumb(rd : REG_THUMB_INDEX, rm:REG_THUMB_INDEX, imm : IMM5 )
 	}
 
 op ASR2_thumb(rd : REG_THUMB_INDEX, rs:REG_THUMB_INDEX )
-	syntax = format("asrs %s, %s", rd.syntax, rs.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("asr%s %s, %s",op_cond_syntax_16(ITCOND),  rd.syntax, rs.syntax)
 	image = format("0100000100%s%s", rs.image,rd.image)
 	action = {
 		TMP_IMM = GPR[rs]<7..0>;
@@ -370,9 +395,9 @@ op B_thumb(cond : u4,  simm: SIMM8)
 		case 12: "bgt"
 		case 13: "ble"
 		case 14: "b"
-		case 15: "swi"
+		case 15: "svc" // previously called swi
 		}  
-	syntax = format("%s %08x", syntax_cond, target) 
+	syntax = format("%s.n %08x", syntax_cond, target)
 	image = format("1101%4b%s", cond, simm.image)
 	action = {
 		if (cond == 15 ) then
@@ -390,8 +415,9 @@ op B_thumb(cond : u4,  simm: SIMM8)
 macro SignExtended(v, s) = coerce(int(s), v)
 
 op B_thumb_T2(imm11: int(11))
+	ITCOND = "f_get_update_ITSTATE"()
 	target = __IADDR + 4 + SignExtended(imm11 :: 0<0..0>, 32)
-	syntax = format("b %l", target)
+	syntax = format("b%s.n %l", op_cond_syntax_16(ITCOND), target)
 	image = format("11100 %11b", imm11)
 	action = {
 		// if InITBlock && !LastInITBlock then UNPREDICTABLE
@@ -400,7 +426,8 @@ op B_thumb_T2(imm11: int(11))
 
 
 op BIC_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("bics %s, %s", rd.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("bic%s %s, %s", op_cond_syntax_16(ITCOND),rd.syntax, rm.syntax)
 	image = format("0100001110%s%s", rm.image, rd.image)
 	action = {
 		TMP_REG1 = GPR[rd];
@@ -449,8 +476,9 @@ op BLX_thumb = /*BLX1_thumb |*/ BLX2_thumb
 }*/
 
 
-op BLX2_thumb( rm: REG_INDEX)
-	syntax = format("blx %s", rm.syntax)
+op BLX2_thumb(rm: REG_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("blx%s %s",op_cond_syntax_new(ITCOND), rm.syntax)
 	image  = format("010001111%s000",rm.image)
 	action = {
 		Set_ARM_GPR(14, (__IADDR + 2) | 1);
@@ -460,9 +488,12 @@ op BLX2_thumb( rm: REG_INDEX)
 	}
 
 
-op BX_thumb(rm : REG_INDEX)
-	syntax = format("bx %s", rm.syntax)
-	image  = format("0100 0111 0 %s 000", rm.image)
+op BX_thumb(rm: REG_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("bx%s %s",op_cond_syntax_new(ITCOND), rm.syntax)
+	image  = format("010001 11 0 %s 000", rm.image)
+	target = __IADDR + 2
+	// TODO! Write correct target here!!!
 	action = {
 		TMP_REG1 = Get_ARM_GPR(rm); 
 		TFLAG = TMP_REG1<0..0>;
@@ -471,9 +502,14 @@ op BX_thumb(rm : REG_INDEX)
 
 
 op CBNZ_CBZ_thumb(rn: REG_THUMB_INDEX, i: card(1), imm5: card(5), op_: card(1))
+	ITCOND = "f_get_update_ITSTATE"()
 	imm32 = ZeroExtend(i :: imm5 :: 0b0, 7)
 	target = __IADDR + 4 + imm32
-	syntax = format("cb%sz, %s, #0x%x", if op_ then "n" else "" endif, rn, target)
+	syntax = if(op_ == 0b1) then 
+			format("cbnz%s %s, %d",op_cond_syntax_new(ITCOND), rn.syntax, imm32) 
+		else 
+			format("cbz%s %s, %d",op_cond_syntax_new(ITCOND), rn.syntax, imm32) 
+		endif
 	image = format("1011 %1b 0 %1b 1 %5b %s", op_, i, imm5, rn)
 	nonzero = op_
 	//if InITBlock() then UNPREDICTABLE;
@@ -489,7 +525,8 @@ op COMPARE_thumb = CMN_shr_thumb | CMP_imm_thumb | CMP_shr1_thumb
 				 | CMP_shr2_thumb
 
 op CMN_shr_thumb(rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("cmn %s, %s", rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("cmn%s %s, %s",op_cond_syntax_new(ITCOND), rn.syntax, rm.syntax)
 	image = format("0100001011%s%s", rm.image,  rn.image)
 	action= {
 		TMP_REG1 = GPR[rn];
@@ -507,7 +544,8 @@ op CMN_shr_thumb(rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 
 
 op CMP_imm_thumb(rn : REG_THUMB_INDEX, imm : IMM8)
-	syntax = format("cmp %s, %s", rn.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("cmp%s %s, %s",op_cond_syntax_new(ITCOND), rn.syntax, imm.syntax)
 	image = format("00101%s%s", rn.image, imm.image)
 	action = {
 		TMP_REG1 = GPR[rn];
@@ -523,7 +561,8 @@ op CMP_imm_thumb(rn : REG_THUMB_INDEX, imm : IMM8)
 	}
 
 op CMP_shr1_thumb(rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("cmp %s, %s", rn.syntax,rm.syntax )
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("cmp%s %s, %s",op_cond_syntax_new(ITCOND), rn.syntax,rm.syntax )
 	image = format("0100001010%s%s", rn.image,  rm.image)
 	action = {
 		TMP_REG1 = GPR[rn];
@@ -540,7 +579,8 @@ op CMP_shr1_thumb(rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	}
 
 op CMP_shr2_thumb(H: u1, rn : REG_THUMB_INDEX, rm : REG_INDEX)
-	syntax = format("cmp %s, %s", rn.syntax,rm.syntax ) 
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("cmp%s %s, %s", op_cond_syntax_new(ITCOND),rn.syntax,rm.syntax ) 
 	image = format("01000101%1b%s%s", H, rm.image,  rn.image)
 	action = {        
 		TMP_REG1 = Get_ARM_GPR(rn + if H == 1 then 8 else 0 endif);
@@ -557,7 +597,8 @@ op CMP_shr2_thumb(H: u1, rn : REG_THUMB_INDEX, rm : REG_INDEX)
 	}
 
 op EOR_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("eors %s, %s", rd.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("eor%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax)
 	image = format("0100000001%s%s", rm.image, rd.image)
 	action = {
 		TMP_REG1 = GPR[rd];
@@ -573,7 +614,8 @@ op EOR_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	}
 
 op LDMIA_thumb(rn: REG_THUMB_INDEX, llist: THUMB_REG_LIST)
-	syntax = format("ldmia %s!, {%s}", rn.syntax, llist.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ldmia%s %s, {%s}",op_cond_syntax_new(ITCOND), rn.syntax, llist.syntax)
 	image = format("11001%s%s", rn.image, llist.image)
 	action = {
 		TMP_REGLIST = llist;		  
@@ -625,7 +667,8 @@ op LDMIA_thumb(rn: REG_THUMB_INDEX, llist: THUMB_REG_LIST)
 op LDR_thumb = LDR_imm_thumb | LDR_shr_thumb | LDR_imm2_thumb| LDR_imm3_thumb
 
 op LDR_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
-	syntax = format("ldr %s, [%s, %s * 4]", rd.syntax, rn.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ldr%s %s, [%s, #0x%x]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm*4)
 	image = format("01101%s%s%s", imm.image, rn.image, rd.image)
 	action = {
 		 TMP_START_ADDR  =  GPR[rn] + imm * 4;
@@ -639,7 +682,8 @@ op LDR_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
                  } 
 
 op LDR_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("ldr %s, [%s, %s ]", rd.syntax, rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ldr%s %s, [%s, %s]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0101100%s%s%s", rm.image, rn.image, rd.image)
 	action = {
 		 TMP_START_ADDR  =  GPR[rn] + GPR[rm];
@@ -653,7 +697,8 @@ op LDR_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IND
                  } 
 
 op LDR_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
-	syntax = format("ldr %s, [PC, %s * 4]", rd.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ldr%s %s, [PC, #%d]",op_cond_syntax_new(ITCOND), rd.syntax, imm*4)
 	image = format("01001%s%s", rd.image, imm.image)
 	action = {
 	         TMP_REG1 = __IADDR + 8;
@@ -664,7 +709,8 @@ op LDR_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
                  } 
 
 op LDR_imm3_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
-	syntax = format("ldr %s, [SP, %s * 4]", rd.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ldr%s %s, [SP, #%d]",op_cond_syntax_new(ITCOND), rd.syntax, imm*4)
 	image = format("10011%s%s", rd.image, imm.image)
 	action = {
 		 TMP_START_ADDR = Get_ARM_GPR(13) + (coerce(u32, imm) << 2);
@@ -691,7 +737,8 @@ op LDRB_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
                  } 
 
 op LDRB_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("ldrb %s, [%s, %s ]", rd.syntax, rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ldrb%s %s, [%s, %s]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0101110%s%s%s", rm.image, rn.image, rd.image)
 	action = {
 		 TMP_START_ADDR  =  GPR[rn] + GPR[rm];
@@ -704,7 +751,8 @@ op LDRB_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IN
 op LDRH_thumb = LDRH_imm_thumb | LDRH_shr_thumb
 
 op LDRH_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
-	syntax = format("ldrh %s, [%s, %s * 2]", rd.syntax, rn.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ldrh%s %s, [%s, #%d]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm*2)
 	image = format("10001%s%s%s", imm.image, rn.image, rd.image)
 	action = {
 		 TMP_START_ADDR  =  GPR[rn] + imm * 2;
@@ -715,7 +763,8 @@ op LDRH_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 
 
 op LDRH_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("ldrh %s, [%s, %s ]", rd.syntax, rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ldrh%s %s, [%s, %s]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0101101%s%s%s", rm.image, rn.image, rd.image)
 	action = {
 		 TMP_START_ADDR  =  GPR[rn] + GPR[rm];
@@ -732,7 +781,8 @@ op LDRH_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IN
 op LDRS_thumb = LDRSB_thumb | LDRSH_thumb
 
 op LDRSB_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("ldrsb %s, [%s, %s ]", rd.syntax, rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ldrsb%s %s, [%s, %s]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0101011%s%s%s", rm.image, rn.image, rd.image)
 	action = {
 		 
@@ -751,7 +801,8 @@ op LDRSB_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX
                  } 
 
 op LDRSH_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("ldrsh %s, [%s, %s ]", rd.syntax, rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ldrsh%s %s, [%s, %s]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0101111%s%s%s", rm.image, rn.image, rd.image)
 	action = {
 		 
@@ -777,7 +828,8 @@ op LDRSH_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX
 op LSL_thumb = LSL_imm_thumb | LSL_shr_thumb
 
 op LSL_imm_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX, imm: IMM5)
-	syntax = format("lsls %s, %s, %s", rd.syntax, rm.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("lsl%s %s, %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax, imm.syntax)
 	image = format("00000%s%s%s", imm.image, rm.image, rd.image)
 	action = {  
 		if(imm == 0) then
@@ -797,7 +849,8 @@ op LSL_imm_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX, imm: IMM5)
 	}
 
 op LSL_shr_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
-	syntax = format("lsls %s, %s", rd.syntax, rs.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("lsl%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rs.syntax)
 	image = format("0100000010%s%s", rs.image, rd.image)
 	action = {  
 		TMP_IMM = GPR[rs]<7..0>;
@@ -826,7 +879,8 @@ op LSL_shr_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
 op LSR_thumb = LSR_imm_thumb | LSR_shr_thumb
 
 op LSR_imm_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX, imm: IMM5)
-	syntax = format("lsrs %s, %s, %s", rd.syntax, rm.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("lsr%s %s, %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax, imm.syntax)
 	image = format("00001%s%s%s", imm.image, rm.image, rd.image)
 	action = {  
 		TMP_REG1 = GPR[rd];
@@ -849,7 +903,8 @@ op LSR_imm_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX, imm: IMM5)
 }
 
 op LSR_shr_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
-	syntax = format("lsrs %s, %s", rd.syntax, rs.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("lsr%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rs.syntax)
 	image = format("0100000011%s%s", rs.image, rd.image)
 	action = {  
 		TMP_IMM = GPR[rs]<7..0>;
@@ -878,7 +933,8 @@ op LSR_shr_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
 op MOV_thumb = MOV_imm_thumb | MOV_shr2_thumb
 
 op MOV_imm_thumb(rd : REG_THUMB_INDEX, imm : IMM8)
-	syntax = format("movs %s, %s", rd.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("mov%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, imm.syntax)
 	image = format("00100%s%s", rd.image, imm.image)
 	action = {
 	     TMP_REG1 = imm;
@@ -893,7 +949,8 @@ op MOV_imm_thumb(rd : REG_THUMB_INDEX, imm : IMM8)
 	}
 
 op MOV_shr_thumb(rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX)
-	syntax = format("movs %s, %s", rd.syntax, rn.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("mov%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rn.syntax)
 	image = format("0001110000%s%s", rn.image, rd.image)
 	action = {
 		TMP_REG1 = GPR[rn];
@@ -907,7 +964,8 @@ op MOV_shr_thumb(rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX)
 	}
 
 op MOV_shr2_thumb(H: u1, rd: REG_THUMB_INDEX, rm: REG_INDEX)
-	syntax = format("mov %s, %s", if H then rd.hsyntax else rd.syntax endif, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("mov%s %s, %s",op_cond_syntax_16(ITCOND), if H then rd.hsyntax else rd.syntax endif, rm.syntax)
 	image = format("01000110%1b%s%s", H, rm.image, rd.image)    
 	action = {
 		Set_ARM_GPR(rd + if H == 1 then 8 else 0 endif, Get_ARM_GPR(rm));
@@ -917,7 +975,8 @@ op MOV_shr2_thumb(H: u1, rd: REG_THUMB_INDEX, rm: REG_INDEX)
 
 
 op MUL_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-       	syntax = format("muls %s, %s", rd.syntax, rm.syntax)
+    ITCOND = "f_get_update_ITSTATE"()
+    syntax = format("mul%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax)
 	image = format("0100001101%s%s", rm.image, rd.image)
 	action = {
 	       TMP_REG1 = GPR[rd];
@@ -933,7 +992,8 @@ op MUL_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	}
 
 op MVN_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-       	syntax = format("mvns %s, %s", rd.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("mvn%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax)
 	image = format("0100001111%s%s", rm.image, rd.image)
 	action = {
 	       TMP_REG1 = ~GPR[rm];
@@ -948,7 +1008,8 @@ op MVN_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	}
 
 op NEG_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-       	syntax = format("negs %s, %s", rd.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("neg%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax)
 	image = format("0100001001%s%s", rm.image, rd.image)
 	action = {
 	       TMP_SWORD = 0 - GPR[rm];
@@ -966,7 +1027,8 @@ op NEG_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	}
 
 op ORR_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("orrs %s, %s", rd.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("orr%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax)
 	image = format("0100001100%s%s", rm.image, rd.image)
 	action = {
 		TMP_REG1 = GPR[rd] | GPR[rm];
@@ -981,7 +1043,8 @@ op ORR_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 
 
 op POP_thumb(P: setR_T, llist: THUMB_REG_LIST)
-	syntax = format("pop {%s%s}", llist.syntax,
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("pop%s {%s%s}",op_cond_syntax_new(ITCOND), llist.syntax,
 		if !P then "" else if llist then ", pc" else "pc" endif endif)
 	image = format("1011 110 %s%s", P.image, llist.image)
 	action = {  
@@ -1040,329 +1103,372 @@ op POP_thumb(P: setR_T, llist: THUMB_REG_LIST)
 
 
 op PUSH_thumb(P: setR_T, llist: THUMB_REG_LIST)
-   syntax = format("push {%s%s}", llist.syntax,
-   	if !P then "" else if llist then ", lr" else "lr" endif endif)
-   image = format("1011010%s%s", P.image, llist.image)
-   action = {
-	  
-                  //reg_list.action;
-		  TMP_REGLIST = llist;		  
-		  //Compute number of set bits in the register list to compute the start address
-		  TMP_IMM  = 0;
-		  TMP_SETBIT = 0;
-		  B15SET = 0;
-                  TMP_REG1 = Get_ARM_GPR(13);
-		  number_of_set_bits_in;
-                  TMP_START_ADDR = TMP_REG1 -((R + TMP_SETBIT) * 4  ) ; 
-		  TMP_END_ADDR = TMP_START_ADDR ;
-                  TMP_IMM = 0;
-                  boucle;
-		  if (P == 1) then
-		     TMP_REG2 = Get_ARM_GPR(14);
-		     M[TMP_START_ADDR] = TMP_REG2;
-		     TMP_START_ADDR = TMP_START_ADDR + 4;
-		   endif;
-                   Set_ARM_GPR(13, TMP_END_ADDR);
-   //Note that the assert mode is not implemented, programmer may take
-  //		  care of the address in paramater !                            
-
-             }
-   number_of_set_bits_in = {
-	     //Count the amount of bits into the list
-             if (TMP_IMM != 8) then
-		  if (TMP_REGLIST & 1 == 1) then
-		     TMP_SETBIT = TMP_SETBIT + 1;
-		     if (TMP_IMM == 7) then
-			B15SET = 1;
-		     endif;		     
-		  endif;
-		  TMP_REGLIST = TMP_REGLIST >> 1;
-		  TMP_IMM = TMP_IMM + 1;
-		  number_of_set_bits_in;
-	       endif;
-	       }  
-
-    boucle = {
-               if (TMP_IMM != 8) then
-                    if (TMP_REGLIST & 1 == 1) then
-		        M[TMP_START_ADDR] = GPR[TMP_IMM];
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("push%s {%s%s}",op_cond_syntax_new(ITCOND), llist.syntax,
+   			if !P then "" else if llist then ", lr" else "lr" endif endif)
+   	image = format("1011010%s%s", P.image, llist.image)
+   	action = {
+   		//reg_list.action;
+   		TMP_REGLIST = llist;		  
+		//Compute number of set bits in the register list to compute the start address
+		TMP_IMM  = 0;
+		TMP_SETBIT = 0;
+		B15SET = 0;
+		TMP_REG1 = Get_ARM_GPR(13);
+		number_of_set_bits_in;
+		TMP_START_ADDR = TMP_REG1 -((R + TMP_SETBIT) * 4  ) ; 
+		TMP_END_ADDR = TMP_START_ADDR ;
+		TMP_IMM = 0;
+		boucle;
+		if (P == 1) then
+			TMP_REG2 = Get_ARM_GPR(14);
+			M[TMP_START_ADDR] = TMP_REG2;
 			TMP_START_ADDR = TMP_START_ADDR + 4;
-		    endif;
-		  TMP_REGLIST = TMP_REGLIST >> 1;
-                  TMP_IMM = TMP_IMM + 1;
-	          boucle;
-                endif;
-               }
+		endif;
+		Set_ARM_GPR(13, TMP_END_ADDR);
+ 		//Note that the assert mode is not implemented, programmer may take
+		//		  care of the address in paramater !                            
+	}
+	number_of_set_bits_in = {
+		//Count the amount of bits into the list
+		if (TMP_IMM != 8) then
+			if (TMP_REGLIST & 1 == 1) then
+				TMP_SETBIT = TMP_SETBIT + 1;
+				if (TMP_IMM == 7) then
+					B15SET = 1;
+				endif;		     
+			endif;
+			TMP_REGLIST = TMP_REGLIST >> 1;
+			TMP_IMM = TMP_IMM + 1;
+			number_of_set_bits_in;
+		endif;
+	}  
+    boucle = {
+    	if (TMP_IMM != 8) then
+    		if (TMP_REGLIST & 1 == 1) then
+    			M[TMP_START_ADDR] = GPR[TMP_IMM];
+				TMP_START_ADDR = TMP_START_ADDR + 4;
+			endif;
+			TMP_REGLIST = TMP_REGLIST >> 1;
+			TMP_IMM = TMP_IMM + 1;
+			boucle;
+		endif;
+	}
+
+
+op REV_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("rev%s %s, %s",op_cond_syntax_new(ITCOND), rd, rm) // REV<c> <Rd>,<Rm>
+	image = format("1011 1010 00 %s %s", rm, rd)
+	action = {
+		TMP_UREG1 = Get_ARM_GPR(rm);
+		
+		TMP_UREG2<31..24> = TMP_UREG1<7..0>;
+		TMP_UREG2<23..16> = TMP_UREG1<15..8>;
+		TMP_UREG2<15..8> = TMP_UREG1<23..16>;
+		TMP_UREG2<7..0> = TMP_UREG1<31..24>;
+
+		Set_ARM_GPR(rd, TMP_UREG2);
+	}
+
+
+op REV16_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("rev16%s %s, %s",op_cond_syntax_new(ITCOND), rd, rm) // REV16<c> <Rd>,<Rm>
+	image = format("1011 1010 01 %s %s", rm, rd)
+	action = {
+		TMP_UREG1 = Get_ARM_GPR(rm);
+		
+		TMP_UREG2<31..24> = TMP_UREG1<23..16>;
+		TMP_UREG2<23..16> = TMP_UREG1<31..24>;
+		TMP_UREG2<15..8> = TMP_UREG1<7..0>;
+		TMP_UREG2<7..0> = TMP_UREG1<15..8>;
+
+		Set_ARM_GPR(rd, TMP_UREG2);
+	}
+
+
+op REVSH_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("revsh%s %s, %s",op_cond_syntax_new(ITCOND), rd, rm) // REVSH<c> <Rd>,<Rm>
+	image = format("1011 1010 11 %s %s", rm, rd)
+	action = {
+		TMP_UREG1 = Get_ARM_GPR(rm);
+		
+		TMP_UREG2<31..8> = SignExtend(TMP_UREG1<7..0>,24);
+		TMP_UREG2<7..0> = TMP_UREG1<15..8>;
+
+		Set_ARM_GPR(rd, TMP_UREG2);
+	}
+
 
 op ROR_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
-	syntax = format("rors %s, %s", rd.syntax, rs.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ror%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rs.syntax)
 	image = format("0100000111%s%s", rs.image, rd.image)
 	action = {  
-		 TMP_IMM =  GPR[rs]<7..0>;
-		 TMP_FIVE = GPR[rs]<4..0>; 
-		 TMP_REG1 = GPR[rd];
-	       if (TMP_IMM == 0) then
-	         else
-		   if (TMP_FIVE == 0) then
-		    //  TMP_IMM2 =  TMP_IMM - 1;
-		      CFLAG = TMP_REG1<31..31>;
-		    else 
-			    TMP_IMM2 = TMP_FIVE - 1;
-			    // in the next line, index was missing after GPR
-			    // not sure if [rd] is the good one
-			    CFLAG = GPR[rd]<TMP_IMM2..TMP_IMM2>;
-			    TMP_REG1 = TMP_REG1 >>> TMP_FIVE;
-                          
-		     endif;
-
-		   endif;
-                NFLAG = TMP_REG1<31..31>;
+		TMP_IMM =  GPR[rs]<7..0>;
+		TMP_FIVE = GPR[rs]<4..0>; 
+		TMP_REG1 = GPR[rd];
+		if (TMP_IMM == 0) then
+		else
+			if (TMP_FIVE == 0) then
+				//  TMP_IMM2 =  TMP_IMM - 1;
+				CFLAG = TMP_REG1<31..31>;
+			else 
+				TMP_IMM2 = TMP_FIVE - 1;
+				// in the next line, index was missing after GPR
+				// not sure if [rd] is the good one
+				CFLAG = GPR[rd]<TMP_IMM2..TMP_IMM2>;
+				TMP_REG1 = TMP_REG1 >>> TMP_FIVE;
+			endif;
+		endif;
+		NFLAG = TMP_REG1<31..31>;
 		if TMP_REG1 == 0 then 
-		   ZFLAG = 1; 
-	        else 
-		   ZFLAG = 0; 
-	        endif; 	   
+			ZFLAG = 1; 
+		else 
+			ZFLAG = 0; 
+		endif; 	   
 		GPR[rd]= TMP_REG1;
-            }
+	}
 
 
 op SBC_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-   syntax = format("sbcs %s, %s", rd.syntax, rm.syntax)
-   image = format("0100000110%s%s", rm.image, rd.image)
-   action = {
-	        TMP_REG1 = GPR[rd];
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("sbc%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax)
+	image = format("0100000110%s%s", rm.image, rd.image)
+	action = {
+		TMP_REG1 = GPR[rd];
 		TMP_REG2 = GPR[rm];
 		TMP_BIT = !CFLAG;
 		TMP_SWORD = TMP_REG1 - TMP_REG2 - !CFLAG; 
 		TMP_REG1 = TMP_SWORD;
 		NFLAG = TMP_REG1<31..31>; 
 		if TMP_REG1 == 0 then 
-		   ZFLAG = 1; 
-		   else 
-		 ZFLAG = 0; 
-		 endif; 
-// a revoir \
-	      CFLAG =  ! CarryFromSub(TMP_REG1,TMP_REG1, TMP_BIT);
-	      VFLAG = OverflowFromSub(TMP_REG1,TMP_REG1,TMP_BIT); 
-	    
-	 
+			ZFLAG = 1; 
+		else 
+			ZFLAG = 0; 
+		endif; 
+		// a revoir \
+		CFLAG =  ! CarryFromSub(TMP_REG1,TMP_REG1, TMP_BIT);
+		VFLAG = OverflowFromSub(TMP_REG1,TMP_REG1,TMP_BIT);  
 	}
 
 op STMIA_thumb(rn: REG_THUMB_INDEX, llist: THUMB_REG_LIST)
-   syntax = format("stmia %s!, {%s}", rn.syntax, llist.syntax)
-   image = format("11000%s%s", rn.image, llist.image)
-   action = {
-		  //reg_list.action;
-                  TMP_REGLIST = llist;		  
-		  //Compute number of set bits in the register list to compute the start address
-		  TMP_IMM  = 0;
-		  TMP_SETBIT = 0;
-		  B15SET = 0;
-                  TMP_REG1 = GPR[rn];
-		  number_of_set_bits_in;
-                  TMP_START_ADDR = TMP_REG1;
-		  TMP_END_ADDR = TMP_REG1 + (TMP_SETBIT * 4) - 4;
-                  TMP_IMM = 0;
-                  boucle;
-                  TMP_END_ADDR = TMP_START_ADDR - 4;
-                  GPR[rn] = TMP_REG1 + TMP_SETBIT * 4;              
- //Note that the assert mode is not implemented, programmer may take
-  //		  care about the address in paramater !                            
-
-             }
-   number_of_set_bits_in = {
-	     //Count the amount of bits into the list
-             if (TMP_IMM != 8) then
-		  if (TMP_REGLIST & 1 == 1) then
-		     TMP_SETBIT = TMP_SETBIT + 1;
-		     if (TMP_IMM == 7) then
-			B15SET = 1;
-		     endif;		     
-		  endif;
-		  TMP_REGLIST = TMP_REGLIST >> 1;
-		  TMP_IMM = TMP_IMM + 1;
-		  number_of_set_bits_in;
-	       endif;
-	       }  
-
-    boucle = {
-               if (TMP_IMM != 8) then
-                    if (TMP_REGLIST & 1 == 1) then
-		        M[TMP_START_ADDR] = GPR[TMP_IMM] ;
-			TMP_START_ADDR = TMP_START_ADDR + 4;
-		    endif;
-		  TMP_REGLIST = TMP_REGLIST >> 1;
-                  TMP_IMM = TMP_IMM + 1;
-	          boucle;
-                endif;
-               }
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("stmia%s %s!, {%s}",op_cond_syntax_new(ITCOND), rn.syntax, llist.syntax)
+	image = format("11000%s%s", rn.image, llist.image)
+	action = {
+		//reg_list.action;
+		TMP_REGLIST = llist;		  
+		//Compute number of set bits in the register list to compute the start address
+		TMP_IMM  = 0;
+		TMP_SETBIT = 0;
+		B15SET = 0;
+		TMP_REG1 = GPR[rn];
+		number_of_set_bits_in;
+		TMP_START_ADDR = TMP_REG1;
+		TMP_END_ADDR = TMP_REG1 + (TMP_SETBIT * 4) - 4;
+		TMP_IMM = 0;
+		boucle;
+		TMP_END_ADDR = TMP_START_ADDR - 4;
+		GPR[rn] = TMP_REG1 + TMP_SETBIT * 4;              
+		//Note that the assert mode is not implemented, programmer may take
+		//		  care about the address in paramater !
+		}
+	number_of_set_bits_in = {
+		//Count the amount of bits into the list
+		if (TMP_IMM != 8) then
+			if (TMP_REGLIST & 1 == 1) then
+				TMP_SETBIT = TMP_SETBIT + 1;
+				if (TMP_IMM == 7) then
+					B15SET = 1;
+				endif;		     
+			endif;
+			TMP_REGLIST = TMP_REGLIST >> 1;
+			TMP_IMM = TMP_IMM + 1;
+			number_of_set_bits_in;
+		endif;
+	}  
+	boucle = {
+		if (TMP_IMM != 8) then
+			if (TMP_REGLIST & 1 == 1) then
+				M[TMP_START_ADDR] = GPR[TMP_IMM] ;
+				TMP_START_ADDR = TMP_START_ADDR + 4;
+			endif;
+			TMP_REGLIST = TMP_REGLIST >> 1;
+			TMP_IMM = TMP_IMM + 1;
+			boucle;
+		endif;
+	}
 
 op STR_thumb = STR_imm_thumb | STR_shr_thumb | STR_imm2_thumb
 
 op STR_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
-	syntax = format("str %s, [%s, %s * 4]", rd.syntax, rn.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("str%s %s, [%s, #%d]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm*4)
 	image = format("01100%s%s%s", imm.image, rn.image, rd.image)
 	action = {
-		 TMP_START_ADDR  =  GPR[rn] + imm * 4;
-		 if ((TMP_START_ADDR & 3 ) == 0) then
-                      M[TMP_START_ADDR] =  GPR[rd];
-                 else
-                    M[TMP_START_ADDR] = UNPREDICTABLE;
-                  endif;
-                                
-                 } 
+		TMP_START_ADDR  =  GPR[rn] + imm * 4;
+		if ((TMP_START_ADDR & 3 ) == 0) then
+			M[TMP_START_ADDR] =  GPR[rd];
+		else
+			M[TMP_START_ADDR] = UNPREDICTABLE;
+		endif;
+	} 
 
 op STR_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("str %s, [%s, %s ]", rd.syntax, rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("str%s %s, [%s, %s]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0101000%s%s%s", rm.image, rn.image, rd.image)
 	action = {
-		 TMP_START_ADDR  =  GPR[rn] + GPR[rm];
-		 if ((TMP_START_ADDR & 3 ) == 0) then
-                       M[TMP_START_ADDR] = GPR[rd];
-                 else
-                     M[TMP_START_ADDR] = UNPREDICTABLE;
-                  endif;
-                 
-                 
-                 } 
-
-
+		TMP_START_ADDR  =  GPR[rn] + GPR[rm];
+		if ((TMP_START_ADDR & 3 ) == 0) then
+			M[TMP_START_ADDR] = GPR[rd];
+		else
+			M[TMP_START_ADDR] = UNPREDICTABLE;
+		endif;
+	} 
 
 op STR_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
-	syntax = format("str %s, [SP, %s * 4]", rd.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("str%s %s, [SP, #%d]",op_cond_syntax_new(ITCOND), rd.syntax, imm*4)
 	image = format("10010%s%s", rd.image, imm.image)
 	action = {
-	         TMP_REG1 = Get_ARM_GPR(13); // SP
-		 TMP_START_ADDR = TMP_REG1 + imm *4;
-                 if ((TMP_START_ADDR & 3 ) == 0) then
-                      M[TMP_START_ADDR] = GPR[rd];
-                 else
-                    M[TMP_START_ADDR] = UNPREDICTABLE;
-                  endif;
-                 GPR[rd] = TMP_REG1;
-		                               
-                 } 
+		TMP_REG1 = Get_ARM_GPR(13); // SP
+		TMP_START_ADDR = TMP_REG1 + imm *4;
+		if ((TMP_START_ADDR & 3 ) == 0) then
+			M[TMP_START_ADDR] = GPR[rd];
+		else
+			M[TMP_START_ADDR] = UNPREDICTABLE;
+		endif;
+		GPR[rd] = TMP_REG1;
+	} 
 
 
 op STRB_thumb = STRB_imm_thumb | STRB_shr_thumb
 
 op STRB_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
-	syntax = format("strb %s, [%s, %s]", rd.syntax, rn.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("strb%s %s, [%s, %s]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm.syntax)
 	image = format("01110%s%s%s", imm.image, rn.image, rd.image)
 	action = {
-		 TMP_START_ADDR  =  GPR[rn] + imm ;
-		 TMP_IMM2 = GPR[rd]<7..0>; 
-		 M[TMP_START_ADDR] = TMP_IMM2;
-                  } 
+		TMP_START_ADDR  =  GPR[rn] + imm ;
+		TMP_IMM2 = GPR[rd]<7..0>; 
+		M[TMP_START_ADDR] = TMP_IMM2;
+	} 
 
 op STRB_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("strb %s, [%s, %s ]", rd.syntax, rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("strb%s %s, [%s, %s]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0101010%s%s%s", rm.image, rn.image, rd.image)
 	action = {
-		  TMP_START_ADDR  =  GPR[rn] + GPR[rm];
-		  TMP_IMM2 = GPR[rd]<7..0>; 
-		  M[TMP_START_ADDR] = TMP_IMM2;
-                 } 
+		TMP_START_ADDR  =  GPR[rn] + GPR[rm];
+		TMP_IMM2 = GPR[rd]<7..0>; 
+		M[TMP_START_ADDR] = TMP_IMM2;
+	} 
 
 
 op STRH_thumb = STRH_imm_thumb | STRH_shr_thumb
 
 op STRH_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
-	syntax = format("strh %s, [%s, %s * 2]", rd.syntax, rn.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("strh%s %s, [%s, #%d]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm*2)
 	image = format("10000%s%s%s", imm.image, rn.image, rd.image)
 	action = {
-		 TMP_START_ADDR  =  GPR[rn] + imm * 2;
-		 TMP_REGLIST = GPR[rd]<15..0>;
-                 if ((TMP_START_ADDR & 3 ) == 0) then
-                      M[TMP_START_ADDR] = TMP_REGLIST;
-                 else
-                    M[TMP_START_ADDR] = UNPREDICTABLE;
-                  endif;
-		              
-                 } 
+		TMP_START_ADDR  =  GPR[rn] + imm * 2;
+		TMP_REGLIST = GPR[rd]<15..0>;
+		if ((TMP_START_ADDR & 3 ) == 0) then
+			M[TMP_START_ADDR] = TMP_REGLIST;
+		else
+			M[TMP_START_ADDR] = UNPREDICTABLE;
+		endif;
+	} 
 
 
 op STRH_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
-	syntax = format("strh %s, [%s, %s ]", rd.syntax, rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("strh%s %s, [%s, %s ]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0101001%s%s%s", rm.image, rn.image, rd.image)
 	action = {
-		 TMP_START_ADDR  =  GPR[rn] + GPR[rm];
-		 TMP_REGLIST = GPR[rd]<15..0>;
-                 if ((TMP_START_ADDR & 3 ) == 0) then
-                      M[TMP_START_ADDR] = TMP_REGLIST;
-                 else
-                    M[TMP_START_ADDR] = UNPREDICTABLE;
-                  endif;
-                
-                 } 
+		TMP_START_ADDR  =  GPR[rn] + GPR[rm];
+		TMP_REGLIST = GPR[rd]<15..0>;
+		if ((TMP_START_ADDR & 3 ) == 0) then
+			M[TMP_START_ADDR] = TMP_REGLIST;
+		else
+			M[TMP_START_ADDR] = UNPREDICTABLE;
+		endif;
+	} 
 
 
 op SUB_thumb =  SUB_imm1_thumb | SUB_imm2_thumb | SUB_imm3_thumb
 |  SUB_reg_thumb 
 
 op SUB_imm1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM3)
-	syntax = format("subs %s, %s, %s", rd.syntax, rn.syntax, imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("sub%s %s, %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rn.syntax, imm.syntax)
 	image = format("0001111%s%s%s", imm.image, rn.image, rd.image)
 	action = {
-	            TMP_REG1 = Get_THUMB_GPR(rd);
-                    TMP_REG2 = Get_THUMB_GPR(rn);
-		    TMP_SWORD = TMP_REG2 - imm; 
-		    GPR[rd] = TMP_SWORD;
-                    CFLAG =  CarryFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
-		    VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD); 
-		    TMP_REG1 = Get_THUMB_GPR(rd);
-		    NFLAG = TMP_REG1<31..31>; 
-		    if TMP_REG1 == 0 then 
-		        ZFLAG = 1; 
-	            else 
-			 ZFLAG = 0; 
-	            endif; 
-		   
-	  	}
+		TMP_REG1 = Get_THUMB_GPR(rd);
+		TMP_REG2 = Get_THUMB_GPR(rn);
+		TMP_SWORD = TMP_REG2 - imm;
+		GPR[rd] = TMP_SWORD;
+		CFLAG =  CarryFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
+		VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD); 
+		TMP_REG1 = Get_THUMB_GPR(rd);
+		NFLAG = TMP_REG1<31..31>; 
+		if TMP_REG1 == 0 then 
+			ZFLAG = 1; 
+		else 
+			ZFLAG = 0; 
+		endif;
+	}
 
 op SUB_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
-	syntax = format("subs %s, %s", rd.syntax,imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("sub%s %s, %s",op_cond_syntax_16(ITCOND), rd.syntax,imm.syntax)
 	image = format("00111%s%s", rd.image, imm.image)
 	action = {
-	            TMP_REG1 = Get_THUMB_GPR(rd);
-                    TMP_SWORD = TMP_REG1 - imm; 
-		    GPR[rd] = TMP_SWORD;
-		    CFLAG =  CarryFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
-		    VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD); 
-		    TMP_REG1 = GPR[rd];
-		    NFLAG = TMP_REG1<31..31>; 
-		    if TMP_REG1 == 0 then 
-		        ZFLAG = 1; 
-	            else 
-			 ZFLAG = 0; 
-	            endif;  
-	  	}
+		TMP_REG1 = Get_THUMB_GPR(rd);
+		TMP_SWORD = TMP_REG1 - imm; 
+		GPR[rd] = TMP_SWORD;
+		CFLAG =  CarryFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
+		VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD); 
+		TMP_REG1 = GPR[rd];
+		NFLAG = TMP_REG1<31..31>; 
+		if TMP_REG1 == 0 then 
+			ZFLAG = 1; 
+		else 
+			ZFLAG = 0; 
+		endif;  
+	}
 
 op SUB_reg_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
-	syntax = format("subs %s, %s, %s", rd.syntax, rn.syntax, rm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("sub%s %s, %s, %s",op_cond_syntax_16(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0001101%s%s%s", rm.image, rn.image, rd.image)
 	action = {
-	            TMP_REG1 = GPR[rm];
-                    TMP_REG2 = GPR[rn];
-		    TMP_SWORD = TMP_REG2 - TMP_REG1; 
-		    GPR[rd] = TMP_SWORD;
-                    TMP_REG1 = GPR[rd];
-                    CFLAG =  CarryFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
-		    VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD); 
-		    TMP_REG1 = GPR[rd];
-		    NFLAG = TMP_REG1<31..31>; 
-		    if TMP_REG1 == 0 then 
-		        ZFLAG = 1; 
-	            else 
-			 ZFLAG = 0; 
-	            endif;
-		   
-	  	}
+		TMP_REG1 = GPR[rm];
+		TMP_REG2 = GPR[rn];
+		TMP_SWORD = TMP_REG2 - TMP_REG1; 
+		GPR[rd] = TMP_SWORD;
+		TMP_REG1 = GPR[rd];
+		CFLAG =  CarryFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
+		VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD); 
+		TMP_REG1 = GPR[rd];
+		NFLAG = TMP_REG1<31..31>; 
+		if TMP_REG1 == 0 then 
+			ZFLAG = 1; 
+		else 
+			ZFLAG = 0; 
+		endif;
+	}
 
 
-
+// WARNING! not valid for armv7.
 op SUB_imm3_thumb( imm: IMM7)
-	syntax = format("sub sp, %s * 4", imm.syntax)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("sub%s sp, #%d",op_cond_syntax_new(ITCOND), imm*4)
 	image = format("101100001%s", imm.image)
 	action = {
 		TMP_REG1 = Get_ARM_GPR(13);
@@ -1371,6 +1477,7 @@ op SUB_imm3_thumb( imm: IMM7)
 	}
 
 
+//TODO: delete SWI -> see B_T1_thumb: svc
 op SWI_thumb(imm: IMM8)
    syntax = format("swi %s", imm.syntax)
    image = format("11011111%s",imm.image)
@@ -1391,24 +1498,70 @@ op SWI_thumb(imm: IMM8)
 	}
 
 
-op TST_thumb(rn : REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
-   syntax = format("tst %s, %s",  rn.syntax, rm.syntax)
-   image = format("0100001000%s%s", rm.image,  rn.image)
-   action = {
-	  TMP_REG2 = GPR[rn];
-	  TMP_REG1 = GPR[rm];
-          Temp = TMP_REG2 & TMP_REG1; 
-       NFLAG = Temp<31..31>; 
-       if Temp == 0 then 
-	  ZFLAG = 1; 
-       else 
-	  ZFLAG = 0; 
-       endif; 
-      
+op SXTB_thumb( rd : REG_THUMB_INDEX,  rm: REG_THUMB_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("sxtb%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax)
+	image = format("1011 0010 01 %s %s", rm.image, rd.image)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rm);	          	
+		TMP_REG3 = SignExtend(TMP_REG1<7..0>, 32);
+		Set_ARM_GPR(rd, TMP_REG3);
 	}
 
+op SXTH_thumb( rd : REG_THUMB_INDEX,  rm: REG_THUMB_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("sxth%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax)
+	image = format("1011 0010 00 %s %s", rm.image, rd.image)
+	action = {
+		TMP_REG1 = Get_ARM_GPR(rm);	          	
+		TMP_REG3 = SignExtend(TMP_REG1<15..0>, 32);
+		Set_ARM_GPR(rd, TMP_REG3);
+	}
+	  	
+
+op TST_thumb(rn : REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("tst%s %s, %s", op_cond_syntax_new(ITCOND), rn.syntax, rm.syntax)
+	image = format("0100001000%s%s", rm.image,  rn.image)
+	action = {
+		TMP_REG2 = GPR[rn];
+		TMP_REG1 = GPR[rm];
+		Temp = TMP_REG2 & TMP_REG1; 
+		NFLAG = Temp<31..31>; 
+		if Temp == 0 then 
+			ZFLAG = 1; 
+		else 
+			ZFLAG = 0; 
+		endif;
+	}
 
 op NOP_thumb()
 	syntax = "nop"
 	image = "1011 1111 0000 0000"
 	action = {}
+
+
+// From Jerabek	
+op NOP_thumb_jer(firstcond: card(4), mask: card(4))
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = switch(firstcond::mask) {
+		case 0b00000000: format("nop%s",op_cond_syntax_new(ITCOND))	
+		case 0b00100000: format("wfe%s",op_cond_syntax_new(ITCOND))
+		case 0b00110000: format("wfi%s",op_cond_syntax_new(ITCOND))
+		case 0b00010000: format("yield%s",op_cond_syntax_new(ITCOND))
+		default: if(mask != 0b0000) then 
+			format("it%s %s%s", IT_xyz_syntax(firstcond,mask), 
+					condition_syntax(firstcond), 
+					if("f_set_ITSTATE"(firstcond::mask)) then "" else "" endif) 
+			else "unknown" endif
+		}
+	image = format("1011 1111 %4b %4b", firstcond, mask)
+	action= {
+		//TODO
+
+		// it instruction
+		if(mask != 0b0000) then 
+				ITSTATE<7..0> = firstcond::mask;		
+		endif;
+	}
+ 
