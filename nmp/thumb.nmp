@@ -752,7 +752,7 @@ op LDRH_thumb = LDRH_imm_thumb | LDRH_shr_thumb
 
 op LDRH_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("ldrh%s %s, [%s, #%d]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm*2)
+	syntax = format("ldrh%s %s, [%s, #0x%x]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm*2)
 	image = format("10001%s%s%s", imm.image, rn.image, rd.image)
 	action = {
 		 TMP_START_ADDR  =  GPR[rn] + imm * 2;
