@@ -158,7 +158,6 @@ reg RBIT[1,u1]
 // Generic Register File
 reg GPR[GPRNum, u32]
 
-reg LR[1, u32]			alias = GPR[14]
 reg PC[1, u32] 			alias = GPR[15] pc = 1
 reg NPC[1, u32]
 reg R14_svc [1, u32]	alias = GPR[24]			// TODO: document it
@@ -192,6 +191,8 @@ macro reg_offset(i) = \
 	case reg_id(mode_und, 14): offset_und - 13 \
 	default: 0 \
 	}
+macro LR = GPR[14 + reg_offset(14)]
+
 
 // mode for register access
 mode REG_INDEX(r: card(4)) = r + reg_offset(r)

@@ -65,14 +65,14 @@ extend CMN_shr, CMP_shr, TEQ_shr, TST_shr
 		shifter_operand.used_regs;
 		"write"(Ucpsr);
 	}
-	
+
 extend CMN_imm, CMP_imm, TEQ_imm, TST_imm
 	used_regs = {
 		cond.used_regs;
 		"read"(GPR[rn.number]);
 		"write"(Ucpsr);
 	}
-	
+
 
 extend MOV_shr, MVN_shr
 	used_regs = {
@@ -101,7 +101,7 @@ extend CLZ
 // ****** control instructions ******
 
 extend B_Cond
-	used_regs = { cond.used_regs; if setl then "write"(LR); endif; "write"(PC); }
+	used_regs = { cond.used_regs; if setl then "write"(GPR[14]); endif; "write"(GPR[14]); }
 
 extend BX_ARM
 	used_regs = { cond.used_regs; "read"(GPR[rd.number]); "write"(PC); }
@@ -134,7 +134,7 @@ extend LDR_shr
 		"read"(GPR[rn.number]);
 		"write"(GPR[rd.number]);
 		shifter_operand.used_regs;
-		if setpre == 0 || setw == 1 then "write"(GPR[rn.number]); endif;		
+		if setpre == 0 || setw == 1 then "write"(GPR[rn.number]); endif;
 	}
 
 extend LDRH_shr, LDRSB_shr, LDRSH_shr
@@ -143,7 +143,7 @@ extend LDRH_shr, LDRSB_shr, LDRSH_shr
 		"read"(GPR[rn.number]);
 		"write"(GPR[rd.number]);
 		"read"(GPR[rm.number]);
-		if setpre == 0 || setw == 1 then "write"(GPR[rn.number]); endif;		
+		if setpre == 0 || setw == 1 then "write"(GPR[rn.number]); endif;
 	}
 
 extend STR_shr
