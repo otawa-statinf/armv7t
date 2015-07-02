@@ -124,6 +124,7 @@ reg APSR_V[1, card(1)] alias = VFLAG
 mem M 	[32, u8]  				// 8-bits word memory
 mem M16 [32, u16] alias = M[0]	// 16-bits word memory alias
 mem M32 [32, u32] alias = M[0]	// 32-bits word memory alias
+mem M64 [64, u64] alias = M[0]	// 64-bits word memory alias
 
 macro SetWord(BASE_ADDR,data) 	  =	M32[BASE_ADDR] = data
 macro GetWord(BASE_ADDR) 	  	  = M32[BASE_ADDR]

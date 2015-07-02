@@ -344,7 +344,7 @@ LDR (immediate)
 	A1		4	ok
 LDR (literal)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 LDR (register)
 	T1		4	ok
@@ -356,7 +356,7 @@ LDRB (immediate)
 	T3		6	ok
 	A1		4	ok
 LDRB (literal)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 LDRB (register)
 	T1		4	ok
@@ -381,7 +381,7 @@ LDREXB
 	T1		7	action
 	A1		7
 LDREXD
-	T1		7
+	T1		7	action
 	A1		6
 LDREXH
 	T1		7	action
@@ -392,7 +392,7 @@ LDRH (immediate)
 	T3		6	ok
 	A1		4	ok
 LDRH (literal)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 LDRH (register)
 	T1		4	ok
@@ -407,7 +407,7 @@ LDRSB (immediate)
 	T2		6	ok
 	A1		4	ok
 LDRSB (literal)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 LDRSB (register)
 	T1		4	ok
@@ -422,7 +422,7 @@ LDRSH (immediate)
 	T2		6	ok
 	A1		4	ok
 LDRSH (literal)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 LDRSH (register)
 	T1		4	ok
@@ -450,23 +450,23 @@ LSR (immediate)
 	A1		4	ok
 LSR (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 MCR, MCR2
-	T1		6
+	T1		6	action
 	A1		4	check
-	T2		6
+	T2		6	action
 	A2		4	check
 MCRR, MCRR2
-	T1		6
+	T1		6	action
 	A1		5	check
-	T2		6
-	A2		6
+	T2		6	action
+	A2		6	action
 MLA
-	T1		6
+	T1		6	check
 	A1		4	ok
 MLS
-	T1		6
+	T1		6	ok
 	A1		6
 MOV (immediate)
 	T1		4	ok
@@ -485,13 +485,13 @@ MOVT
 MRC, MRC2
 	T1		6	action
 	A1		4
-	T2		6
-	A2		5
+	T2		6	action
+	A2		5	action
 MRRC, MRRC2
-	T1		6
+	T1		6	action
 	A1		5	check
-	T2		6
-	A2		6
+	T2		6	action
+	A2		6	action
 MRS
 	T1		6	action
 	A1		4	check
@@ -505,11 +505,11 @@ MUL
 	T2		6	check
 	A1		4	ok
 MVN (immediate)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 MVN (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 MVN (register - shifted register)
 	A1		4	ok
@@ -518,11 +518,11 @@ NOP
 	T2		6	ok
 	A1		6
 ORN (immediate)
-	T1		6
+	T1		6	ok
 ORN (register)
-	T1		6
+	T1		6	ok
 ORR (immediate)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 ORR (register)
 	T1		4	ok
@@ -531,25 +531,25 @@ ORR (register)
 ORR (register - shifted register)
 	A1		4	ok
 PKH
-	T1		6
+	T1		6	ok
 	A1		6
 PLD, PLDW (immediate)
-	T1		6
-	T2		6
+	T1		6	action
+	T2		6	action
 	A1		5	check
 PLD (literal)
-	T1		6
+	T1		6	action
 	A1		5	check
 PLD, PLDW (register)
-	T1		6
+	T1		6	action
 	A1		5/7	check
 PLI (immediate, literal)
-	T1		7
-	T2		7
-	T3		7
+	T1		7	action
+	T2		7	action
+	T3		7	action
 	A1		7
 PLI (register)
-	T1		7
+	T1		7	action
 	A1		7
 POP
 	T1		4	ok
@@ -564,66 +564,66 @@ PUSH
 	A1		4	ok
 	A2		4	ok
 QADD
-	T1		6
+	T1		6	ok
 	A1		5	check
 QADD16
-	T1		6
+	T1		6	ok
 	A1		6
 QADD8
-	T1		6
+	T1		6	ok
 	A1		6
 QASX
-	T1		6
+	T1		6	check
 	A1		6
 QDADD
-	T1		6
+	T1		6	ok
 	A1		5	check
 QDSUB
-	T1		6
+	T1		6	ok
 	A1		5	check
 QSAX
-	T1		6
+	T1		6	ok
 	A1		6
 QSUB
-	T1		6
+	T1		6	ok
 	A1		5	check
 QSUB16
-	T1		6
+	T1		6	ok
 	A1		6
 QSUB8
-	T1		6
+	T1		6	ok
 	A1		6
 RBIT
-	T1		6
+	T1		6	ok
 	A1		6
 REV
 	T1		6	ok
-	T2		6
+	T2		6	ok
 	A1		6
 REV16
 	T1		6	ok
-	T2		6
+	T2		6	ok
 	A1		6
 REVSH
 	T1		6	ok
-	T2		6
+	T2		6	ok
 	A1		6
 ROR (immediate)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 ROR (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 RRX
-	T1		6
+	T1		6	ok
 	A1		4	ok
 RSB (immediate)
 	T1		4	ok
 	T2		6	ok
 	A1		4	ok
 RSB (register)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 RSB (register - shifted register)
 	A1		4	ok
@@ -634,31 +634,31 @@ RSC (register)
 RSC (register - shifted register)
 	A1		4	ok
 SADD16
-	T1		6
+	T1		6	ok
 	A1		6
 SADD8
-	T1		6
+	T1		6	ok
 	A1		6
 SASX
-	T1		6
+	T1		6	ok
 	A1		6
 SBC (immediate)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 SBC (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 SBC (register - shifted register)
 	A1		4	ok
 SBFX
-	T1		6
+	T1		6	ok
 	A1		6
 SDIV
-	T1		7
+	T1		7	check
 	A1		7
 SEL
-	T1		6
+	T1		6	ok
 	A1		6
 SETEND
 	T1		6
@@ -686,67 +686,67 @@ SHSUB8
 	T1		6
 	A1		6
 SMLABB, SMLABT, SMLATB, SMLATT
-	T1		6
+	T1		6	ok
 	A1		5	check
 SMLAD
-	T1		6
+	T1		6	ok
 	A1		6
 SMLAL
-	T1		6
+	T1		6	ok
 	A1		5	ok
 SMLALBB, SMLALBT, SMLALTB, SMLALTT
-	T1		6
+	T1		6	ok
 	A1		5	check
 SMLALD
-	T1		6
+	T1		6	ok
 	A1		6
 SMLAWB, SMLAWT
-	T1		6
+	T1		6	ok
 	A1		5	check
 SMLSD
-	T1		6
+	T1		6	ok
 	A1		6
 SMLSLD
-	T1		6
+	T1		6	ok
 	A1		6
 SMMLA
-	T1		6
+	T1		6	ok
 	A1		6
 SMMLS
-	T1		6
+	T1		6	ok
 	A1		6
 SMMUL
-	T1		6
+	T1		6	ok
 	A1		6
 SMUAD
-	T1		6
+	T1		6	ok
 	A1		6
 SMULBB, SMULBT, SMULTB, SMULTT
-	T1		6
+	T1		6	ok
 	A1		5	check
 SMULL
-	T1		6
+	T1		6	ok
 	A1		4	ok
 SMULWB, SMULWT
-	T1		6
+	T1		6	ok
 	A1		5	check
 SMUSD
-	T1		6
+	T1		6	ok
 	A1		6
 SSAT
-	T1		6
+	T1		6	ok
 	A1		6
 SSAT16
-	T1		6
+	T1		6	ok
 	A1		6
 SSAX
-	T1		6
+	T1		6	ok
 	A1		6
 SSUB16
-	T1		6
+	T1		6	ok
 	A1		6
 SSUB8
-	T1		6
+	T1		6	ok
 	A1		6
 STC, STC2
 	T1		6	action
@@ -772,19 +772,19 @@ STR (immediate)
 	A1		4	ok
 STR (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 STRB (immediate)
 	T1		4	ok
 	T2		6	ok
-	T3		6
+	T3		6	ok
 	A1		4	ok
 STRB (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 STRBT
-	T1		6
+	T1		6	ok
 	A1		4	ok
 	A1		4	ok
 STRD (immediate)
@@ -793,32 +793,32 @@ STRD (immediate)
 STRD (register)
 	A1		5	check
 STREX
-	T1		6
+	T1		6	action
 	A1		6
 STREXB
-	T1		7
+	T1		7	action
 	A1		6
 STREXD
-	T1		7
+	T1		7	action
 	A1		6
 STREXH
-	T1		7
+	T1		7	action
 	A1		6
 STRH (immediate)
 	T1		4	ok
-	T2		6
-	T3		6
+	T2		6	ok
+	T3		6	ok
 	A1		4	ok
 STRH (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 STRHT
-	T1		6
+	T1		6	action
 	A1		6
 	A2		6
 STRT
-	T1		6
+	T1		6	action
 	A1		4	check
 	A2		4	check
 SUB (immediate)
@@ -829,165 +829,165 @@ SUB (immediate)
 	A1		4
 SUB (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 SUB (register - shifted register)
 	A1		4	ok
 SUB (SP minus immediate)
 	T1		4	ok
-	T2		6
-	T3		6
+	T2		6	ok
+	T3		6	ok
 	A1		4	ok
 SUB (SP minus register)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 SVC (previously SWI)
-	T1		4	to fix
+	T1		4	action
 	A1		4	to fix
 SWP, SWPB
 	A1		4	ok
 SXTAB
-	T1		6
+	T1		6	ok
 	A1		6
 SXTAB16
-	T1		6
+	T1		6	ok
 	A1		6
 SXTAH
-	T1		6
+	T1		6	ok
 	A1		6
 SXTB
 	T1		6	ok
-	T2		6
+	T2		6	ok
 	A1		6
 SXTB16
-	T1		6
+	T1		6	ok
 	A1		6
 SXTH
 	T1		6	ok
-	T2		6
+	T2		6	ok
 	A1		6
 TBB, TBH
-	T1		6	action
+	T1		6	ok
 TEQ (immediate)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 TEQ (register)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 TEQ (register - shifted register)
 	A1		4
 TST (immediate)
-	T1		6
+	T1		6	ok
 	A1		4	ok
 TST (register)
 	T1		4	ok
-	T2		6
+	T2		6	ok
 	A1		4	ok
 TST (register - shifted register)
 	A1		4	ok
 UADD16
-	T1		6
+	T1		6	ok
 	A1		6
 UADD8
-	T1		6
+	T1		6	ok
 	A1		6
 UASX
-	T1		6
+	T1		6	ok
 	A1		6
 UBFX
-	T1		6
+	T1		6	ok
 	A1		6
 UDF
 	T1		4	check
 	T2		6
 	A1		4	check
 UDIV
-	T1		7
+	T1		7	action
 	A1		7
 UHADD16
-	T1		6
+	T1		6	ok
 	A1		6
 UHADD8
-	T1		6
+	T1		6	ok
 	A1		6
 UHASX
-	T1		6
+	T1		6	ok
 	A1		6
 UHSAX
-	T1		6
+	T1		6	ok
 	A1		6
 UHSUB16
-	T1		6
+	T1		6	ok
 	A1		6
 UHSUB8
-	T1		6
+	T1		6	ok
 	A1		6
 UMAAL
-	T1		6
+	T1		6	ok
 	A1		6
 UMLAL
-	T1		6
+	T1		6	ok
 	A1		4	ok
 UMULL
-	T1		6
+	T1		6	ok
 	A1		4	ok
 UQADD16
-	T1		6
+	T1		6	ok
 	A1		6
 UQADD8
-	T1		6
+	T1		6	ok
 	A1		6
 UQASX
-	T1		6
+	T1		6	ok
 	A1		6
 UQSAX
-	T1		6
+	T1		6	ok
 	A1		6
 UQSUB16
-	T1		6
+	T1		6	ok
 	A1		6
 UQSUB8
-	T1		6
+	T1		6	ok
 	A1		6
 USAD8
-	T1		6
+	T1		6	ok
 	A1		6
 USADA8
-	T1		6
+	T1		6	ok
 	A1		6
 USAT
-	T1		6
+	T1		6	ok
 	A1		6
 USAT16
-	T1		6
+	T1		6	ok
 	A1		6
 USAX
-	T1		6
+	T1		6	ok
 	A1		6
 USUB16
-	T1		6
+	T1		6	ok
 	A1		6
 USUB8
-	T1		6
+	T1		6	ok
 	A1		6
 UXTAB
-	T1		6
+	T1		6	ok
 	A1		6
 UXTAB16
-	T1		6
+	T1		6	ok
 	A1		6
 UXTAH
-	T1		6
+	T1		6	ok
 	A1		6
 UXTB
-	T1		6
-	T2		6
+	T1		6	ok
+	T2		6	ok
 UXTB16
-	T1		6
+	T1		6	ok
 	A1		6
 UXTH
-	T1		6
-	T2		6
+	T1		6	ok
+	T2		6	ok
 	A1		6
 VABA, VABAL
 	AT1		aSIMD

@@ -65,7 +65,6 @@ macro VFPExpandImm_dp(imm8) = coerce(float(52, 12), imm8)
 var r_[1, card(2)]
 var imm32_fp[1, float(23, 9)]
 var imm64_fp[1, float(52, 12)]
-var base[1, card(32)]
 var word1[1, card(32)]
 var word2[1, card(32)]
 
@@ -109,7 +108,8 @@ op VSTR_arm(x: VSTR_arm_list)
 op VSTR_arm_list = VSTR_A1
 
 op VSTR_A1(cond: condition, U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
-	syntax = format("vstr %s, [%s, #%s%d]", Vd, Rn, if U then "" else "-" endif, imm8::0b00)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
 	image = format("%s 1101 %1b %1b 00 %s %4b 1011 %8b", cond, U, Vd.p, Rn, Vd.r, imm8)
 	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
 	single_reg = 0
@@ -146,7 +146,8 @@ op VSTR(x: VSTR_list)
 op VSTR_list = VSTR_T1 | VSTR_T2
 
 op VSTR_T1(U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
-	syntax = format("vstr %s, [%s, #%s%d]", Vd, Rn, if U then "" else "-" endif, imm8::0b00)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
 	image = format("1110 1101 %1b %1b 00 %s %4b 1011 %8b", U, Vd.p, Rn, Vd.r, imm8)
 	single_reg = 0
 	add = U
@@ -157,7 +158,8 @@ op VSTR_T1(U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
 	cond = 1
 
 op VSTR_T2(U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
-	syntax = format("vstr %s, [%s, #%s%d]", Vd, Rn, if U then "" else "-" endif, imm8::0b00)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
 	image = format("1110 1101 %1b %1b 00 %s %4b 1010 %8b", U, Vd.p, Rn, Vd.r, imm8)
 	single_reg = 1
 	add = U
@@ -192,7 +194,8 @@ op VLDR_arm(x: VLDR_arm_list)
 op VLDR_arm_list = VLDR_A1
 
 op VLDR_A1(cond: condition, U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
-	syntax = format("vldr d%d, [%s, #%s%d]", Vd, Rn, if U then "" else "-" endif, imm8 :: 0b00)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vldr%s d%d, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8 :: 0b00)
 	image = format("%s 1101 %1b %1b 0 1 %s  %4b 1011 %8b", cond, U, Vd.p, Rn, Vd.r, imm8)
 	single_reg = 0
 	add = U
@@ -226,7 +229,8 @@ op VLDR(x: VLDR_list)
 op VLDR_list = VLDR_T1 | VLDR_T2
 
 op VLDR_T1(U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
-	syntax = format("vldr d%d, [%s, #%s%d]", Vd, Rn, if U then "" else "-" endif, imm8 :: 0b00)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vldr%s d%d, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8 :: 0b00)
 	image = format("1110 1101 %1b %1b 0 1 %s  %4b 1011 %8b", U, Vd.p, Rn, Vd.r, imm8)
 	single_reg = 0
 	add = U
@@ -236,7 +240,8 @@ op VLDR_T1(U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
 	cond = 1
 
 op VLDR_T2(U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
-	syntax = format("vldr d%d, [%s, #%s%d]", Vd, Rn, if U then "" else "-" endif, imm8 :: 0b00)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vldr%s d%d, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8 :: 0b00)
 	image = format("1110 1101 %1b %1b 0 1 %s  %4b 1010 %8b", U, Vd.p, Rn, Vd.r, imm8)
 	single_reg = 1
 	add = U
@@ -270,7 +275,8 @@ op VMOV_imm(x: VMOV_imm_list)
 op VMOV_imm_list = VMOV_imm_T2_32 | VMOV_imm_T2_64
 
 op VMOV_imm_T2_32(Vd: SingleReg, imm4H: card(4), imm4L: card(4))
-	syntax = format("vmov.f32 %s, #%d", Vd, imm4H::imm4L)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vmov%s.f32 %s, #%d", op_cond_syntax_new(ITCOND), Vd, imm4H::imm4L)
 	image = format("1110 11101 %1b 11 %4b  %4b 101 0 0 0 0 0 %4b", Vd.p, imm4H, Vd.r, imm4L)
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
 	single_register = 1
@@ -281,7 +287,8 @@ op VMOV_imm_T2_32(Vd: SingleReg, imm4H: card(4), imm4L: card(4))
 	regs = 0 // Not used
 
 op VMOV_imm_T2_64(Vd: DoubleReg, imm4H: card(4), imm4L: card(4))
-	syntax = format("vmov.f64 %s, #%d", Vd, imm4H::imm4L)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vmov%s.f64 %s, #%d", op_cond_syntax_new(ITCOND), Vd, imm4H::imm4L)
 	image = format("1110 11101 %1b 11 %4b  %4b 101 1 0 0 0 0 %4b", Vd.p, imm4H, Vd.r, imm4L)
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
 	single_register = 0
@@ -313,7 +320,8 @@ op VMOV_reg(x: VMOV_reg_list)
 op VMOV_reg_list = VMOV_reg_T2_32 | VMOV_reg_T2_64
 
 op VMOV_reg_T2_32(Vd: SingleReg, Vm: SingleReg)
-	syntax = format("vmov.f32 %s, %s", Vd, Vm)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vmov%s.f32 %s, %s", op_cond_syntax_new(ITCOND), Vd, Vm)
 	image = format("1110 11101 %1b 11 0000 %4b 101 0 0 1 %1b 0 %4b", Vd.p, Vd.r, Vm.p, Vm.r)
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors" endif;
 	single_register = 1
@@ -323,7 +331,8 @@ op VMOV_reg_T2_32(Vd: SingleReg, Vm: SingleReg)
 	regs = 0 // Not used
 
 op VMOV_reg_T2_64(Vd: DoubleReg, Vm: DoubleReg)
-	syntax = format("vmov.f64 %s, %s", Vd, Vm)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vmov%s.f64 %s, %s", op_cond_syntax_new(ITCOND), Vd, Vm)
 	image = format("1110 11101 %1b 11 0000 %4b 101 1 0 1 %1b 0 %4b", Vd.p, Vd.r, Vm.p, Vm.r)
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors" endif;
 	single_register = 0 
@@ -335,11 +344,12 @@ op VMOV_reg_T2_64(Vd: DoubleReg, Vm: DoubleReg)
 op VMOV_creg_spreg = VMOV_creg_spreg_T1
 
 op VMOV_creg_spreg_T1(op_: card(1), Vn: SingleReg, Rt: REG_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
 	syntax = 
 		if (op_ == 0b1) then
-			format("vmov %s, %s", Rt, Vn)
+			format("vmov%s %s, %s", op_cond_syntax_new(ITCOND), Rt, Vn)
 		else
-			format("vmov %s, %s", Vn, Rt)
+			format("vmov%s %s, %s", op_cond_syntax_new(ITCOND), Vn, Rt)
 		endif
 	image = format("1110 1110 000 %1b %4b  %s 1010 %1b 00 1 0000", op_, Vn.r, Rt, Vn.p)
 	to_arm_register = op_
@@ -378,7 +388,8 @@ op VSUB_fp(x: VSUB_fp_list)
 op VSUB_fp_list = VSUB_fp_T2_32 | VSUB_fp_T2_64
 
 op VSUB_fp_T2_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
-	syntax = format("vsub.f32 %s, %s, %s", Vd, Vn, Vm)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vsub%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
 	image = format("1110 11100 %1b 11 %4b %4b 101 0 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors"; 
 	advsimd = 0
@@ -388,7 +399,8 @@ op VSUB_fp_T2_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
 	m = UInt(Vm)
 	
 op VSUB_fp_T2_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	syntax = format("vsub.f64 %s, %s, %s", Vd, Vn, Vm)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vsub%s.f64 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
 	image = format("1110 11100 %1b 11 %4b %4b 101 1 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors"; 
 	advsimd = 0
@@ -413,7 +425,8 @@ op VDIV(x: VDIV_list)
 op VDIV_list = VDIV_T1_32 | VDIV_T1_64
 
 op VDIV_T1_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
-	syntax = format("vdiv.f32 %s, %s, %s", Vd, Vn, Vm)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vdiv%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
 	image = format("1110 11101 %1b 00 %4b  %4b 101 0 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
 	dp_operation = 0
@@ -422,7 +435,8 @@ op VDIV_T1_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
 	m = UInt(Vm)
 	
 op VDIV_T1_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	syntax = format("vdiv.f64 %s, %s, %s", Vd, Vn, Vm)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vdiv%s.f64 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
 	image = format("1110 11101 %1b 00 %4b  %4b 101 1 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
 	dp_operation = 1
@@ -434,7 +448,8 @@ op VDIV_T1_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
 op VMRS = VMRS_T1
 
 op VMRS_T1(Rt: REG_INDEX)
-	syntax = format("vmrs %s, fpscr", if Rt.number != 15 then Rt.syntax else "APSR_nzcv" endif)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vmrs%s %s, fpscr", op_cond_syntax_new(ITCOND), if Rt.number != 15 then Rt.syntax else "APSR_nzcv" endif)
 	image = format("1110 11101111 0001  %s 1010 000 1 0000", Rt)
 	//if Rt == 13 && CurrentInstrSet() != InstrSet_ARM then UNPREDICTABLE;
 	t = UInt(Rt)
@@ -473,7 +488,8 @@ op VMUL_fp(x: VMUL_fp_list)
 op VMUL_fp_list = VMUL_fp_T2_32 | VMUL_fp_T2_64
 
 op VMUL_fp_T2_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
-	syntax = format("vmul.f32 %s, %s, %s", Vd, Vn, Vm)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vmul%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
 	image = format("1110 11100 %1b 10 %4b  %4b 101 0 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors" endif;
 	advsimd = 0
@@ -484,7 +500,8 @@ op VMUL_fp_T2_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
 	cond = 1
 
 op VMUL_fp_T2_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	syntax = format("vmul.f64 %s, %s, %s", Vd, Vn, Vm)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vmul%s.f64 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
 	image = format("1110 11100 %1b 10 %4b  %4b 101 1 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
 	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors" endif;
 	advsimd = 0
