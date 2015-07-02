@@ -58,6 +58,12 @@ macro LoadWritePC(address) = \
 	endif
 
 
+// This function returns the PC value. On architecture versions before ARMv7, it
+// is permitted to instead return PC+4, provided it does so consistently. It is
+// used only to describe ARM instructions, so it returns the address of the current 
+// instruction plus 8 (normally) or 12 (when the alternative is permitted).
+macro PCStoreValue() = PC
+
 // value computation
 macro Align(x, n)		=	((x) & ~(n - 1))
 macro ZeroExtend(v, n) 	=	coerce(card(n), v)

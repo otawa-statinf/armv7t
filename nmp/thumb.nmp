@@ -166,7 +166,7 @@ op thumb1_list =
 	| STMIA_thumb | STR_thumb | STRB_thumb | STRH_thumb | SUB_thumb
 	| SXTB_thumb | SXTH_thumb
 	| TST_thumb  |  MOV_thumb //| NOP_thumb // Shadowed by the work from Jerabek
-	| NOP_thumb_jer
+	| NOP_thumb_jer | UXTB_thumb | UXTH_thumb
 
 
 ///////////////////////////////////////////
@@ -376,7 +376,8 @@ op ASR2_thumb(rd : REG_THUMB_INDEX, rs:REG_THUMB_INDEX )
 
 // ****** branch instructions ******
 
-op B_thumb(cond : u4,  simm: SIMM8)
+op B_thumb(cond: u4,  simm: SIMM8)
+	ITCOND = "f_get_update_ITSTATE"()
 	target = __IADDR + 4 + (coerce(s32, simm) << 1)
 	syntax_cond =
 		switch (cond)  {
@@ -395,9 +396,13 @@ op B_thumb(cond : u4,  simm: SIMM8)
 		case 12: "bgt"
 		case 13: "ble"
 		case 14: "b"
-		case 15: "svc" // previously called swi
+		case 15: "svc"
 		}  
-	syntax = format("%s.n %08x", syntax_cond, target)
+	syntax = if(cond == 15) then 
+			format("%s%s %d", syntax_cond, op_cond_syntax_new(ITCOND), coerce(u8, simm))
+		else
+			format("%s.n %08x", syntax_cond, target) 
+		endif
 	image = format("1101%4b%s", cond, simm.image)
 	action = {
 		if (cond == 15 ) then
@@ -1306,7 +1311,7 @@ op STR_thumb = STR_imm_thumb | STR_shr_thumb | STR_imm2_thumb
 
 op STR_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("str%s %s, [%s, #%d]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm*4)
+	syntax = format("str%s %s, [%s, #0x%x]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm*4)
 	image = format("01100%s%s%s", imm.image, rn.image, rd.image)
 	action = {
 		TMP_START_ADDR  =  GPR[rn] + imm * 4;
@@ -1373,7 +1378,7 @@ op STRH_thumb = STRH_imm_thumb | STRH_shr_thumb
 
 op STRH_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("strh%s %s, [%s, #%d]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm*2)
+	syntax = format("strh%s %s, [%s, #0x%x]",op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, imm*2)
 	image = format("10000%s%s%s", imm.image, rn.image, rd.image)
 	action = {
 		TMP_START_ADDR  =  GPR[rn] + imm * 2;
@@ -1565,3 +1570,26 @@ op NOP_thumb_jer(firstcond: card(4), mask: card(4))
 		endif;
 	}
  
+
+// From Jerabek	
+op UXTB_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("uxtb%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax) 
+	image = format("1011 0010 11 %s %s", rm.image, rd.image)
+	action = {
+		TMP_UREG1 = Get_ARM_GPR(rm);
+		TMP_UREG3 = ZeroExtend(TMP_UREG1<7..0>, 32);
+		Set_ARM_GPR(rd, TMP_UREG3);
+	}
+
+
+// From Jerabek	
+op UXTH_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("uxth%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax) 
+	image = format("1011 0010 10 %s %s", rm.image, rd.image)
+	action = {
+		TMP_UREG1 = Get_ARM_GPR(rm);
+		TMP_UREG3 = ZeroExtend(TMP_UREG1<15..0>, 32);
+		Set_ARM_GPR(rd, TMP_UREG3);
+	}
