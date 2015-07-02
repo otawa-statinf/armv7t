@@ -1,5 +1,6 @@
 # FUNCTION main
 	main:
+	_start:
 00008000	adc.w r0, r1, #4
 00008004	adcs.w r0, r1, #0
 00008008	adc.w r1, r2, #255

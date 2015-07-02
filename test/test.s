@@ -1,5 +1,7 @@
-  .syntax unified
-  
+.syntax unified
+
+.global _start
+_start: 
 main:
 @------------------------------------------------------------------------------
 @ ADC (immediate)
