@@ -42,7 +42,7 @@ int display_inst = 0;
 PROC(_state_t) * real_state;
 PROC(_inst_t) *curinstr;
 PROC(_platform_t) *platform;
-PROC(_sim_t) *sim;
+PROC(_sim_t) *iss;
 
 
 pid_t drive_gdb_pid;
@@ -143,15 +143,16 @@ void parse_commandline(int argc, char ** argv) {
 
 void disasm_error_report(char * drive_gdb_reply_buffer, PROC(_state_t) * state, PROC(_inst_t) * instr, int cpt, int do_exit)
 {
-	printf("PC : GDB=%08X, GLISS=%08X\n", gdb_pc, gliss_pc);
+	printf("PC: GDB=%08X, GLISS=%08X\n", gdb_pc, gliss_pc);
 
-	char * reptr;
+	char *reptr;
 
 	/* example of reply: */
 	/* ^done,asm_insns=[{address="0x40000000",func-name="start",offset="0",inst="mov  %g0, %g4"}]\n */
 	/* it's an array [.,.,...], each element is like {address=..,func-name=..,offset=..,inst="disasm"} */
 	/* we replace "},{" by " \n ", "}]" by "\n\0" and we print the whole string */
 	/* beginning after the start of the list "[{" */
+#	if 0
 	while ( (reptr = strstr(drive_gdb_reply_buffer, "},{")) )
 	{
 		*reptr = ' ';
@@ -170,31 +171,30 @@ void disasm_error_report(char * drive_gdb_reply_buffer, PROC(_state_t) * state, 
 	/* cannot use printf as output contains things like %o6, %psr, etc */
 	while (*reptr)
 		putchar(*reptr++);
+#	endif
 
 	/* now gliss disasm */
 	char dis[200];
-	if ( instr )
-	{
+	if(instr) {
 		/* only 1 instr */
 		uint32_t cod = PROC(_mem_read32)(PROC(_get_memory)(platform, ARM_MAIN_MEMORY), gliss_pc);
 		PROC(_disasm)(dis, instr);
-		printf("====GLISS disasm: %08X (%08X)  \"%s\"\n", gliss_pc, cod, dis);
+		printf("%08X\t%08X\t%s\n", gliss_pc, cod, dis);
 	}
-	else
-	{
-		printf("====GLISS disasm: ");
+	else {
 		int n = 0;
-		while (n < cpt)
-		{
-			PROC(_inst_t) *inst = PROC(_decode)(sim->decoder, gliss_pc + (n<<2) /* for RISC 32 bit ISA */);
+		while(n < cpt) {
+			PROC(_inst_t) *inst = PROC(_decode)(iss->decoder, gliss_pc + (n<<2) /* for RISC 32 bit ISA */);
 			PROC(_disasm)(dis, inst);
-			printf("%08X  \"%s\"\n", gliss_pc + (n<<2), dis);
+			printf("%08X\t%s\n", gliss_pc + (n << 2), dis);
 			PROC(_free_inst)(inst);
 			n++;
 		}
 	}
+
 	/*dump_float_registers(real_state);*/
-	if ( exit_on_errors && do_exit ) exit(1);
+	if(exit_on_errors && do_exit)
+		exit(1);
 }
 
 int init_gliss(char * drive_gdb_reply_buffer)
@@ -239,8 +239,8 @@ int init_gliss(char * drive_gdb_reply_buffer)
 	}
 
 	/* make the simulator */
-	sim = PROC(_new_sim)(real_state, 0, exit_addr);
-	if (sim == NULL) {
+	iss = PROC(_new_sim)(real_state, 0, exit_addr);
+	if (iss == NULL) {
 		fprintf(stderr, "ERROR: no more resources\n");
 		exit(2);
 	}
@@ -430,7 +430,7 @@ int main(int argc, char ** argv) {
 	}
 
 	/* check initial state */
-	curinstr = PROC(_decode)(sim->decoder, real_state->GPR[15]);
+	curinstr = PROC(_decode)(iss->decoder, real_state->GPR[15]);
 	read_vars_this_instruction(drive_gdb_reply_buffer);
 	compare_regs_this_instruction(drive_gdb_reply_buffer, real_state, curinstr, instr_count);
 	PROC(_free_inst)(curinstr);
@@ -439,7 +439,7 @@ int main(int argc, char ** argv) {
 	int stall_gdb = 0;
 	if(verbose)
 		printf("INFO: starting cosimulation...\n");
-	while(!arm_is_sim_ended(sim))  {
+	while(!arm_is_sim_ended(iss))  {
 		instr_count++;
 
 		/* update PCs */
@@ -491,13 +491,13 @@ int main(int argc, char ** argv) {
 			exit(1);
 		}
 
-		curinstr = PROC(_decode)(sim->decoder, real_state->GPR[15]);
+		curinstr = PROC(_decode)(iss->decoder, real_state->GPR[15]);
 		if(display_inst) {
 			char buf[256];
 			PROC(_disasm)(buf, curinstr);
 			printf("%08x: %s\n", real_state->GPR[15], buf);
 		}
-		PROC(_step)(sim);
+		PROC(_step)(iss);
 		fflush(stdout);		/* DEBUG */
 
 		read_vars_this_instruction(drive_gdb_reply_buffer);

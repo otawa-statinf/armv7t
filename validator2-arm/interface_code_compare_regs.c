@@ -48,7 +48,7 @@ void compare_regs_this_instruction(char *drive_gdb_reply_buffer, PROC(_state_t) 
 				fprintf(stdout, "\n\nAt initialization (0x%08x), register %s differs\n", gdb_pc, reg_infos[i].name);
 
 			printf("GLISS\t\t\t\t\t\tGDB\nBEFORE               AFTER              BEFORE               AFTER\n\n");
-			if ( ! display_full_dumps )
+			/*if ( ! display_full_dumps )
 			{
 				if (reg_infos[i].size == 64)
 					printf(" %s\t%016llX|%016llX  ||  %016llX|%016llX\n", reg_infos[i].name, reg_infos[i].gliss_last, reg_infos[i].gliss, reg_infos[i].gdb_last, reg_infos[i].gdb);
@@ -57,9 +57,9 @@ void compare_regs_this_instruction(char *drive_gdb_reply_buffer, PROC(_state_t) 
 				printf("Rerun with --full-dumps to get a complete dump of registers\n");
 			}
 			else
-			{
+			{*/
 				dump_regs();
-			}
+			//}
 			fprintf(stdout, "Assembly follows\n");
 			char buffer[100];
 			sprintf(buffer, "-data-disassemble -s 0x%08X -e 0x%08X -- 0\n", gdb_pc, gdb_pc+4);

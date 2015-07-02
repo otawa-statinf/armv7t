@@ -24,12 +24,14 @@ static unsigned int real_idx(arm_state_t * st, unsigned int idx) {
 			return idx;
 	} else if (idx <= 14) {
 		switch (st->APSR & 0x1F) {
-			case 19:	return idx + 10;
-			case 23:	return idx + 12;
-			case 17:	return idx + 8;
-			case 18:	return idx + 16;
-			case 27:	return idx + 14;
-			default:	return idx;
+		case 0b10000:	return idx;			/* user */
+		case 0b10001:	return idx + 8;		/* fiq */
+		case 0b10010:	return idx + 10;	/* irq */
+		case 0b10011:	return idx + 12;	/* svc */
+		case 0b10111:	return idx + 14;	/* abt */
+		case 0b11011:	return idx + 16;	/* und */
+		case 0b11111:	return idx;			/* sys */
+		default:		assert(0); return -1;
 		}
 	} else
 		return 15;
