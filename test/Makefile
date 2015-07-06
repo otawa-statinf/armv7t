@@ -1,4 +1,4 @@
-CC=arm-none-eabi-gcc
+CC=/home/casse/Cross/arm-traces/bin/arm-eabi-gcc
 ifdef OTAWA_HOME
 	ODISASM=$(OTAWA_HOME)/bin/odisasm
 else

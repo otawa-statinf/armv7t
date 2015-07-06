@@ -23,6 +23,8 @@
  * 5	Co-simulation error.
  */
 
+#define startswith(buf, start)	(strncmp(buf, start, strlen(start)) == 0)
+
 /* GLISS headers */
 #include <arm/api.h>
 #include <arm/loader.h>
@@ -80,6 +82,17 @@ uint32_t iss_pc;								/** Current PC of simulator. */
 uint32_t gdb_pc;								/** Current PC of GDB. */
 uint32_t iss_ppc;								/** Previous PC of simulator. */
 uint32_t gdb_ppc;								/** Previous PC of GDB. */
+
+#ifdef ARM_MEM_IO
+#	define MEM_ACCESS_MAX	16
+	typedef struct mem_access_t {
+		uint32_t addr;
+		int size;
+		register_value_t val;
+	} mem_access_t;
+	mem_access_t iss_accesses[MEM_ACCESS_MAX];		/* Record memory accesses. */
+	int iss_access_cnt = 0;							/* Number of memory accesses. */
+#endif
 
 
 /* options */
@@ -219,10 +232,44 @@ void parse_args(int argc, char ** argv) {
 }
 
 
+#ifdef ARM_MEM_IO
+	/**
+	 * Call-back to record memory accesses.
+	 * @param addr			Accessed address.
+	 * @param size			Accessed size.
+	 * @param data			Read / written data.
+	 * @param type_access	Read or write.
+	 * @param cdata			Call-back data.
+	 */
+	void iss_memory_callback(arm_address_t addr, int size, void *data, int type_access, void *cdata) {
+		int i;
+
+		/* determine access array entry */
+		if(type_access == ARM_MEM_READ)
+			return;
+		if(iss_access_cnt >= MEM_ACCESS_MAX) {
+			fprintf(stderr, "WARNING: too many memory access, loosing information.\n");
+			return;
+		}
+		if(size > 8) {
+			fprintf(stderr, "WARNING: too big data access, information lost.\n");
+			return;
+		}
+		i = iss_access_cnt++;
+
+		/* store address and size */
+		iss_accesses[i].addr = addr;
+		iss_accesses[i].size = size;
+		printf("DEBUG: store %08x:%d\n", addr, size);
+	}
+
+#endif
+
+
 /**
  * Start the GLISS simulator. Exit with code 2 in case of failure.
  */
-void iss_start(void) {
+void iss_init(void) {
 	arm_address_t exit_addr = 0;
 
 	/* make the platform */
@@ -272,10 +319,7 @@ void iss_start(void) {
 		exit(2);
 	}
 
-	/* set callback function for IO memory mapped register zones */
-	//leon_set_range_callback(leon_get_memory(platform, LEON_MAIN_MEMORY), 0X80000000, 0xFFFFFFFF, &gdb_callback);
-	// !!DEBUG!! trouble with mem accesses (double accesses like ldd, std, lddf, stdf), it seems
-	//leon_set_range_callback(leon_get_memory(platform, LEON_MAIN_MEMORY), 0X40300000, 0x40400000, &debug_callback);
+	/* make register mapping */
 	{
 		register_bank_t *bank = arm_get_registers();
 		int i;
@@ -321,6 +365,11 @@ void iss_start(void) {
 			}
 
 	}
+
+	/* install memory callback if any */
+#	ifdef ARM_MEM_IO
+	arm_set_range_callback_ex(arm_get_memory(iss_platform, ARM_MAIN_MEMORY), 0, 0xffffffff, iss_memory_callback, 0, ARM_MEM_SPY);
+#	endif
 }
 
 
@@ -337,7 +386,20 @@ uint32_t iss_get_pc(void) {
  * Execute one instruction in ISS.
  */
 void iss_step(void) {
+#	ifdef ARM_MEM_IO
+		iss_access_cnt = 0;
+#	endif
 	arm_step(iss);
+}
+
+
+/**
+ * Read a byte from memory.
+ * @param addr		Address of the byte to read.
+ * @return			Read byte.
+ */
+uint8_t iss_get_byte(arm_address_t addr) {
+	return arm_mem_read8(arm_get_memory(iss_platform, ARM_MAIN_MEMORY), addr);
 }
 
 
@@ -348,16 +410,50 @@ void iss_step(void) {
  */
 char *gdb_read(void) {
 	char *r;
-	do {
-		r = fgets(gdb_buf, sizeof(gdb_buf), gdb_in);
-		if(r == NULL) {
-			fprintf(stderr, "ERROR: broken connection.\n");
-			exit(4);
-		}
-		if(list_gdb)
-			display("GDB: %s", gdb_buf);
-	} while(strcmp(r, "(gdb)") == 0);
+	r = fgets(gdb_buf, sizeof(gdb_buf), gdb_in);
+	if(r == NULL) {
+		fprintf(stderr, "ERROR: broken connection.\n");
+		exit(4);
+	}
+	if(list_gdb)
+		display("GDB: %s", gdb_buf);
 	return r;
+}
+
+
+/**
+ * Check for an error according to a start sequence.
+ * If sequence is found, exit with code 5 and display error following the sequence.
+ */
+void gdb_check(const char *msg, const char *buf, const char *start) {
+	if(startswith(buf, start)) {
+		fprintf(stderr, "ERROR: GDB: %s: %s", msg, buf + strlen(start));
+		exit(5);
+	}
+}
+
+/**
+ * Perform a read on GDB and process error (exiting with code 5).
+ * @return		Filled buffer.
+ */
+char *gdb_read_with_error(void) {
+	char *buf = gdb_read();
+
+	/* eat prompt */
+	while(startswith(buf, "(gdb)"))
+		buf += sizeof("gdb");
+
+	/* manage an error */
+	if(strstr(buf, "^error")) {
+		fprintf(stderr, "ERROR: GDB: error raised: %s", buf + 6);
+		exit(5);
+	}
+
+	/* manager simulator exception */
+	gdb_check("simulator error", buf, "~\"sim: exception: ");
+
+	/* return buf else */
+	return buf;
 }
 
 
@@ -395,21 +491,10 @@ char *gdb_acknowledge(const char *ack) {
 
 	// loop until getting ack
 	do {
-		buf = gdb_read();
-
-		/* remove "(gdb)" boring prompt */
-		while(strncmp(buf, "(gdb)", 5) == 0)
-			buf = buf + 5;
-
+		buf = gdb_read_with_error();
 	} while(*buf != '*' && *buf != '^');
 
-	/* manage an error */
-	if(strstr(buf, "^error")) {
-		fprintf(stderr, "ERROR: GDB: error raised: %s", buf + 6);
-		exit(4);
-	}
-
-	/* unexpected acknoledge */
+	/* unexpected acknowledge */
 	if(!strstr(buf, ack)) {
 		fprintf(stderr, "ERROR: GDB: unexpected acknoledge: %s", buf + sizeof(ack));
 		exit(4);
@@ -430,24 +515,7 @@ void gdb_wait(const char *ack) {
 
 	// loop until getting ack
 	do {
-
-		// read line
-		buf = gdb_read();
-
-		/* remove "(gdb)" boring prompt */
-		while(strncmp(buf, "(gdb)", 5) == 0)
-			buf = buf + 5;
-
-		/* report line? */
-		if(*buf != '*' && *buf != '^')
-			continue;
-
-		/* manage an error */
-		if(strstr(buf, "^error")) {
-			fprintf(stderr, "ERROR: GDB: error raised: %s", buf + 6);
-			exit(4);
-		}
-
+		buf = gdb_read_with_error();
 	} while(!strstr(buf, ack));
 
 }
@@ -672,6 +740,32 @@ void gdb_step(void) {
 
 
 /**
+ * Get byte from GDB memory.
+ * @param addr	Accessed address.
+ * @return		Byte at this address.
+ */
+uint8_t gdb_get_byte(arm_address_t addr) {
+
+	/* send command */
+	{
+		char buf[256];
+		snprintf(buf, sizeof(buf), "-data-read-memory 0x%08x d 1 1 1\n", addr);
+		gdb_command(buf);
+	}
+
+	/* scan the result */
+	{
+		uint8_t data;
+		char *buf = gdb_acknowledge("^done,addr=");
+		gdb_buffer_find(&buf, ",memory=[");
+		gdb_buffer_find(&buf, ",data=[\"");
+		data = strtoul(buf, NULL, 10);
+		return data;
+	}
+}
+
+
+/**
  * Record state from simulator.
  */
 void iss_record_state(void) {
@@ -765,7 +859,7 @@ int main(int argc, char **argv) {
 
 	/* initialization */
 	parse_args(argc, argv);
-	iss_start();
+	iss_init();
 	gdb_start();
 
 	/* PC synchronization */
@@ -834,6 +928,36 @@ int main(int argc, char **argv) {
 				dump_state();
 				exit(5);
 			}
+
+		/* compare memory accesses */
+		for(i = 0; i < iss_access_cnt; i++) {
+			int j;
+
+			/* collect information */
+			uint8_t iss_bytes[iss_accesses[i].size];
+			uint8_t gdb_bytes[iss_accesses[i].size];
+			for(j = 0; j <  iss_accesses[i].size; j++) {
+				iss_bytes[j] = iss_get_byte(iss_accesses[i].addr + j);
+				gdb_bytes[j] = gdb_get_byte(iss_accesses[i].addr + j);
+			}
+
+			/* compare data */
+			for(j = 0; j <  iss_accesses[i].size; j++) {
+				if(iss_bytes[j] != gdb_bytes[j]) {
+					fprintf(stderr, "ERROR: difference found for bytes at address %08x:%x ", iss_accesses[i].addr + j, iss_accesses[i].size);
+					for(j = 0; j <  iss_accesses[i].size; j++)
+						printf("%02x", iss_bytes[j]);
+					printf(" (ISS), ");
+					for(j = 0; j <  iss_accesses[i].size; j++)
+						printf("%02x", gdb_bytes[j]);
+					printf(" (GDB)\n");
+					dump_inst(iss_ppc);
+					printf("Current state:\n");
+					dump_state();
+					exit(5);
+				}
+			}
+		}
 
 	}
 
