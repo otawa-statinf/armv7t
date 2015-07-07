@@ -6,7 +6,7 @@ else
 endif
 CPU=cortex-m4
 ASFLAGS=-x assembler-with-cpp 
-CFLAGS=-nostartfiles -mthumb -mcpu=$(CPU)
+CFLAGS=-nostartfiles -mthumb -mcpu=$(CPU) -g
 BIN=test
 
 all: $(BIN) $(BIN).odis $(BIN).cmp 

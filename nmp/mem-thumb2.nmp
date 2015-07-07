@@ -86,8 +86,8 @@ op LDR_reg_Thumb(x: LDR_reg_Thumb_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
-			offset_addr = R[x.n] + offset;
+			Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
+			offset_addr = GPR[x.n] + offset;
 			address = offset_addr;
 			data32 = M32[address];
 			if x.t == 15 then
@@ -96,9 +96,9 @@ op LDR_reg_Thumb(x: LDR_reg_Thumb_list)
 				//else UNPREDICTABLE;
 				//endif;
 			else //if UnalignedSupport() || address<1:0> == '00' then
-				R[x.t] = data32;
+				GPR[x.t] = data32;
 			//else // Can only apply before ARMv7
-			//	R[t] = bits(32) UNKNOWN;
+			//	GPR[t] = bits(32) UNKNOWN;
 			endif;
 		endif;
 	}
@@ -132,18 +132,18 @@ op STR_reg_Thumb(x: STR_reg_Thumb_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
+			Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			if x.t == 15 then
 				data32 = PCStoreValue();
 			else 
-				data32= R[x.t];
+				data32= GPR[x.t];
 			endif;
 			//if UnalignedSupport() || address<1:0> == '00' || CurrentInstrSet() == InstrSet_ARM then
 				M32[address] = data32;
 			//else // Can only occur before ARMv7
-				//MemU[address,4] = bits(32) UNKNOWN; if wback then R[n] = offset_addr;
+				//MemU[address,4] = bits(32) UNKNOWN; if wback then GPR[n] = offset_addr;
 			//endif;
 		endif;
 	}
@@ -177,15 +177,15 @@ op LDRH_reg(x: LDRH_reg_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
+			Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			data16 = M16[address];
-			if x.wback then R[x.n] = offset_addr; endif;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 			//if UnalignedSupport() || address<0..0> == 0 then
-				R[x.t] = ZeroExtend(data16, 32);
+				GPR[x.t] = ZeroExtend(data16, 32);
 			//else // Can only apply before ARMv7
-			//	R[t] = bits(32) UNKNOWN;
+			//	GPR[t] = bits(32) UNKNOWN;
 		endif;
 	}
 
@@ -219,14 +219,14 @@ op STRH_reg(x: STRH_reg_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
+			Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			//if UnalignedSupport() || address<0> == '0' then
-				M16[address] = R[x.t]<15..0>;
+				M16[address] = GPR[x.t]<15..0>;
 			//else // Can only occur before ARMv7
 				//MemU[address,2] = bits(16) UNKNOWN;
-			if x.wback then R[x.n] = offset_addr; endif;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -260,15 +260,15 @@ op LDRSH_reg(x: LDRSH_reg_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
+			Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			data16 = M16[address];
-			if x.wback then R[x.n] = offset_addr; endif;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 			//if UnalignedSupport() || address<0..0> == 0 then
-				R[x.t] = SignExtend(data16, 32);
+				GPR[x.t] = SignExtend(data16, 32);
 			//else // Can only apply before ARMv7
-			//	R[t] = bits(32) UNKNOWN;
+			//	GPR[t] = bits(32) UNKNOWN;
 		endif;
 	}
 
@@ -303,12 +303,12 @@ op LDRB_reg(x: LDRB_reg_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
+			Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			data8 = M[address];
-			R[x.t] = ZeroExtend(data8, 32);
-			if x.wback then R[x.n] = offset_addr; endif;
+			GPR[x.t] = ZeroExtend(data8, 32);
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -344,11 +344,11 @@ op STRB_reg(x: STRB_reg_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
-			M[address] = R[x.t]<7..0>;
-			if x.wback then R[x.n] = offset_addr; endif;
+			Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
+			M[address] = GPR[x.t]<7..0>;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -384,11 +384,11 @@ op LDRSB_reg(x: LDRSB_reg_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
-			R[x.t] = ZeroExtend(M[address], 32);
-			if x.wback then R[x.n] = offset_addr; endif;
+			Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);				
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
+			GPR[x.t] = ZeroExtend(M[address], 32);
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -420,18 +420,18 @@ op LDR_imm_Thumb(x: LDR_imm_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
+			offset_addr = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			data32 = M32[address];
-			if x.wback then R[x.n] = offset_addr; endif;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 			if x.t == 15 then
 				//if address<1..0> == 0b00 then 
 					LoadWritePC(data32); 
 				//else UNPREDICTABLE; 
 				//endif;
 			else //if UnalignedSupport() || address<1:0> == '00' then
-				R[x.t] = data32;
-			//else R[x.t] = bits(32) UNKNOWN; // Can only apply before ARMv7
+				GPR[x.t] = data32;
+			//else GPR[x.t] = bits(32) UNKNOWN; // Can only apply before ARMv7
 			endif;
 		endif;
 	}
@@ -483,14 +483,14 @@ op LDRH_imm_Thumb(x: LDRH_imm_Thumb_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
+			offset_addr = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			data16 = M16[address];
-			if x.wback then R[x.n] = offset_addr; endif;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 			//if UnalignedSupport() || address<1:0> == '00' then
-				R[x.t] = ZeroExtend(data16, 32);
+				GPR[x.t] = ZeroExtend(data16, 32);
 			//else // Can only apply before ARMv7
-				//R[x.t] = bits(32) UNKNOWN; 
+				//GPR[x.t] = bits(32) UNKNOWN; 
 		endif;
 	}
 
@@ -546,13 +546,13 @@ op STRH_imm_Thumb(x: STRH_imm_Thumb_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
+			offset_addr = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			//if UnalignedSupport() || address<0> == '0' then
-				M16[address] = R[x.t]<15..0>;
+				M16[address] = GPR[x.t]<15..0>;
 			//else // Can only occur before ARMv7
 				//MemU[address,2] = bits(16) UNKNOWN;
-			if x.wback then R[x.n] = offset_addr; endif;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -608,15 +608,15 @@ op LDRBT(x: LDRBT_list)
 			//if CurrentModeIsHyp() then UNPREDICTABLE; // Hyp mode
 			//NullCheckIfThumbEE(n);
 			if x.registerform then
-				Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);
+				Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);
 			else
 				offset = x.imm32;
 			endif;
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.postindex then R[x.n] else offset_addr endif;	
-			//R[x.t] = ZeroExtend(MemU_unpriv[address], 32);
-			R[x.t] = ZeroExtend(M[address], 32);
-			if x.postindex then R[x.n] = offset_addr; endif;
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.postindex then GPR[x.n] else offset_addr endif;	
+			//GPR[x.t] = ZeroExtend(MemU_unpriv[address], 32);
+			GPR[x.t] = ZeroExtend(M[address], 32);
+			if x.postindex then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -654,15 +654,15 @@ op STRBT(x: STRBT_list)
 			//if CurrentModeIsHyp() then UNPREDICTABLE; // Hyp mode
 			//NullCheckIfThumbEE(n);
 			if x.register_form then
-				Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);
+				Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);
 			else
 				offset = x.imm32;
 			endif;
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.postindex then R[x.n] else offset_addr endif;
-			//MemU_unpriv[address,1] = R[t]<7:0>;
-			M[address] = R[x.t]<7..0>;
-			if x.postindex then R[x.n] = offset_addr; endif;
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.postindex then GPR[x.n] else offset_addr endif;
+			//MemU_unpriv[address,1] = GPR[t]<7:0>;
+			M[address] = GPR[x.t]<7..0>;
+			if x.postindex then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -699,12 +699,12 @@ op LDRSBT(x: LDRSBT_list)
 		if ConditionPassed() then
 			//if CurrentModeIsHyp() then UNPREDICTABLE; // Hyp mode
 			//NullCheckIfThumbEE(n);
-			offset = if x.register_form then R[x.m] else x.imm32 endif;
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.postindex then R[x.n] else offset_addr endif;	
-			//R[x.t] = SignExtend(MemU_unpriv[address], 32);
-			R[x.t] = SignExtend(M[address], 32);
-			if x.postindex then R[x.n] = offset_addr; endif;
+			offset = if x.register_form then GPR[x.m] else x.imm32 endif;
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.postindex then GPR[x.n] else offset_addr endif;	
+			//GPR[x.t] = SignExtend(MemU_unpriv[address], 32);
+			GPR[x.t] = SignExtend(M[address], 32);
+			if x.postindex then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -737,16 +737,16 @@ op LDRSHT(x: LDRSHT_list)
 		if ConditionPassed() then
 			//if CurrentModeIsHyp() then UNPREDICTABLE; // Hyp mode
 			//NullCheckIfThumbEE(n);
-			offset = if x.register_form then R[x.m] else x.imm32 endif;
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.postindex then R[x.n] else offset_addr endif;
+			offset = if x.register_form then GPR[x.m] else x.imm32 endif;
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.postindex then GPR[x.n] else offset_addr endif;
 			//data = MemU_unpriv[address,2];
 			data16 = M16[address];
-			if x.postindex then R[x.n] = offset_addr; endif;
+			if x.postindex then GPR[x.n] = offset_addr; endif;
 			//if UnalignedSupport() || address<0> == '0' then
-				R[x.t] = SignExtend(data16, 32); 
+				GPR[x.t] = SignExtend(data16, 32); 
 			//else // Can only apply before ARMv7
-				//R[t] = bits(32) UNKNOWN;
+				//GPR[t] = bits(32) UNKNOWN;
 		endif;
 	}
 
@@ -781,16 +781,16 @@ op LDRHT(x: LDRHT_list)
 		if ConditionPassed() then
 			//if CurrentModeIsHyp() then UNPREDICTABLE; // Hyp mode
 			//NullCheckIfThumbEE(n);
-			offset = if x.register_form then R[x.m] else x.imm32 endif;
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.postindex then R[x.n] else offset_addr endif;
+			offset = if x.register_form then GPR[x.m] else x.imm32 endif;
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.postindex then GPR[x.n] else offset_addr endif;
 			//data16 = MemU_unpriv[address];
 			data16 = M16[address];
-			if x.postindex then R[x.n] = offset_addr; endif;			
+			if x.postindex then GPR[x.n] = offset_addr; endif;			
 			//if UnalignedSupport() || address<0> == '0' then
-				R[x.t] = ZeroExtend(data16, 32); 
+				GPR[x.t] = ZeroExtend(data16, 32); 
 			//else // Can only apply before ARMv7
-				//R[t] = bits(32) UNKNOWN;
+				//GPR[t] = bits(32) UNKNOWN;
 		endif;
 	}
 
@@ -825,15 +825,15 @@ op STRHT(x: STRHT_list)
 		if ConditionPassed() then
 			//if CurrentModeIsHyp() then UNPREDICTABLE; // Hyp mode
 			//NullCheckIfThumbEE(n);
-			offset = if x.register_form then R[x.m] else x.imm32 endif;
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.postindex then R[x.n] else offset_addr endif;
+			offset = if x.register_form then GPR[x.m] else x.imm32 endif;
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.postindex then GPR[x.n] else offset_addr endif;
 			//if UnalignedSupport() || address<0> == '0' then
-				//MemU_unpriv[address,2] = R[t]<15:0>;
-				M16[address] = R[x.t]<15..0>;
+				//MemU_unpriv[address,2] = GPR[t]<15:0>;
+				M16[address] = GPR[x.t]<15..0>;
 			//else // Can only occur before ARMv7
 				//MemU_unpriv[address,2] = bits(16) UNKNOWN; 
-			if x.postindex then R[x.n] = offset_addr; endif;			
+			if x.postindex then GPR[x.n] = offset_addr; endif;			
 		endif;
 	}
 
@@ -869,22 +869,22 @@ op LDRT(x: LDRT_list)
 			//if CurrentModeIsHyp() then UNPREDICTABLE; // Hyp mode
 			//NullCheckIfThumbEE(n);
 			if x.register_form then
-				Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);
+				Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);
 			else
 				offset = x.imm32;
 			endif;
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.postindex then R[x.n] else offset_addr endif;
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.postindex then GPR[x.n] else offset_addr endif;
 			//data = MemU_unpriv[address, 4];
 			data32 = M32[address];
-			if x.postindex then R[x.n] = offset_addr; endif;			
+			if x.postindex then GPR[x.n] = offset_addr; endif;			
 			//if UnalignedSupport() || address<1:0> == '00' then
-				R[x.t] = data32; 
+				GPR[x.t] = data32; 
 			//else // Can only apply before ARMv7
 				//if CurrentInstrSet() == InstrSet_ARM then
-					//R[t] = ROR(data, 8*UInt(address<1:0>));
+					//GPR[t] = ROR(data, 8*UInt(address<1:0>));
 				//else
-					//R[t] = bits(32) UNKNOWN;
+					//GPR[t] = bits(32) UNKNOWN;
 		endif;
 	}
 
@@ -922,23 +922,23 @@ op STRT(x: STRT_list)
 			//if CurrentModeIsHyp() then UNPREDICTABLE; // Hyp mode
 			//NullCheckIfThumbEE(n);
 			if x.register_form then
-				Shift_C(R[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);
+				Shift_C(GPR[x.m], x.shift_t, shift_n, APSR_C, offset, APSR_C);
 			else
 				offset = x.imm32;
 			endif;
-			offset_addr = if x.add then (R[x.n] + offset) else (R[x.n] - offset) endif;
-			address = if x.postindex then R[x.n] else offset_addr endif;
+			offset_addr = if x.add then (GPR[x.n] + offset) else (GPR[x.n] - offset) endif;
+			address = if x.postindex then GPR[x.n] else offset_addr endif;
 			if x.t == 15 then // Only possible for encodings A1 and A2
 				data = PCStoreValue(); 
 			else 
-				data = R[x.t]; 
+				data = GPR[x.t]; 
 			endif;
 			//if UnalignedSupport() || address<1:0> == '00' || CurrentInstrSet() == InstrSet_ARM then
 				//MemU_unpriv[address,4] = data;
 				M32[address] = data; 
 			//else // Can only occur before ARMv7
 				//MemU_unpriv[address,4] = bits(32) UNKNOWN; 
-			if x.postindex then R[x.n] = offset_addr; endif;
+			if x.postindex then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -973,11 +973,11 @@ op LDRB_imm(x: LDRB_imm_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
+			offset_addr = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			data8 = M[address];	
-			R[x.t] = ZeroExtend(data8, 32);
-			if x.wback then R[x.n] = offset_addr; endif;
+			GPR[x.t] = ZeroExtend(data8, 32);
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -1030,10 +1030,10 @@ op LDRSB_immediate(x: LDRSB_imm_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
-			address = if x.index then offset_addr else R[x.n] endif;	
-			R[x.t] = SignExtend(M[address], 32);
-			if x.wback then R[x.n] = offset_addr; endif;
+			offset_addr = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;	
+			GPR[x.t] = SignExtend(M[address], 32);
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -1091,7 +1091,7 @@ op LDRSB_lit_T1(Rt: REG_INDEX_XPC, U:card(1), imm12: card(12))
 			//NullCheckIfThumbEE(n);
 			base = Align(PC, 4);
 			address = if add then (base + imm32) else (base - imm32) endif;	
-			R[t] = SignExtend(M[address], 32);
+			GPR[t] = SignExtend(M[address], 32);
 		endif;
 	}
 
@@ -1103,14 +1103,14 @@ op LDRSH_immediate(x: LDRSH_imm_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
+			offset_addr = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			data16 = M16[address];
-			if x.wback then R[x.n] = offset_addr; endif;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 			//if UnalignedSupport() || address<0> == '0' then
-				R[x.t] = SignExtend(data16, 32); 
+				GPR[x.t] = SignExtend(data16, 32); 
 			//else // Can only apply before ARMv7
-				//R[t] = bits(32) UNKNOWN;
+				//GPR[t] = bits(32) UNKNOWN;
 		endif;
 	}
 
@@ -1162,14 +1162,14 @@ op STR_imm_Thumb(x: STR_imm_Thumb_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
-			data32 = R[x.t];
+			offset_addr = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
+			data32 = GPR[x.t];
 			//if UnalignedSupport() || address<1:0> == '00' then
 				M32[address] = data32;
 			//else // Can only occur before ARMv7
 				//MemU[address,4] = bits(32) UNKNOWN;			
-			if x.wback then R[x.n] = offset_addr; endif;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 	
@@ -1219,10 +1219,10 @@ op STRB_imm(x: STRB_imm_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
-			address = if x.index then offset_addr else R[x.n] endif;
-			M[address] = R[x.t]<0..7>;	
-			if x.wback then R[x.n] = offset_addr; endif;
+			offset_addr = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif;
+			address = if x.index then offset_addr else GPR[x.n] endif;
+			M[address] = GPR[x.t]<0..7>;	
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 
@@ -1293,25 +1293,24 @@ op LDM_T2(W: bool, Rn: REG_INDEX, register_list: RegisterListThumb)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("ldm%s%s.w %s%s, %s", if Rn.number == 0b1101 then "fd" else "ia" endif, op_cond_syntax_new(ITCOND), Rn, if W then "!" else "" endif, register_list)
 	image = format("11101 00 010 %1b 1 %s %1b %1b 0 %13b", W, Rn, register_list.P, register_list.MM, register_list.l)
+	n = UInt(Rn)
+	registers = register_list.P :: register_list.MM :: 0b0 :: register_list.l
+	wback = (W == 1)
+	// if n == 15 || BitCount(registers) < 2 || (P == '1' && M == '1') then UNPREDICTABLE;
+	// if registers<15> == '1' && InITBlock() && !LastInITBlock() then UNPREDICTABLE;
+	// if wback && registers<n> == '1' then UNPREDICTABLE;
 	action = {
-		n = UInt(Rn);
-		registers = register_list.P :: register_list.MM :: 0b0 :: register_list.l;
-		wback = (W == 1);
-		// if n == 15 || BitCount(registers) < 2 || (P == '1' && M == '1') then UNPREDICTABLE;
-		// if registers<15> == '1' && InITBlock() && !LastInITBlock() then UNPREDICTABLE;
-		// if wback && registers<n> == '1' then UNPREDICTABLE;
-		address = R[n];
+		address = GPR[n];
 		i = 0; bitcount = 0; loop;
 		if registers<15..15> == 1 then
 			LoadWritePC(M32[address]);
 			bitcount = bitcount + 1;
 		endif;
-		if wback && registers<n..n> == 0 then R[n] = R[n] + 4 * bitcount; endif;
-		// if wback && registers<n> == '1' then R[n] = bits(32) UNKNOWN		
+		GPR[n] = GPR[n] + 4 * bitcount;
 	}
 	loop = {
 		if registers<i..i> == 1 then
-			R[i] = M32[address];
+			GPR[i + reg_offset(i)] = M32[address];
 			address = address + 4;
 			bitcount = bitcount + 1;
 		endif;
@@ -1350,19 +1349,19 @@ op STMDB_T1(W: bool, Rn: REG_INDEX, register_list: RegisterListThumbLtd)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("stm%s%s %s%s, %s", if Rn.number == 0b1101 then "fd" else "db" endif, op_cond_syntax_new(ITCOND), Rn, if W then "!" else "" endif, register_list)
 	image = format("11101 00 100 %1b 0 %s  0 %1b 0 %13b", W, Rn, register_list.MM, register_list.l) 
+	n = UInt(Rn)
+	registers = 0b0 :: register_list.MM :: 0b0 :: register_list.l
+	wback = W
+	//if n == 15 || BitCount(registers) < 2 then UNPREDICTABLE;
+	//if wback && registers<n> == '1' then UNPREDICTABLE;
 	action = {
-		n = UInt(Rn);
-		registers = 0b0 :: register_list.MM :: 0b0 :: register_list.l;
-		wback = W;
-		//if n == 15 || BitCount(registers) < 2 then UNPREDICTABLE;
-		//if wback && registers<n> == '1' then UNPREDICTABLE;
-		i = 14; address = R[n]; loop;
-		if wback then R[n] = address; endif;
+		i = 14; address = GPR[n]; loop;
+		if wback then GPR[n] = address; endif;
 	}
 	loop = {
 		if registers<i..i> == 1 then
 			address = address - 4;
-			M32[address] = R[i];
+			M32[address] = GPR[i + reg_offset(i)];
 		endif;
 		i = i - 1;
 		if i >= 0 then
@@ -1384,9 +1383,9 @@ op LDREX_T1(Rn: REG_INDEX, Rt: REG_INDEX, imm8: card(8))
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n); 
-			address = R[n]; 
+			address = GPR[n]; 
 			//SetExclusiveMonitors(address,1);
-			R[t] = ZeroExtend(M[address], 32);
+			GPR[t] = ZeroExtend(M[address], 32);
 		endif;
 	}
 	
@@ -1401,9 +1400,9 @@ op LDREXB_T1 (Rn: REG_INDEX, Rt: REG_INDEX)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n); 
-			address = R[n] + imm32; 
+			address = GPR[n] + imm32; 
 			//SetExclusiveMonitors(address,4);
-			R[t] = M32[address];
+			GPR[t] = M32[address];
 		endif;
 	}
 	
@@ -1419,15 +1418,15 @@ op LDREXD_T1 (Rn: REG_INDEX, Rt: REG_INDEX, Rt2: REG_INDEX)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			address = R[n];
+			address = GPR[n];
 			// LDREXD requires doubleword-aligned address
 			//if address<2:0> != '000' then AlignmentFault(address, FALSE) 
 			//SetExclusiveMonitors(address,8);
 			// See the description of Single-copy atomicity for details of whether // the two loads are 64-bit single-copy atomic.
-			//R[t] = MemA[address,4];
-			R[t] = M32[address];
-			//R[t2] = MemA[address+4,4];			
-			R[t2] = M32[address+4];
+			//GPR[t] = MemA[address,4];
+			GPR[t] = M32[address];
+			//GPR[t2] = MemA[address+4,4];			
+			GPR[t2] = M32[address+4];
 		endif;
 	}
 
@@ -1442,9 +1441,9 @@ op LDREXH_T1(Rn: REG_INDEX, Rt: REG_INDEX)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n); 
-			address = R[n]; 
+			address = GPR[n]; 
 			//SetExclusiveMonitors(address,2);
-			R[t] = ZeroExtend(M16[address], 32);
+			GPR[t] = ZeroExtend(M16[address], 32);
 		endif;
 	}
 
@@ -1464,12 +1463,12 @@ op STREX_T1(Rn: REG_INDEX, Rt: REG_INDEX, Rd: REG_INDEX, imm8: card(8))
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n); 
-			address = R[n] + imm32;
+			address = GPR[n] + imm32;
 			//if ExclusiveMonitorsPass(address,4) then
-				//MemA[address,4] = R[t];
-				M32[address] = R[t];
-				R[d] = ZeroExtend(0b0, 32); 
-			//else R[d] = ZeroExtend(0b1, 32);
+				//MemA[address,4] = GPR[t];
+				M32[address] = GPR[t];
+				GPR[d] = ZeroExtend(0b0, 32); 
+			//else GPR[d] = ZeroExtend(0b1, 32);
 		endif;
 	}
 	
@@ -1486,12 +1485,12 @@ op STREXB_T1 (Rn: REG_INDEX, Rt: REG_INDEX, Rd: REG_INDEX)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n); 
-			address = R[n]; 
+			address = GPR[n]; 
 			//if ExclusiveMonitorsPass(address,1) then
-				//MemA[address,1] = R[t]<7:0>;
-				M[address] = R[t]<7..0>;
-				R[d] = ZeroExtend(0b0, 32); 
-			//else R[d] = ZeroExtend(0b1, 32);
+				//MemA[address,1] = GPR[t]<7:0>;
+				M[address] = GPR[t]<7..0>;
+				GPR[d] = ZeroExtend(0b0, 32); 
+			//else GPR[d] = ZeroExtend(0b1, 32);
 		endif;
 	}
 	
@@ -1509,17 +1508,17 @@ op STREXD_T1 (Rn: REG_INDEX, Rt: REG_INDEX, Rt2: REG_INDEX, Rd: REG_INDEX)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n);
-			address = R[n];
+			address = GPR[n];
 			// For the alignment requirements see "Aborts and alignment"
-			// Create doubleword to store such that R[t] will be stored at address and R[t2] at address+4.
+			// Create doubleword to store such that GPR[t] will be stored at address and GPR[t2] at address+4.
 			//if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
-				TMP_DOUBLE = R[t]::R[t2];
-			//else R[t2]::R[t]; endif;
+				TMP_DOUBLE = GPR[t]::GPR[t2];
+			//else GPR[t2]::GPR[t]; endif;
 			//if ExclusiveMonitorsPass(address,8) then
 				//MemA[address,8] = TMP_DOUBLE;
 				M64[address] = TMP_DOUBLE;
-				R[d] = ZeroExtend(0b0, 32); 
-			else R[d] = ZeroExtend(0b1, 32);		
+				GPR[d] = ZeroExtend(0b0, 32); 
+			else GPR[d] = ZeroExtend(0b1, 32);		
 		endif;
 	}
 
@@ -1536,12 +1535,12 @@ op STREXH_T1(Rn: REG_INDEX, Rt: REG_INDEX, Rd: REG_INDEX)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n); 
-			address = R[n];
+			address = GPR[n];
 			//if ExclusiveMonitorsPass(address,2) then
-				//MemA[address,2] = R[t]<15:0>;
-				M16[address] = R[t]<15..0>;
-				R[d] = ZeroExtend(0b0, 32); 
-			//else R[d] = ZeroExtend(0b1, 32);
+				//MemA[address,2] = GPR[t]<15:0>;
+				M16[address] = GPR[t]<15..0>;
+				GPR[d] = ZeroExtend(0b0, 32); 
+			//else GPR[d] = ZeroExtend(0b1, 32);
 		endif;
 	}
 
@@ -1556,22 +1555,22 @@ op LDRD_imm(x: LDRD_imm_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n); 
-			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif; 
-			address = if x.index then offset_addr else R[x.n] endif;
+			offset_addr = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif; 
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			//if HaveLPAE() && address<2..0> == 0b000 then // TODO: HaveLPAE() returns TRUE if the implementation includes the Large Physical Address Extension.
 			//	data64 = M64[address];
 			//	if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
-			//		R[x.t] = data64<63..32>;
-			//		R[x.t2] = data64<31..0>; 
+			//		GPR[x.t] = data64<63..32>;
+			//		GPR[x.t2] = data64<31..0>; 
 			//	else
-			//		R[x.t] = data64<31..0>;
-			//		R[x.t2] = data64<63..32>;
+			//		GPR[x.t] = data64<31..0>;
+			//		GPR[x.t2] = data64<63..32>;
 			//	endif;
 			//else
-				R[x.t] = M32[address];
-				R[x.t2] = M32[address+4];
+				GPR[x.t] = M32[address];
+				GPR[x.t2] = M32[address+4];
 			//endif;
-			if x.wback then R[x.n] = offset_addr; endif;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 	
@@ -1609,22 +1608,22 @@ op STRD_imm(x: STRD_imm_list)
 	action = {
 		if ConditionPassed() then
 			//NullCheckIfThumbEE(n); 
-			offset_addr = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif; 
-			address = if x.index then offset_addr else R[x.n] endif;
+			offset_addr = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif; 
+			address = if x.index then offset_addr else GPR[x.n] endif;
 			//if HaveLPAE() && address<2..0> == 0b000 then // TODO: HaveLPAE() returns TRUE if the implementation includes the Large Physical Address Extension.
 			//	if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
-			//		data64<63..32> = R[x.t];
-			//		data64<31..0> = R[x.t2]; 
+			//		data64<63..32> = GPR[x.t];
+			//		data64<31..0> = GPR[x.t2]; 
 			//	else
-			//		data64<31..0> = R[x.t];
-			//		data64<63..32> = R[x.t2];
+			//		data64<31..0> = GPR[x.t];
+			//		data64<63..32> = GPR[x.t2];
 			//	endif;
 			//	M64[address] = data64;
 			//else
-				M32[address] = R[x.t]; 
-				M32[address+4] = R[x.t2];
+				M32[address] = GPR[x.t]; 
+				M32[address+4] = GPR[x.t2];
 			//endif;
-			if x.wback then R[x.n] = offset_addr; endif;
+			if x.wback then GPR[x.n] = offset_addr; endif;
 		endif;
 	}
 	
