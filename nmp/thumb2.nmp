@@ -84,8 +84,8 @@ op LSL_reg_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
 		m = UInt(rm);
 		setflags = S;
 		//if d IN {13,15} || n IN {13,15} || m IN {13,15} then UNPREDICTABLE;		
-		Shift_C(R[n], SRType_LSL, m, APSR_C, result, carry);
-		R[d] = result;
+		Shift_C(GPR[n], SRType_LSL, m, APSR_C, result, carry);
+		GPR[d] = result;
 		if setflags then
 			APSR_N = result<31..31>;
 			APSR_Z = IsZeroBit(result); 
@@ -137,11 +137,11 @@ op AND_imm_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, 
 		ThumbExpandImm_C(i :: imm3 :: imm8, imm32, carry);
 		//if ConditionPassed() then
 			//EncodingSpecificOperations();
-			result = R[n] & imm32;
+			result = GPR[n] & imm32;
 			if d == 15 then // Can only occur for ARM encoding
 				ALUWritePC(result); // setflags is always FALSE here 
 			else
-				R[d] = result; 
+				GPR[d] = result; 
 				if setflags then
 					APSR_N = result<31..31>;
 					APSR_Z = IsZeroBit(result); 
@@ -164,11 +164,11 @@ op EOR_imm_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), 
 		// if d == 13 || (d == 15 && S == 0) || n >= 13 then UNPREDICTABLE;
 		// if ConditionPassed() then
 		//	EncodingSpecificOperations();
-		result = R[n] ^ imm32;
+		result = GPR[n] ^ imm32;
 		if d == 15 then
 			ALUWritePC(result); // setflags is always FALSE here
 		else
-			R[d] = result;
+			GPR[d] = result;
 			if setflags then
 				APSR_N = result<31..31>;
 				APSR_Z = IsZeroBit(result);
@@ -184,8 +184,8 @@ op ADD_imm_Thumb(x: ADD_imm_Thumb_list)
 	cond = x.cond
 	action = {
 		if ConditionPassed() then
-			AddWithCarry(result, carry, overflow, R[x.n], x.imm32, 0);
-			R[x.d] = result;
+			AddWithCarry(result, carry, overflow, GPR[x.n], x.imm32, 0);
+			GPR[x.d] = result;
 			if x.setflags then
 				APSR_N = result<31..31>;
 				APSR_Z = IsZeroBit(result);
@@ -234,11 +234,11 @@ op ADD_reg_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
 		// (shift_t, shift_n) = DecodeImmShift(type, imm3:imm2);
 		// if d == 13 || (d == 15 && S == 0) || n == 15 || m >= 13 then UNPREDICTABLE;
 		shifted = shift;
-		AddWithCarry(result, carry, overflow, R[Rn], shifted, 0);
+		AddWithCarry(result, carry, overflow, GPR[Rn], shifted, 0);
 		if d == 15 then
 			ALUWritePC(result);
 		else
-			R[d] = result;
+			GPR[d] = result;
 			if setflags then
 				APSR_N = result<31..31>;
 				APSR_Z = IsZeroBit(result);
@@ -255,8 +255,8 @@ op SUB_imm_Thumb(x: SUB_imm_Thumb_list)
 	action = {
 		//if ConditionPassed() then
 			//EncodingSpecificOperations();
-			AddWithCarry(result, carry, overflow, R[x.n], ~x.imm32, 1);
-			R[x.d] = result;
+			AddWithCarry(result, carry, overflow, GPR[x.n], ~x.imm32, 1);
+			GPR[x.d] = result;
 			if x.setflags then
 				APSR_N = result<31..31>;
 				APSR_Z = IsZeroBit(result);
@@ -303,10 +303,10 @@ op MUL_T2(Rd: REG_INDEX, Rn: REG_INDEX, Rm: REG_INDEX)
 		m = UInt(Rm);
 		setflags = 0;
 		// if d >= 13 || n >= 13 || m >= 13 then UNPREDICTABLE;
-		operand1 = SInt(R[n]); 		// operand1 = UInt(R[n]) produces the same final results
-		operand2 = SInt(R[m]); 		// operand2 = UInt(R[m]) produces the same final results
+		operand1 = SInt(GPR[n]); 		// operand1 = UInt(GPR[n]) produces the same final results
+		operand2 = SInt(GPR[m]); 		// operand2 = UInt(GPR[m]) produces the same final results
 		result = operand1 * operand2;
-		R[d] = result<31..0>;
+		GPR[d] = result<31..0>;
 		if setflags then
 			APSR_N = result<31..31>;
 			APSR_Z = IsZeroBit(result<31..0>);
@@ -328,11 +328,11 @@ op BIC_imm_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, 
 		//if d IN {13,15} || n IN {13,15} then UNPREDICTABLE;
 		//if ConditionPassed() then
 			//EncodingSpecificOperations();
-			result = R[n] & ~imm32;
+			result = GPR[n] & ~imm32;
 			if d == 15 then // Can only occur for ARM encoding
 				ALUWritePC(result); // setflags is always FALSE here 
 			else
-				R[d] = result<31..0>; 
+				GPR[d] = result<31..0>; 
 				if setflags then
 					APSR_N = result<31..31>;
 					APSR_Z = IsZeroBit(result<31..0>); 
@@ -440,7 +440,7 @@ op MOV_immediate(x: MOV_imm_list)
 			if x.d == 15 then // Can only occur for encoding A1
 				ALUWritePC(result); // setflags is always FALSE here 
 			else
-				R[x.d] = result; 
+				GPR[x.d] = result; 
 				if x.setflags then
 					APSR_N = result<31..31>;
 					APSR_Z = IsZeroBit(result); 
@@ -483,8 +483,8 @@ op MOVT_T1(i: card(1), Rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: card(8
 	d = UInt(Rd)
 	//if d IN {13,15} then UNPREDICTABLE;
 	action = {
-		R[d]<31..16> = imm4 :: i :: imm3 :: imm8;
-		// R[d]<15:0> unchanged
+		GPR[d]<31..16> = imm4 :: i :: imm3 :: imm8;
+		// GPR[d]<15:0> unchanged
 	}
 	
 op BFIC_T1(Rd: REG_INDEX, Rn: REG_INDEX, msb: card(5), imm3: card(3), imm2: card(2))
@@ -502,10 +502,10 @@ op BFIC_T1(Rd: REG_INDEX, Rn: REG_INDEX, msb: card(5), imm3: card(3), imm2: card
 	action = {
 		if msbit >= lsbit then
 			if Rn.number == 15 then
-				R[Rd]<msbit..lsbit> = 0;
+				GPR[Rd]<msbit..lsbit> = 0;
 			else
 				//if n == 13 then UNPREDICTABLE;
-				R[Rd]<msbit..lsbit> = R[Rn]<(msbit-lsbit)..0>;
+				GPR[Rd]<msbit..lsbit> = GPR[Rn]<(msbit-lsbit)..0>;
 			endif;
 		else
 			error("UNPREDICTABLE");
@@ -524,11 +524,11 @@ op RSB_imm_T2(i: card(1), S: setS, Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), 
 	cond = 1
 	action = {
 		if ConditionPassed() then
-			AddWithCarry(result, carry, overflow, ~R[n], imm32, 0b1)
+			AddWithCarry(result, carry, overflow, ~GPR[n], imm32, 0b1)
 			if d == 15 then
 				ALUWritePC(result);
 			else
-				R[d] = result;
+				GPR[d] = result;
 				if setflags then
 					APSR_N = result<31..31>;
 					APSR_Z = IsZeroBit(result); 
@@ -546,7 +546,7 @@ op PLD_PLDW_imm(x: PLD_PLDW_imm_list)
 	cond = x.condition
 	action = {
 		if ConditionPassed() then
-			address = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
+			address = if x.add then (GPR[x.n] + x.imm32) else (GPR[x.n] - x.imm32) endif;
 			//if x.is_pldw then Hint_PreloadDataForWrite(address); 
 			//else Hint_PreloadData(address); endif;
 		endif;
@@ -598,8 +598,8 @@ op PLD_PLDW_reg_T2(W: card(1), Rn: REG_INDEX, Rm: REG_INDEX, imm2: card(2))
 	//if m IN {13,15} then UNPREDICTABLE;
 	action = {
 		if ConditionPassed() then
-			Shift_C(R[m], shift_t, shift_n, APSR_C, offset, APSR_C);				
-			address = if add then (R[n] + offset) else (R[n] - offset) endif; 
+			Shift_C(GPR[m], shift_t, shift_n, APSR_C, offset, APSR_C);				
+			address = if add then (GPR[n] + offset) else (GPR[n] - offset) endif; 
 			//if is_pldw then Hint_PreloadDataForWrite(address); 
 			//else Hint_PreloadData(address); endif;
 		endif;
@@ -612,7 +612,7 @@ op PLI_imm_lit(x: PLI_imm_lit_list)
 	cond = x.condition
 	action = {
 		if ConditionPassed() then
-			base = if x.n == 15 then Align(PC, 4) else R[x.n] endif;
+			base = if x.n == 15 then Align(PC, 4) else GPR[x.n] endif;
 			address = if x.add then (base + x.imm32) else (base - x.imm32) endif; 
 			//Hint_PreloadInstr(address);
 		endif;
@@ -665,8 +665,8 @@ op PLI_reg_T1(Rn: REG_INDEX_XPC, Rm: REG_INDEX, imm2: card(2))
 	//if m IN {13,15} then UNPREDICTABLE;
 	action = {
 		if ConditionPassed() then
-			Shift_C(R[m], shift_t, shift_n, APSR_C, offset, APSR_C);				
-			address = if add then (R[n] + offset) else (R[n] - offset) endif; 
+			Shift_C(GPR[m], shift_t, shift_n, APSR_C, offset, APSR_C);				
+			address = if add then (GPR[n] + offset) else (GPR[n] - offset) endif; 
 			//Hint_PreloadInstr(address);
 		endif;
 	}
@@ -1564,7 +1564,7 @@ op MCR_MCR2_thumb2(opc1: card(3), opc2: card(3), CRn: card(4), CRm: card(4),rt :
 			//if !Coproc_Accepted(cp, ThisInstr()) then
 				//GenerateCoprocessorException();
 			//else
-				//Coproc_SendOneWord(R[t], cp, ThisInstr());
+				//Coproc_SendOneWord(GPR[t], cp, ThisInstr());
 	}
 
 
@@ -1579,7 +1579,7 @@ op MCRR_MCRR2_thumb2(opc1: card(4), CRm: card(4), rt : REG_INDEX, rt2 : REG_INDE
 			//if !Coproc_Accepted(cp, ThisInstr()) then
 				//GenerateCoprocessorException();
 			//else
-				//Coproc_SendTwoWords(R[t], R[t2], cp, ThisInstr());
+				//Coproc_SendTwoWords(GPR[t], GPR[t2], cp, ThisInstr());
 	}
 
 
@@ -1646,7 +1646,7 @@ op MRC_MRC2_thumb2(opc1: card(3), opc2: card(3), CRn: card(4), CRm: card(4),rt :
 			//else
 				//value = Coproc_GetOneWord(cp, ThisInstr());
 				//if t != 15 then
-					//R[t] = value;
+					//GPR[t] = value;
 				//else
 					//APSR.N = value<31>;
 					//APSR.Z = value<30>;
@@ -1667,7 +1667,7 @@ op MRRC_MRRC2_thumb2(opc1: card(4), CRm: card(4), rt : REG_INDEX, rt2 : REG_INDE
 			//if !Coproc_Accepted(cp, ThisInstr()) then
 				//GenerateCoprocessorException();
 			//else
-				//(R[t], R[t2]) = Coproc_GetTwoWords(cp, ThisInstr());
+				//(GPR[t], GPR[t2]) = Coproc_GetTwoWords(cp, ThisInstr());
 	}
 
 	
