@@ -22,7 +22,13 @@
 
 /* THUMB-2 decoding */
 #define ARM_ORDER_BYTES_CISC	word = (buff[1] << 24) | (buff[0] << 16) | (buff[3] << 8) | buff[2];
-
+#define ARM_INIT_PC \
+	state->GPR[15] = platform->entry; \
+	if(state->GPR[15] & 0x1) { \
+		state->GPR[15] &= ~0x1; \
+		state->APSR |= 1<<5; \
+	}
+	
 /* mode bit removal */
 #define ARM_PROCESS_CODE_LABEL(a)		a = a & 0xfffffffe;
 
