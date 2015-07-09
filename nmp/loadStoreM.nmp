@@ -95,7 +95,7 @@ op LDM(cond: condition, adr_mode: u2, sets: u1, setw: u1, rn: REG_INDEX, reglist
 			
 			// update base	  
 			if (setw == 1) then
-				Set_ARM_GPR(rn, TMP_END_ADDR);;
+				Set_ARM_GPR(rn + reg_offset(rn), TMP_END_ADDR);;
 			endif;
 		endif;
 
@@ -186,7 +186,7 @@ op STM(cond: condition, adr_mode: u2, sets: u1, setw: u1, rn: REG_INDEX, reglist
 			
 			// update base	  
 			if (setw == 1) then
-				Set_ARM_GPR(rn, TMP_END_ADDR);;
+				Set_ARM_GPR(rn + reg_offset(rn), TMP_END_ADDR);;
 			endif;
 		endif;
 

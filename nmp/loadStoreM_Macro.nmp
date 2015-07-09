@@ -15,9 +15,9 @@ macro GetGPRUser(r) = \
 macro STM_(rd, sets) = \
 		TMP_EA = TMP_START_ADDR;\
 		if (sets == 0) then\
-			TMP_SWORD = Get_ARM_GPR(rd);\
+			TMP_SWORD = Get_ARM_GPR(rd + reg_offset(rd));\
 		else\
-			TMP_SWORD = GetGPRUser(rd);\
+			TMP_SWORD = GetGPRUser(rd + reg_offset(rd));\
 		endif;\
 		SetWord(TMP_EA,TMP_SWORD);\
 		TMP_START_ADDR = TMP_START_ADDR + 4;
@@ -25,7 +25,7 @@ macro STM_(rd, sets) = \
 // LDMxx1
 macro LDM1(rd) = \
 	      TMP_EA = TMP_START_ADDR;\
-	      Set_ARM_GPR(rd, GetWord(TMP_EA));\
+	      Set_ARM_GPR(rd + reg_offset(rd), GetWord(TMP_EA));\
 	      TMP_START_ADDR = TMP_START_ADDR+4;
 
 
