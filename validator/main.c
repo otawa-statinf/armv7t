@@ -759,6 +759,7 @@ uint8_t gdb_get_byte(arm_address_t addr) {
 		char *buf = gdb_acknowledge("^done,addr=");
 		gdb_buffer_find(&buf, ",memory=[");
 		gdb_buffer_find(&buf, ",data=[\"");
+		buf += 8;
 		data = strtoul(buf, NULL, 10);
 		return data;
 	}
@@ -930,6 +931,7 @@ int main(int argc, char **argv) {
 			}
 
 		/* compare memory accesses */
+#		ifdef ARM_MEM_IO
 		for(i = 0; i < iss_access_cnt; i++) {
 			int j;
 
@@ -958,6 +960,7 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
+#		endif
 
 	}
 
