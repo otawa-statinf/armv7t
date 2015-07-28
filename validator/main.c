@@ -851,7 +851,7 @@ void dump_inst(uint32_t addr) {
 	arm_inst_t *inst = arm_decode(iss->decoder, addr);
 	arm_disasm(buf, inst);
 	arm_free_inst(inst);
-	printf("%08x\t%s\n", iss_pc, buf);
+	printf("%08x\t%s\n", addr, buf);
 }
 
 
@@ -958,6 +958,8 @@ int main(int argc, char **argv) {
 					dump_state();
 					exit(5);
 				}
+				else if(verbose)
+					fprintf(stderr, "INFO: memory checking OK for %08x:%x %02x\n", iss_accesses[i].addr + j, iss_accesses[i].size, iss_bytes[j]);
 			}
 		}
 #		endif

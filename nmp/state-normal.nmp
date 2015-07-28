@@ -112,6 +112,28 @@ macro ITAdvance = if ITSTATE<2..0> == 0 then ITSTATE = 0; else ITSTATE<4..0> = I
 macro InITBlock = (ITSTATE<3..0> != 0)
 macro LastInITBlock = (ITSTATE<3..0> == 0b1000)
 
+/* Taken from the work of Thomas Jerabek */
+macro ConditionPassed_sub(tmp) = \
+	switch (tmp) { \
+		case 0b000: if (ZFLAG == 1) then 0b1 else 0b0 endif \
+		case 0b001: if (CFLAG == 1) then 0b1 else 0b0 endif \
+		case 0b010: if (NFLAG == 1) then 0b1 else 0b0 endif \
+		case 0b011: if (VFLAG == 1) then 0b1 else 0b0 endif \
+		case 0b100: if (CFLAG == 1) && (ZFLAG == 0) then 0b1 else 0b0 endif \
+		case 0b101: if (NFLAG == VFLAG) then 0b1 else 0b0 endif \		
+		case 0b110: if (NFLAG == VFLAG) && (ZFLAG == 0) then 0b1 else 0b0 endif \
+		case 0b111: 0b1 \
+	} 
+macro ConditionPassed = \
+	if ITSTATE<3..0> != 0b0000 then \
+		if ((ITSTATE<4..4> == 0b1) && (ITSTATE<7..4> != 0b1111)) then \
+			!ConditionPassed_sub(ITSTATE<7..5>) \
+		else \
+			ConditionPassed_sub(ITSTATE<7..5>) \
+		endif \
+	else 0b1 \
+	endif
+
 // ASPR aliases
 reg APSR_C[1, card(1)] alias = CFLAG
 reg APSR_N[1, card(1)] alias = NFLAG
@@ -244,5 +266,5 @@ op init ()
 		GPR[13 + 10] = 0x800;
 
 		// Jerabek IT init
-		ITSTATE = 0x00;
+		ITSTATE = 0;
 	 }

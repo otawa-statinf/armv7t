@@ -37,7 +37,7 @@ op thumb2_32(x: thumb2_32_list)
 	syntax = x.syntax
 	action = {
 		NPC = PC + 4;
-		PC = PC + 8;
+		PC = PC + 4;
 		if ConditionPassed then
 			x.action;
 		endif;
@@ -51,7 +51,7 @@ op thumb2_32_list =
 	fp
 	// | AND_imm_T1 // Shadowed by the work from Jerabek
 	//| EOR_imm_T1 // Shadowed by the work from Jerabek
-	//| BL_imm_T1 // Shadowed by the work from Jerabek
+	| BL_imm_T1
 	//| B_T3 // Shadowed by the work from Jerabek
 	//| B_T4 // Shadowed by the work from Jerabek
 	| TBB_TBH
@@ -94,6 +94,26 @@ op LSL_reg_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
 		endif;
 	}
 
+// BL from Thumb2 (is equivalent to two successive Thumb1 16-bits BL)
+// In Thumb32, the 16-bits lonely version is now forbidden.
+op BL_imm_T1(S: setS, J1: card(1), J2: card(1), imm10: card(10), imm11: card(11))
+	ITCOND = "f_get_update_ITSTATE"()
+	image = format("11110 %s %10b 11 %1b 1 %1b %11b",  S, imm10, J1, J2, imm11)
+	I1 = ~(J1 ^ S)
+	I2 = ~(J2 ^ S)
+	imm32 = coerce(int(32), S :: I1 :: I2 :: imm10 :: imm11 :: 0<0..0>)
+	targetAddress = __IADDR + 4 + imm32
+	syntax = format("bl%s 0x%x",op_cond_syntax_new(ITCOND), targetAddress)
+	condition = ITCOND
+	//if InITBlock() && !LastInITBlock() then UNPREDICTABLE;
+	action = {
+		if ConditionPassed() then
+			LR = PC<31..1> :: 0b1;
+			BranchWritePC_thumb(targetAddress);
+		endif;
+	}
+
+
 op BLX_imm_T2(S: card(1), imm10H: card(10), J1: card(1), J2: card(1), imm10L: card(10), H: card(1))
 	// if CurrentInstrSet() == InstrSet_ThumbEE || H == '1' then UNDEFINED;
 	// if InITBlock() && !LastInITBlock() then UNPREDICTABLE;
@@ -108,21 +128,6 @@ op BLX_imm_T2(S: card(1), imm10H: card(10), J1: card(1), J2: card(1), imm10L: ca
 		BranchWritePC_thumb(targetAddress);
 	}
 
-// BL from Thumb2 (is equivalent to two successive Thumb1 16-bits BL)
-// In Thumb32, the 16-bits lonely version is now forbidden.
-op BL_imm_T1(J1: card(1), J2: card(1), S: card(1), imm10: card(10), imm11: card(11))
-	addr = __IADDR + 4 + coerce(int(32), S :: ~(J1 ^ S) :: ~(J2 ^ S) :: imm10 :: imm11 :: 0<0..0>)
-	syntax = format("bl 0x%08x", addr)
-	image = format("11110 %1b %10b 11 %1b 1 %1b %11b", S, imm10, J1, J2, imm11)
-	action = {
-		// if ConditionPassed then
-			// targetInstrSet = CurrentInstrSet();
-			// if InITBlock() && !LastInITBlock() then UNPREDICTABLE; endif;
-			next_instr_addr = PC;
-			LR = next_instr_addr<31..1> :: 1<0..0>;
-			BranchWritePC_thumb(addr); 
-		// endif
-	}
 	
 op AND_imm_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, imm8: card(8))
 	// range decoding
@@ -702,8 +707,6 @@ macro ThumbExpandImm_C_jer(imm12) = \
 		"f_ROR"(ZeroExtend(0b1 :: imm12<6..0>, 32),coerce(u32,imm12<11..7>)) \
 	endif
 	
-macro Align_Int(n,v) = v * (n/v)
-
 //TODO replace ROR_CFLAG by f_ROR_C
 macro ThumbExpandImm_CFLAG(imm12) = \
 	if imm12<11..0> == 0b00 then CFLAG \
@@ -804,8 +807,8 @@ macro ABS(value) = \
 	endif;
 	
 op JERABEK = ADC_thumb2 | ADD_thumb2 |AND_thumb2 | ASR_thumb2 | MOV_ORR_thumb2
-	| MOVT_thumb2 | B_thumb2 | BFC_BFI_thumb2 |BIC_thumb2 | BL_thumb2
-	| CDP_CDP2_thumb2 | CLZ_thumb2 /*| CMP_thumb2 */| EOR_thumb2
+	| MOVT_thumb2 | B_thumb2 | BFC_BFI_thumb2 |BIC_thumb2
+	| CDP_CDP2_thumb2 | CLZ_thumb2 | EOR_thumb2
 	| LDMDB_thumb2 | LSR_thumb2 | MCR_MCR2_thumb2 | MCRR_MCRR2_thumb2
 	| MLA_MUL_thumb2 | MLS_thumb2 | MRC_MRC2_thumb2 | MRRC_MRRC2_thumb2
 	| MVN_ORN_thumb2 | PKHBT_PKHTB_thumb2 | QADD_thumb2 | QADD16_thumb2
@@ -899,9 +902,9 @@ op ADD_imm_T4_thumb2(i: card(1), rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), im
 		TMP_UREG1 = Get_ARM_GPR(rd);
 		if (rn.number == 0b1111) then //if rd == 0b1111 then SEE ADR; endif;
 			if (i == 0b1) then
-				TMP_UREG2 = Align_Int(PC,4) + imm32;
+				TMP_UREG2 = Align(PC,4) + imm32;
 			else
-				TMP_UREG2 = Align_Int(PC,4) - imm32;
+				TMP_UREG2 = Align(PC,4) - imm32;
 			endif;
 			Set_ARM_GPR(rd,TMP_UREG2);
 		else	//if rd == 0b1101 then SEE ADD (SP plus immediate) -> same as ADD imm with rd=SP
@@ -1295,19 +1298,6 @@ op BIC_reg_thumb2(S: setS, rd : REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, imm3: c
 			endif; 
 			CFLAG = "f_get_C"();	
 		endif; 	
-	}
-
-
-op BL_thumb2(S: setS, j1: card(1), j2: card(1), imm10: card(10), imm11: card(11))
-	addr = __IADDR + 4 + SignExtend(S :: ~(j1 ^ S) :: ~(j2 ^ S) :: imm10 :: imm11 :: 0<0..0>,32)	
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("bl%s %08x",op_cond_syntax_new(ITCOND), addr)
-	image = format("11110 %s %10b 11 %1b 1 %1b %11b",  S, imm10, j1, j2, imm11)
-	action = {
-		//TODO targetInstrSet = CurrentInstrSet; if(InITBlock() &&......
-		next_instr_addr = PC;
-		LR = next_instr_addr<31..1> :: 1<0..0>;
-		BranchWritePC(addr); 
 	}
 
 

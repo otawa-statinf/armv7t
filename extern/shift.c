@@ -57,6 +57,7 @@ uint8_t f_get_update_ITSTATE(void)
 	{
 		ITSTATE_FOR_SYNTAX =  (tmp_condition << 4) | (0b00001111 & (ITSTATE_FOR_SYNTAX << 1));
 	}
+
 	return tmp;
 }
 
