@@ -260,7 +260,7 @@ void parse_args(int argc, char ** argv) {
 		/* store address and size */
 		iss_accesses[i].addr = addr;
 		iss_accesses[i].size = size;
-		printf("DEBUG: store %08x:%d\n", addr, size);
+		display("DEBUG: store %08x:%d\n", addr, size);
 	}
 
 #endif
@@ -573,10 +573,11 @@ void gdb_buffer_find(char **buf, const char *c) {
 
 /**
  * Start GDB: launch GDB command, make pipe to communicate,
- * put breakpoint on "_start" and run until this breakpoint.
+ * put breakpoint on "_start" or the address given in the parameter
+ * and run until this breakpoint.
  * Exit with code 3 in case of failure.
  */
-void gdb_start(void) {
+void gdb_start(uint32_t _start) {
 
 	/* creating pipes to redirect GDB I/O */
 	display("INFO: running GDB: %s\n", gdb_path);
@@ -645,7 +646,13 @@ void gdb_start(void) {
 		gdb_acknowledge("^done");
 
 		/* command: -break-insert _start */
-		gdb_command("-break-insert _start\n");
+		if (_start) {
+			char buf[256];
+			snprintf(buf, sizeof(buf), "-break-insert *0x%08x\n", _start);
+			gdb_command(buf);
+		}
+		else
+			gdb_command("-break-insert _start\n");
 		gdb_acknowledge("^done");
 
 		/* command: -exec-run */
@@ -856,16 +863,16 @@ void dump_inst(uint32_t addr) {
 
 
 int main(int argc, char **argv) {
-	int cnt, i;
+	int cnt, i, err;
 
 	/* initialization */
 	parse_args(argc, argv);
 	iss_init();
-	gdb_start();
+	iss_pc = iss_get_pc();
+	gdb_start(iss_pc);
+	gdb_pc = gdb_get_pc();
 
 	/* PC synchronization */
-	iss_pc = iss_get_pc();
-	gdb_pc = gdb_get_pc();
 	if(verbose)
 		display("INFO: synchronizing PCs (sim pc = %08x, gdb pc = %08x)\n", iss_pc, gdb_pc);
 	cnt = 0;
@@ -896,8 +903,8 @@ int main(int argc, char **argv) {
 		}
 
 	/* co-simulation */
-	cnt = 0;
-	while(!arm_is_sim_ended(iss)) {
+	iss_ppc = ~iss_pc; // just to make them different
+	while(!arm_is_sim_ended(iss) && iss_ppc != iss_pc) {
 
 		// list instruction if required
 		if(list_inst)
@@ -906,30 +913,31 @@ int main(int argc, char **argv) {
 		// step forward
 		iss_step();
 		gdb_step();
-
-		// check PCs
 		iss_ppc = iss_pc;
 		gdb_ppc = gdb_pc;
 		iss_pc = iss_get_pc();
 		gdb_pc = gdb_get_pc();
-		if(iss_pc != gdb_pc) {
-			fprintf(stderr, "ERROR: difference in PC: %08x (ISS), %08x (GDB)\n", iss_pc, gdb_pc);
-			exit(5);
-		}
 
 		// compare states
 		iss_record_state();
 		gdb_record_state();
+		err = 0;
 		for(i = 0; registers[i].gdb_name; i++)
 			if(iss_cur[i].iv != gdb_cur[i].iv) {
+				err++;
 				fprintf(stderr, "ERROR: difference found for register %s: %08x (ISS), %08x (GDB)\n",
 					registers[i].gdb_name, iss_cur[i].iv, gdb_cur[i].iv);
-				dump_inst(iss_ppc);
-				printf("Current state:\n");
-				dump_state();
-				exit(5);
 			}
-
+		if (err) {
+			if(!list_inst) {
+				display("INFO: stopping due to %d errors after the instruction:\n", err);
+				dump_inst(iss_ppc);
+			}
+			printf("Current state:\n");
+			dump_state();
+			exit(5);
+		}
+		
 		/* compare memory accesses */
 #		ifdef ARM_MEM_IO
 		for(i = 0; i < iss_access_cnt; i++) {
@@ -959,7 +967,7 @@ int main(int argc, char **argv) {
 					exit(5);
 				}
 				else if(verbose)
-					fprintf(stderr, "INFO: memory checking OK for %08x:%x %02x\n", iss_accesses[i].addr + j, iss_accesses[i].size, iss_bytes[j]);
+					fprintf(stderr, "INFO: memory checking OK for the byte at %08x %02x\n", iss_accesses[i].addr + j, iss_bytes[j]);
 			}
 		}
 #		endif
@@ -968,5 +976,9 @@ int main(int argc, char **argv) {
 
 	/* all is fine */
 	fprintf(stderr, "SUCCESS: co-simulation successful!");
+	if(!list_inst) {
+		display("INFO: last executed instruction:\n");
+		dump_inst(iss_ppc);
+	}
 	return 0;
 }

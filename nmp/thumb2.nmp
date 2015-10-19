@@ -529,7 +529,7 @@ op RSB_imm_T2(i: card(1), S: setS, Rd: REG_INDEX, Rn: REG_INDEX, imm3: card(3), 
 	cond = 1
 	action = {
 		if ConditionPassed() then
-			AddWithCarry(result, carry, overflow, ~GPR[n], imm32, 0b1)
+			AddWithCarry(result, carry, overflow, ~GPR[n], imm32, 0b1);
 			if d == 15 then
 				ALUWritePC(result);
 			else

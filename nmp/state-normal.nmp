@@ -70,25 +70,24 @@ macro SetSPSR(x) = \
 
 // access to SR flags (deprecated)
 reg NFLAG [1, u1] alias = Ucpsr<31..31>	// N=1 if the result is negative, N=0 if it is positive or zero
-reg ZFLAG [1, u1] alias = Ucpsr<30..30>	//Z=1 if the result of the instruction is zero and to 0 otherwise
+reg ZFLAG [1, u1] alias = Ucpsr<30..30>	// Z=1 if the result of the instruction is zero and to 0 otherwise
 reg CFLAG [1, u1] alias = Ucpsr<29..29>
 	//(*)For an addition C is set to 1 if the addition produced a carry and to 0 otherwise
 	//(*)For a substraction C is set to 0 if the substraction produced a borrow and to 1 otherwise
-	//(*)For an operation that incorporate a shift operation C is set to the last u1 shifted out  of the value by the shifter
+	//(*)For an operation that incorporate a shift operation C is set to the last u1 shifted out of the value by the shifter
 	//(*)Else C is normally unchanged.
 reg VFLAG [1, u1] alias  = Ucpsr<28..28>
 	//(*) For an addition V is set to 1 if signed overflow occured
 	//(*) Else V is normally unchanged
 reg QFLAG [1, u1] alias  = Ucpsr<27..27>	// Indicate if an overflow and/or saturation has occured in the DSP instruction
-
 reg JFLAG [1, u1] alias = CPSR<24..24>	// ARM v6 Jazelle bit
-reg EBIT  [1, u1] alias = CPSR<9..9>		// ARM v6, load/store endianness (1 big, 0 little)
-reg ABIT  [1, u1] alias = CPSR<8..8>		// ARM v6,
-reg IFLAG [1, u1] alias = Ucpsr<7..7>		// Disable IRQ interrupts when it is set
-reg FFLAG [1, u1] alias = Ucpsr<6..6>		// Disable FIQ interrupts whenit is set
-reg TFLAG [1, u1] alias	= Ucpsr<5..5>		// If T=0 Indicates ARM execution else if T=1 indicates Thumb execution
-reg TBIT  [1, u1] alias	= Ucpsr<5..5>		// deprecated
-reg MBITS [1, u5] alias = APSR<4..0>		// Determine the mode in which the processor operates
+reg EBIT  [1, u1] alias = CPSR<9..9>	// ARM v6, load/store endianness (1 big, 0 little)
+reg ABIT  [1, u1] alias = CPSR<8..8>	// ARM v6,
+reg IFLAG [1, u1] alias = Ucpsr<7..7>	// Disable IRQ interrupts when it is set
+reg FFLAG [1, u1] alias = Ucpsr<6..6>	// Disable FIQ interrupts whenit is set
+reg TFLAG [1, u1] alias	= Ucpsr<5..5>	// If T=0 Indicates ARM execution else if T=1 indicates Thumb execution
+reg TBIT  [1, u1] alias	= Ucpsr<5..5>	// deprecated
+reg MBITS [1, u5] alias = APSR<4..0>	// Determine the mode in which the processor operates
 reg GEBITS[1, card(4)] alias = CPSR<19..16>
 
 // ISETSTATE definitions
@@ -234,7 +233,7 @@ mode REG_INDEX(r: card(4)) = r + reg_offset(r)
 	number = r
 
 macro Get_ARM_GPR(r) = GPR[r]
-macro Set_ARM_GPR(r, v) = if r == 15 then NPC = v; else GPR[r] = v; endif
+macro Set_ARM_GPR(r, v) = if (r) == 15 then NPC = (v); else GPR[(r)] = (v); endif
 
 
 // R for debugging

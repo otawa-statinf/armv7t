@@ -128,11 +128,11 @@ macro Shift(value, t, amount, carry_in) = \
 // ALU operations
 macro AddWithCarry(result, carry, overflow, v1, v2, carry_in) = \
 	result = (v1) + (v2) + (carry_in); \
-	carry = CarryFromAdd((v1), ((v2) + (carry_in)), (result)); \
-	overflow = OverflowFromAdd((v1), ((v2) + (carry_in)), (result))
+	carry = CarryFromAdd((v1), (v2), (result)); \
+	overflow = OverflowFromAdd((v1), (v2), (result))
 
 
-// thumb expansion
+// thumb immediate expansion
 macro ThumbExpandImm(imm12) = \
 	if (imm12)<11..10> == 0b00 then \
 		switch((imm12)<9..8>) { \
@@ -144,6 +144,8 @@ macro ThumbExpandImm(imm12) = \
 	else \
 		ROR_(ZeroExtend(0b1 :: (imm12)<6..0>, 32), (imm12)<11..7>) \
 	endif
+
+// thumb immediate expansion with carry
 macro ThumbExpandImm_C(imm12, result, carry_out) = \
 	if imm12<11..10> == 0b00 then \
 		result = ThumbExpandImm(imm12); \
@@ -151,5 +153,3 @@ macro ThumbExpandImm_C(imm12, result, carry_out) = \
 		unrotated_value = ZeroExtend(1<0..0> :: imm12<6..0>, 32); \
 		ROR_C(unrotated_value, UInt(imm12<11..7>), imm32, carry_out); \
 	endif
-
-
