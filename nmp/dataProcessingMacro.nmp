@@ -240,8 +240,8 @@ macro CMP(op1,op2) = \
 		else \
 			ZFLAG = 0; \
 		endif; \
-		CFLAG = ! CarryFromSub(TMP_REG1,op2,Temp); \
-		VFLAG =  OverflowFromSub(TMP_REG1,op2,Temp);
+		CFLAG = CarryFromSub(TMP_REG1,op2,Temp); \
+		VFLAG = OverflowFromSub(TMP_REG1,op2,Temp);
 
 macro EOR(dest,op1,op2) = \
 		TMP_REG1 = Get_ARM_GPR(dest);\
@@ -334,7 +334,7 @@ macro RSB(dest,op1,op2) = \
 				else \
 					ZFLAG = 0; \
 				endif; \
-				CFLAG =  ! CarryFromSub(op2,TMP_REG2,TMP_REG1);\
+				CFLAG = CarryFromSub(op2,TMP_REG2,TMP_REG1);\
 				VFLAG = OverflowFromSub(op2,TMP_REG2,TMP_REG1); \
 			endif; \
 		endif;
@@ -356,7 +356,7 @@ macro RSC(dest,op1,op2) = \
 				else \
 					ZFLAG = 0; \
 				endif; \
-				CFLAG =  ! CarryFromSub(op2,TMP_REG2,TMP_REG1);\
+				CFLAG = CarryFromSub(op2,TMP_REG2,TMP_REG1);\
 				VFLAG = OverflowFromSub(op2,TMP_REG2,TMP_REG1); \
 			endif; \
 		endif;
@@ -378,7 +378,7 @@ macro SBC(dest,op1,op2) = \
 				else \
 					ZFLAG = 0; \
 				endif; \
-				CFLAG =  ! CarryFromSub(TMP_REG2,op2,TMP_REG1);\
+				CFLAG = CarryFromSub(TMP_REG2,op2,TMP_REG1);\
 				VFLAG = OverflowFromSub(TMP_REG2,op2,TMP_REG1); \
 			endif; \
 		endif;
@@ -399,7 +399,7 @@ macro SUB(dest,op1,op2) = \
 				else \
 					ZFLAG = 0; \
 				endif; \
-				CFLAG =  ! CarryFromSub(TMP_REG2,op2,TMP_REG1);\
+				CFLAG = CarryFromSub(TMP_REG2,op2,TMP_REG1);\
 				VFLAG = OverflowFromSub(TMP_REG2,op2,TMP_REG1); \
 			endif; \
 		endif;
