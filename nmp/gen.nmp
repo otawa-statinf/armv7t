@@ -71,8 +71,15 @@ macro UInt(v)			=	coerce(card(32), v)
 macro SInt(v)			=	coerce(int(32), v)
 macro IsZeroBit(v)		=	(v) == 0
 macro IsOnesBit(v)		=	(~(v)) == 0
-// slight different definition from ARM manual: n is the number of missing bits.
-macro SignExtend(v, n)	=	((coerce(int(32), v) << n) >> n)
+
+// Too Bad: remove it!
+//slight different definition from ARM manual: n is the number of missing bits.
+//macro SignExtend(v, n)	=	((coerce(int(32), v) << n) >> n)
+
+// good version
+macro SignExtend(v, s) = coerce(int(s), v)
+
+
 
 // helper functions
 //macro ConditionPassed = cond

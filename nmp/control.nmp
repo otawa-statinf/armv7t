@@ -28,7 +28,7 @@ op B_Cond(cond: condition, setl: u1, signed_immed_24: IMM24)
 	image = format("%s101%1b%s", cond.image, setl, signed_immed_24.image)
 	action = {
 		if cond.value == 0b1111 then
-			imm32 = SignExtend(signed_immed_24 :: setl :: 0b0, 6);
+			imm32 = SignExtend(signed_immed_24 :: setl :: 0b0, 32);
 			targetInstrSet = InstrSet_Thumb;
 			if setl then
 				if CurrentInstrSet() == InstrSet_ARM then

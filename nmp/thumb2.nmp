@@ -118,7 +118,7 @@ op BLX_imm_T2(S: card(1), imm10H: card(10), J1: card(1), J2: card(1), imm10L: ca
 	// if CurrentInstrSet() == InstrSet_ThumbEE || H == '1' then UNDEFINED;
 	// if InITBlock() && !LastInITBlock() then UNPREDICTABLE;
 	ITCOND = "f_get_update_ITSTATE"()
-	imm32 = SignExtend(S :: ~(J1 ^ S) :: ~(J2 ^ S) :: imm10H :: imm10L :: 0b00, 7)
+	imm32 = SignExtend(S :: ~(J1 ^ S) :: ~(J2 ^ S) :: imm10H :: imm10L :: 0b00, 32)
 	targetAddress = Align(__IADDR, 4) + 4 + imm32 // in ARM ref, targetAddress = PC + imm32;
 	image  = format("11110 %1b %10b 11 %1b 0 %1b %10b %1b", S, imm10H, J1, J2, imm10L, H)
 	syntax = format("blx%s 0x%08x", op_cond_syntax_new(ITCOND), targetAddress)
@@ -375,7 +375,7 @@ op CLZ_T1(Rd: REG_INDEX, Rm: REG_INDEX)
 	}
 
 op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), imm11: card(11))
-	imm32 = SignExtend(S :: J2 :: J1 :: imm6 :: imm11 :: 0b0, 11)
+	imm32 = SignExtend(S :: J2 :: J1 :: imm6 :: imm11 :: 0b0, 32)
 	target = __IADDR + imm32 + 4
 	syntax =
 		if cond.value<3..1> == 0b111
@@ -396,7 +396,7 @@ op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), im
 
 
 op B_T4(S: card(1), imm10: card(10), J1: card(1), J2: card(1), imm11: card(11))
-	imm32 = SignExtend(S :: J1 :: J2 :: imm10 :: imm11 :: 0b0, 7)
+	imm32 = SignExtend(S :: J1 :: J2 :: imm10 :: imm11 :: 0b0, 32)
 	target = __IADDR + imm32 + 4
 	syntax = format("b.w %l", target)
 	image = format("11110 %1b %10b 10 %1b 1 %1b %11b", S, imm10, J1, J2, imm11)
