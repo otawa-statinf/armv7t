@@ -5,9 +5,9 @@
 //                See file arm.nmp
 //*************************************************************************//
 //  date            : July 2006                                            //
-//  copyright       : Institut de Recherche en Informatique de Toulouse    //  
-//  author          : Tahiry RATSIAMBAHOTRA                                //  
-//  email           : ratsiam@irit.fr, sainrat@irit.fr                     //  
+//  copyright       : Institut de Recherche en Informatique de Toulouse    //
+//  author          : Tahiry RATSIAMBAHOTRA                                //
+//  email           : ratsiam@irit.fr, sainrat@irit.fr                     //
 //*************************************************************************//
 
 //*************************************************************************//
@@ -63,7 +63,7 @@ mode setR_Toff()=0
 mode setR_T = setR_Ton | setR_Toff
 
 //////////////////////////////////////////
-// mode for 11bits offset 
+// mode for 11bits offset
 //////////////////////////////////////////
 mode OFFS11(n: u11) = n
 	syntax = format ("%d", n)
@@ -96,7 +96,7 @@ macro first_bit_on8(v8) = \
 	if v8<6..6> == 1 then 1 else \
 	if v8<7..7> == 1 then 0 else \
 	-1 endif endif endif endif endif endif endif endif \
-    
+
 macro syntax_thumb_reg(on_off, num_reg) = \
 	if on_off == 1 then \
 		format("r%d", num_reg) \
@@ -128,7 +128,7 @@ macro Get_THUMB_GPR(r) = GPR[r]
 
 
 ///////////////////////////////////////////
-// All thumb Instructions 
+// All thumb Instructions
 ///////////////////////////////////////////
 
 op THUMB(i: thumb)
@@ -149,19 +149,19 @@ op thumb1(x: thumb1_list)
 		if ConditionPassed then
 			x.action;
 		endif;
-		if InITBlock then 
-			ITAdvance; 
+		if InITBlock then
+			ITAdvance;
 		endif;
 		PC = NPC;
 	}
 
 op thumb1_list =
 	  ADD_thumb | AND_thumb | ASR_thumb
-	| B_thumb | B_thumb_T2 | BIC_thumb | BKPT_thumb 
-	| BLX_thumb | BX_thumb | CBNZ_CBZ_thumb| COMPARE_thumb | EOR_thumb | LDMIA_thumb 
-	| LDR_thumb | LDRB_thumb | LDRH_thumb | LDRS_thumb | LSL_thumb 
-	| LSR_thumb | MUL_thumb | MVN_thumb | NEG_thumb 
-	| ORR_thumb | POP_thumb | PUSH_thumb | REV_thumb | REV16_thumb | REVSH_thumb 
+	| B_thumb | B_thumb_T2 | BIC_thumb | BKPT_thumb
+	| BLX_thumb | BX_thumb | CBNZ_CBZ_thumb| COMPARE_thumb | EOR_thumb | LDMIA_thumb
+	| LDR_thumb | LDRB_thumb | LDRH_thumb | LDRS_thumb | LSL_thumb
+	| LSR_thumb | MUL_thumb | MVN_thumb | NEG_thumb
+	| ORR_thumb | POP_thumb | PUSH_thumb | REV_thumb | REV16_thumb | REVSH_thumb
 	| ROR_thumb | SBC_thumb
 	| STMIA_thumb | STR_thumb | STRB_thumb | STRH_thumb | SUB_thumb
 	| SXTB_thumb | SXTH_thumb
@@ -170,15 +170,15 @@ op thumb1_list =
 
 
 ///////////////////////////////////////////
-// I Arithmetic Instructions 
+// I Arithmetic Instructions
 ///////////////////////////////////////////
 
 
 op ADD_thumb = ADC_thumb | ADD_imm1_thumb | ADD_imm2_thumb | ADD_imm3_thumb
-| ADD_imm4_thumb | ADD_imm5_thumb | ADD_reg1_thumb| ADD_reg2_thumb 
+| ADD_imm4_thumb | ADD_imm5_thumb | ADD_reg1_thumb| ADD_reg2_thumb
 
 
-       
+
 op ADC_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("adc%s %s, %s", op_cond_syntax_16(ITCOND), rd.syntax, rn.syntax)
@@ -192,16 +192,16 @@ op ADC_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX)
 		VFLAG = OverflowFromAdd(TMP_REG2,TMP_REG1,TMP_SWORD);
 		TMP_REG1 = Get_THUMB_GPR(rd);
 		NFLAG = TMP_REG1<31..31>;
-		if TMP_REG1 == 0 then 
+		if TMP_REG1 == 0 then
 			ZFLAG = 1;
-		else 
-			ZFLAG = 0; 
-		endif; 
+		else
+			ZFLAG = 0;
+		endif;
 	}
 
 op ADD_imm1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm:IMM3)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = 
+	syntax =
 		if imm == 0 then
 			format("mov%s %s, %s", op_cond_syntax_16(ITCOND),  rd.syntax, rn.syntax)
 		else
@@ -210,15 +210,15 @@ op ADD_imm1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm:IMM3)
 	image = format("0001110%s%s%s", imm.image, rn.image, rd.image)
 	action = {
 		TMP_REG2 = Get_THUMB_GPR(rn);
-		TMP_SWORD = TMP_REG2 + imm; 
+		TMP_SWORD = TMP_REG2 + imm;
 		GPR[rd] = TMP_SWORD;
 		CFLAG = CarryFromAdd(TMP_REG2,imm,TMP_SWORD);
-		VFLAG = OverflowFromAdd(TMP_REG2,imm,TMP_SWORD); 
-		NFLAG = TMP_SWORD<31..31>; 
-		if TMP_SWORD == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
+		VFLAG = OverflowFromAdd(TMP_REG2,imm,TMP_SWORD);
+		NFLAG = TMP_SWORD<31..31>;
+		if TMP_SWORD == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
 		endif;
 	}
 
@@ -229,7 +229,7 @@ op ADD_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
 	setflags = !InITBlock()
 	imm32 = ZeroExtend(imm, 32)
 	action = {
-		AddWithCarry(result, carry, overflow, R[rd], imm32, 0); 
+		AddWithCarry(result, carry, overflow, R[rd], imm32, 0);
 		R[rd] = result;
 		if setflags then
 			APSR_N = result<31..31>;
@@ -249,13 +249,13 @@ op ADD_reg1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm: REG_THUMB_IND
 		TMP_SWORD = TMP_REG2 + TMP_REG1;
 		GPR[rd] = TMP_SWORD;
 		CFLAG =  CarryFromAdd(TMP_REG2,TMP_REG1,TMP_SWORD);
-		VFLAG = OverflowFromAdd(TMP_REG2,TMP_REG1,TMP_SWORD); 
+		VFLAG = OverflowFromAdd(TMP_REG2,TMP_REG1,TMP_SWORD);
 		TMP_REG1 = Get_THUMB_GPR(rd);
-		NFLAG = TMP_REG1<31..31>; 
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
+		NFLAG = TMP_REG1<31..31>;
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
 		endif;
 	}
 
@@ -301,13 +301,13 @@ op AND_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	image = format("0100000000%s%s", rm.image, rd.image)
 	action = {
 		TMP_REG1 = GPR[rd] & GPR[rm];
-		NFLAG = TMP_REG1<31..31>; 
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 
-		GPR[rd] = TMP_REG1;   
+		NFLAG = TMP_REG1<31..31>;
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
+		GPR[rd] = TMP_REG1;
 	}
 
 op ASR_thumb = ASR1_thumb | ASR2_thumb
@@ -321,8 +321,8 @@ op ASR1_thumb(rd : REG_THUMB_INDEX, rm:REG_THUMB_INDEX, imm : IMM5 )
 		if imm == 0 then
 			TMP_BIT = TMP_REG1<31..31>;
 			if  TMP_BIT == 0 then
-				TMP_REG2 = 0;   
-			else 
+				TMP_REG2 = 0;
+			else
 				TMP_REG2 = 0b11111111111111111111111111111111;
 			endif;
 		else
@@ -330,7 +330,7 @@ op ASR1_thumb(rd : REG_THUMB_INDEX, rm:REG_THUMB_INDEX, imm : IMM5 )
 		endif;
 		NFLAG = TMP_REG2<31..31>;
 		ZFLAG = TMP_REG2 == 0;
-		GPR[rd] = TMP_REG2; 
+		GPR[rd] = TMP_REG2;
 	}
 
 op ASR2_thumb(rd : REG_THUMB_INDEX, rs:REG_THUMB_INDEX )
@@ -358,7 +358,7 @@ op ASR2_thumb(rd : REG_THUMB_INDEX, rs:REG_THUMB_INDEX )
 			ZFLAG = 1;
 		else
 			ZFLAG = 0;
-		endif;  
+		endif;
 	}
 
 
@@ -386,22 +386,22 @@ op B_thumb(cond: u4,  simm: SIMM8)
 		case 13: "ble"
 		case 14: "b"
 		case 15: "svc"
-		}  
-	syntax = if(cond == 15) then 
+		}
+	syntax = if(cond == 15) then
 			format("%s%s %d", syntax_cond, op_cond_syntax_new(ITCOND), coerce(u8, simm))
 		else
-			format("%s.n %08x", syntax_cond, target) 
+			format("%s.n %08x", syntax_cond, target)
 		endif
 	image = format("1101%4b%s", cond, simm.image)
 	action = {
 		if (cond == 15 ) then
 			"swi_impl"(simm);
-		else  	        
+		else
 			if (calcul_condition(cond)) then
 				TMP_REG1 = __IADDR + 4;
-				TMP_IMM = coerce(s32, simm) << 1; 
+				TMP_IMM = coerce(s32, simm) << 1;
 				TMP_REG2 = TMP_REG1 + TMP_IMM;
-				NPC = TMP_REG2;	       	   
+				NPC = TMP_REG2;
 			endif;
 		endif;
 	}
@@ -426,16 +426,16 @@ op BIC_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 		GPR[rd] = TMP_REG1 & TMP_REG2;
 		NFLAG = GPR[rd]<31..31>;
 		TMP_REG1 = GPR[rd];
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 	}
 
 op BKPT_thumb(imm: IMM8)
 	ITCOND = 0
-	syntax = format("bkpt %s",imm.syntax) 
+	syntax = format("bkpt %s",imm.syntax)
 	image = format("10111110%s", imm.image)
 	action = {
 	}
@@ -464,7 +464,7 @@ op BLX_thumb = /*BLX1_thumb |*/ BLX2_thumb
 			Set_ARM_GPR(14, __IADDR + 4 +(coerce(s32, offs) << 12));
 		case 0b11:
 			NPC = Get_ARM_GPR(14) + (coerce(u32, offs) << 1);
-			Set_ARM_GPR(14, (__IADDR + 2) | 1);           		
+			Set_ARM_GPR(14, (__IADDR + 2) | 1);
 		};
 }*/
 
@@ -488,7 +488,7 @@ op BX_thumb(rm: REG_INDEX)
 	target = __IADDR + 2
 	// TODO! Write correct target here!!!
 	action = {
-		TMP_REG1 = Get_ARM_GPR(rm); 
+		TMP_REG1 = Get_ARM_GPR(rm);
 		TFLAG = TMP_REG1<0..0>;
 		NPC = coerce(u32, TMP_REG1<31..1>) << 1;
 	}
@@ -498,21 +498,21 @@ op CBNZ_CBZ_thumb(rn: REG_THUMB_INDEX, i: card(1), imm5: card(5), op_: card(1))
 	ITCOND = "f_get_update_ITSTATE"()
 	imm32 = ZeroExtend(i :: imm5 :: 0b0, 7)
 	target = __IADDR + 4 + imm32
-	syntax = if(op_ == 0b1) then 
-			format("cbnz%s %s, %d", op_cond_syntax_new(ITCOND), rn.syntax, imm32) 
-		else 
-			format("cbz%s %s, %d", op_cond_syntax_new(ITCOND), rn.syntax, imm32) 
+	syntax = if(op_ == 0b1) then
+			format("cbnz%s %s, %d", op_cond_syntax_new(ITCOND), rn.syntax, imm32)
+		else
+			format("cbz%s %s, %d", op_cond_syntax_new(ITCOND), rn.syntax, imm32)
 		endif
 	image = format("1011 %1b 0 %1b 1 %5b %s", op_, i, imm5, rn)
 	nonzero = op_
 	//if InITBlock() then UNPREDICTABLE;
 	action = {
-		//EncodingSpecificOperations(); 
-		if nonzero ^ (R[rn] == 0) then 
-			BranchWritePC(PC + imm32); 
+		//EncodingSpecificOperations();
+		if nonzero ^ (R[rn] == 0) then
+			BranchWritePC(PC + imm32);
 		endif;
 	}
-	
+
 
 op COMPARE_thumb = CMN_shr_thumb | CMP_imm_thumb | CMP_shr1_thumb
 				 | CMP_shr2_thumb
@@ -524,14 +524,14 @@ op CMN_shr_thumb(rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	action= {
 		TMP_REG1 = GPR[rn];
 		TMP_REG2 = GPR[rm];
-		Temp = TMP_REG1 + TMP_REG2; 
-		NFLAG = Temp<31..31>; 
-		if Temp == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 
-		CFLAG =  CarryFromAdd(TMP_REG1,TMP_REG2,Temp); 
+		Temp = TMP_REG1 + TMP_REG2;
+		NFLAG = Temp<31..31>;
+		if Temp == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
+		CFLAG =  CarryFromAdd(TMP_REG1,TMP_REG2,Temp);
 		VFLAG =  OverflowFromAdd(TMP_REG1,TMP_REG2,Temp);
 	}
 
@@ -558,11 +558,11 @@ op CMP_shr1_thumb(rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 
 op CMP_shr2_thumb(H: u1, rn : REG_THUMB_INDEX, rm : REG_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("cmp%s %s, %s", op_cond_syntax_new(ITCOND), rn.syntax, rm.syntax ) 
+	syntax = format("cmp%s %s, %s", op_cond_syntax_new(ITCOND), rn.syntax, rm.syntax )
 	image = format("01000101%1b%s%s", H, rm.image,  rn.image)
-	action = {        
+	action = {
 		TMP_REG1 = Get_ARM_GPR(rn + if H == 1 then 8 else 0 endif);
-		TMP_REG2 = Get_ARM_GPR(rm);  
+		TMP_REG2 = Get_ARM_GPR(rm);
 		AddWithCarry(result, CFLAG, VFLAG, TMP_REG1, ~TMP_REG2, 1);
 		NFLAG = result<31..31>;
 		ZFLAG = result == 0;
@@ -575,13 +575,13 @@ op EOR_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	action = {
 		TMP_REG1 = GPR[rd];
 		TMP_REG2 = GPR[rm];
-		TMP_SWORD = TMP_REG2 ^ TMP_REG1; 
-		NFLAG = TMP_SWORD<31..31>; 
-		if TMP_SWORD == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 
+		TMP_SWORD = TMP_REG2 ^ TMP_REG1;
+		NFLAG = TMP_SWORD<31..31>;
+		if TMP_SWORD == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 		GPR[rd] = TMP_SWORD;
 	}
 
@@ -591,22 +591,22 @@ op LDMIA_thumb(rn: REG_THUMB_INDEX, llist: THUMB_REG_LIST)
 	image = format("11001%s%s", rn.image, llist.image)
 	action = {
 		// Compute number of set bits in the register list to compute the start address
-		TMP_REGLIST = llist;		  
+		TMP_REGLIST = llist;
 		TMP_IMM  = 0;
 		TMP_SETBIT = 0;
 		B15SET = 0;
 		number_of_set_bits_in;
-		
-		TMP_REGLIST = llist;		  
+
+		TMP_REGLIST = llist;
 		TMP_REG1 = GPR[rn];
-		TMP_START_ADDR = TMP_REG1; 
+		TMP_START_ADDR = TMP_REG1;
 		TMP_END_ADDR = TMP_REG1 + (TMP_SETBIT * 4) - 4;
 		TMP_IMM = 0;
 		boucle;
-		GPR[rn] = TMP_REG1 + TMP_SETBIT * 4;              
+		GPR[rn] = TMP_REG1 + TMP_SETBIT * 4;
 
 		//Note that the assert mode is not implemented, programmer may take
-		//		  care of the address in paramater !                            
+		//		  care of the address in paramater !
 	}
 
 	number_of_set_bits_in = {
@@ -616,13 +616,13 @@ op LDMIA_thumb(rn: REG_THUMB_INDEX, llist: THUMB_REG_LIST)
 				TMP_SETBIT = TMP_SETBIT + 1;
 				if (TMP_IMM == 7) then
 					B15SET = 1;
-				endif;		     
+				endif;
 			endif;
 			TMP_REGLIST = TMP_REGLIST >> 1;
 			TMP_IMM = TMP_IMM + 1;
 			number_of_set_bits_in;
 		endif;
-	}  
+	}
 
     boucle = {
 		if (TMP_IMM != 8) then
@@ -650,8 +650,8 @@ op LDR_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
                     TMP_REG1 = UNPREDICTABLE;
                   endif;
                  GPR[rd] = TMP_REG1;
-                 
-                 } 
+
+                 }
 
 op LDR_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
@@ -665,8 +665,8 @@ op LDR_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IND
                     TMP_REG1 = UNPREDICTABLE;
                   endif;
                  GPR[rd] = TMP_REG1;
-                 
-                 } 
+
+                 }
 
 // LDR (literal) T1 in arm7
 op LDR_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
@@ -690,8 +690,8 @@ op LDR_imm3_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
                     TMP_REG1 = UNPREDICTABLE;
                   endif;
                  GPR[rd] = TMP_REG1;
-		                               
-                 } 
+
+                 }
 
 
 op LDRB_thumb = LDRB_imm_thumb | LDRB_shr_thumb
@@ -704,8 +704,8 @@ op LDRB_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 		 TMP_START_ADDR  =  GPR[rn] + imm ;
 		 TMP_IMM = M[TMP_START_ADDR];
                  GPR[rd] = TMP_IMM;
-               
-                 } 
+
+                 }
 
 op LDRB_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
@@ -715,8 +715,8 @@ op LDRB_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IN
 		 TMP_START_ADDR  =  GPR[rn] + GPR[rm];
 		 TMP_IMM = M[TMP_START_ADDR];
                  GPR[rd] = TMP_IMM;
-                 
-                 } 
+
+                 }
 
 
 op LDRH_thumb = LDRH_imm_thumb | LDRH_shr_thumb
@@ -729,8 +729,8 @@ op LDRH_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 		 TMP_START_ADDR  =  GPR[rn] + imm * 2;
 		 TMP_REGLIST = M16[TMP_START_ADDR];
                  GPR[rd] = TMP_REGLIST;
-               
-                 } 
+
+                 }
 
 
 op LDRH_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
@@ -746,8 +746,8 @@ op LDRH_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IN
                     TMP_REGLIST = UNPREDICTABLE;
                   endif;
 		 GPR[rd] = TMP_REGLIST;
-                 
-                 } 
+
+                 }
 
 op LDRS_thumb = LDRSB_thumb | LDRSH_thumb
 
@@ -756,7 +756,7 @@ op LDRSB_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX
 	syntax = format("ldrsb%s %s, [%s, %s]", op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0101011%s%s%s", rm.image, rn.image, rd.image)
 	action = {
-		 
+
 		 TMP_START_ADDR  =  GPR[rn] + GPR[rm];
 		 TMP_IMM = M[TMP_START_ADDR];
 		 TMP_BIT = TMP_IMM<7..7>;
@@ -768,15 +768,15 @@ op LDRSB_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX
 			TMP_REG2 = TMP_IMM;
 	          endif;
                  GPR[rd] = TMP_REG2;
-		                  
-                 } 
+
+                 }
 
 op LDRSH_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("ldrsh%s %s, [%s, %s]", op_cond_syntax_new(ITCOND), rd.syntax, rn.syntax, rm.syntax)
 	image = format("0101111%s%s%s", rm.image, rn.image, rd.image)
 	action = {
-		 
+
 		 TMP_START_ADDR  =  GPR[rn] + GPR[rm];
 		 TMP_BIT = TMP_START_ADDR<0..0>;
                  if (TMP_BIT == 0) then
@@ -793,8 +793,8 @@ op LDRSH_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX
 	        	        TMP_REG2 = UNPREDICTABLE;
 	          endif;
                  GPR[rd] = TMP_REG2;
-		                  
-                 } 
+
+                 }
 
 op LSL_thumb = LSL_imm_thumb | LSL_shr_thumb
 
@@ -802,7 +802,7 @@ op LSL_imm_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX, imm: IMM5)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("lsl%s %s, %s, %s", op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax, imm.syntax)
 	image = format("00000%s%s%s", imm.image, rm.image, rd.image)
-	action = {  
+	action = {
 		if(imm == 0) then
 			TMP_REG1 = GPR[rm];
 		else
@@ -811,11 +811,11 @@ op LSL_imm_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX, imm: IMM5)
 			TMP_REG1 = GPR[rm] << imm;
 		endif;
 		NFLAG = TMP_REG1<31..31>;
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 	   
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 		GPR[rd]= TMP_REG1;
 	}
 
@@ -823,7 +823,7 @@ op LSL_shr_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("lsl%s %s, %s", op_cond_syntax_16(ITCOND), rd.syntax, rs.syntax)
 	image = format("0100000010%s%s", rs.image, rd.image)
-	action = {  
+	action = {
 		TMP_IMM = GPR[rs]<7..0>;
 		TMP_REG1 = GPR[rd];
 		if (TMP_IMM == 0) then
@@ -837,37 +837,37 @@ op LSL_shr_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
 		else if (TMP_IMM > 32)  then
 			CFLAG = 0;
 			TMP_REG1 = 0;
-		endif; endif; endif; endif;	
+		endif; endif; endif; endif;
 		NFLAG = TMP_REG1<31..31>;
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 	   
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 		GPR[rd]= TMP_REG1;
 	}
 
 op LSR_thumb = LSR_imm_thumb | LSR_shr_thumb
 
-op LSR_imm_thumb(Rd: REG_THUMB_INDEX, Rm: REG_THUMB_INDEX, imm5: IMM5)
+op LSR_imm_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX, imm5: IMM5)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("lsr%s %s, %s, %s", op_cond_syntax_16(ITCOND), Rd.syntax, Rm.syntax, imm5.syntax)
-	image = format("00001%s%s%s", imm5.image, Rm.image, Rd.image)
+	syntax = format("lsr%s %s, %s, %s", op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax, imm5.syntax)
+	image = format("00001%s%s%s", imm5.image, rm.image, rd.image)
 	setflags = !ITCOND
-	d = UInt(Rd)
-	m = UInt(Rm)
+	d = UInt(rd)
+	m = UInt(rm)
 	setflags = !InITBlock()
 	shift_n = if imm5 == 0 then 32 else imm5 endif
-	action = {		
+	action = {
 		if ConditionPassed() then
 			result = R[m] >> shift_n;
 			if setflags then
 				APSR_N = result<31..31>;
-				APSR_Z = IsZeroBit(result); 
+				APSR_Z = IsZeroBit(result);
 				APSR_C = R[m]<(shift_n - 1)..(shift_n - 1)>;
 				// APSR.V unchanged
 			endif;
-			R[d] = result; 
+			R[d] = result;
 		endif;
 }
 
@@ -875,7 +875,7 @@ op LSR_shr_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("lsr%s %s, %s", op_cond_syntax_16(ITCOND), rd.syntax, rs.syntax)
 	image = format("0100000011%s%s", rs.image, rd.image)
-	action = {  
+	action = {
 		TMP_IMM = GPR[rs]<7..0>;
 		TMP_REG1 = GPR[rd];
 		if (TMP_IMM == 0) then
@@ -889,13 +889,13 @@ op LSR_shr_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
 		else if (TMP_IMM > 32)  then
 			CFLAG = 0;
 			TMP_REG1 = 0;
-		endif; endif; endif; endif;	
+		endif; endif; endif; endif;
 		NFLAG = TMP_REG1<31..31>;
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 	   
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 		GPR[rd]= TMP_REG1;
 	}
 
@@ -908,10 +908,10 @@ op MOV_imm_thumb(rd : REG_THUMB_INDEX, imm : IMM8)
 	setflags = !InITBlock()
 	action = {
 		GPR[rd] = imm;
-		if setflags then 
+		if setflags then
 			APSR_N = imm<31..31>;
-			APSR_Z = imm == 0; 
-		endif; 
+			APSR_Z = imm == 0;
+		endif;
 	}
 
 op MOV_shr_thumb(rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX)
@@ -920,12 +920,12 @@ op MOV_shr_thumb(rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX)
 	image = format("0001110000%s%s", rn.image, rd.image)
 	action = {
 		TMP_REG1 = GPR[rn];
-		NFLAG = TMP_REG1<31..31>; 
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 
+		NFLAG = TMP_REG1<31..31>;
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 		GPR[rd] = TMP_REG1;
 	}
 
@@ -935,7 +935,7 @@ op MOV_shr2_thumb(H: u1, rd: REG_THUMB_INDEX, rm: REG_INDEX)
 	image = format("01000110%1b%s%s", H, rm.image, rd.image)
 	d = rd + if H then 8 else 0 endif
 	action = {
-		TMP_SWORD = Get_ARM_GPR(rm);   
+		TMP_SWORD = Get_ARM_GPR(rm);
 		Set_ARM_GPR(d + reg_offset(d), TMP_SWORD);
 	}
 
@@ -946,14 +946,14 @@ op MUL_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	action = {
 	       TMP_REG1 = GPR[rd];
 	       TMP_REG1= GPR[rm] * TMP_REG1;
-	        NFLAG = TMP_REG1<31..31>; 
-		 if TMP_REG1 == 0 then 
-		    ZFLAG = 1; 
-		 else 
-		    ZFLAG = 0; 
-		 endif; 
+	        NFLAG = TMP_REG1<31..31>;
+		 if TMP_REG1 == 0 then
+		    ZFLAG = 1;
+		 else
+		    ZFLAG = 0;
+		 endif;
 		 GPR[rd] = TMP_REG1;
-	   
+
 	}
 
 op MVN_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
@@ -962,31 +962,31 @@ op MVN_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	image = format("0100001111%s%s", rm.image, rd.image)
 	action = {
 	       TMP_REG1 = ~GPR[rm];
-	       NFLAG = TMP_REG1<31..31>; 
-		 if TMP_REG1 == 0 then 
-		    ZFLAG = 1; 
-		 else 
-		    ZFLAG = 0; 
-		 endif; 
+	       NFLAG = TMP_REG1<31..31>;
+		 if TMP_REG1 == 0 then
+		    ZFLAG = 1;
+		 else
+		    ZFLAG = 0;
+		 endif;
 		 GPR[rd] = TMP_REG1;
-	   
+
 	}
 
-op NEG_thumb(rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX)
+op NEG_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("rsb%s %s, %s, #0", op_cond_syntax_16(ITCOND), rd.syntax, rn.syntax)
-	image = format("0100001001%s%s", rn.image, rd.image)
+	syntax = format("rsb%s %s, %s, #0", op_cond_syntax_16(ITCOND), rd.syntax, rm.syntax)
+	image = format("0100001001%s%s", rm.image, rd.image)
 	action = {
-		TMP_REG1 = GPR[rn];
+		TMP_REG1 = GPR[rm];
 		TMP_SWORD = 0 - TMP_REG1;
 		NFLAG = TMP_SWORD<31..31>;
 		if TMP_SWORD == 0 then
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 		GPR[rd] = TMP_SWORD;
-		CFLAG = CarryFromSub(0, TMP_REG1, TMP_SWORD); 
+		CFLAG = CarryFromSub(0, TMP_REG1, TMP_SWORD);
 		VFLAG = OverflowFromSub(0, TMP_REG1, TMP_SWORD);
 	}
 
@@ -996,12 +996,12 @@ op ORR_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	image = format("0100001100%s%s", rm.image, rd.image)
 	action = {
 		TMP_REG1 = GPR[rd] | GPR[rm];
-		NFLAG = TMP_REG1<31..31>; 
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 
+		NFLAG = TMP_REG1<31..31>;
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 		GPR[rd] = TMP_REG1;
 	}
 
@@ -1011,19 +1011,19 @@ op POP_thumb(P: setR_T, llist: THUMB_REG_LIST)
 	syntax = format("pop%s {%s%s}", op_cond_syntax_new(ITCOND), llist.syntax,
 		if !P then "" else if llist then ", pc" else "pc" endif endif)
 	image = format("1011 1 10 %s %s", P.image, llist.image)
-	action = {  
+	action = {
 		// Compute number of set bits in the register list to compute the end address
 		TMP_REGLIST = llist;
 		TMP_IMM  = 0;
 		TMP_SETBIT = 0;
 		number_of_set_bits_in;
-		
+
 		TMP_REGLIST = llist;
-		TMP_START_ADDR = Get_ARM_GPR(13 + reg_offset(13)); 
+		TMP_START_ADDR = Get_ARM_GPR(13 + reg_offset(13));
 		TMP_END_ADDR = TMP_START_ADDR + ((P + TMP_SETBIT) * 4) ;
 		TMP_IMM = 0;
 		boucle;
-		
+
 		if (P == 1) then
 			TMP_REG1 = M32[TMP_START_ADDR];
 			TBIT = TMP_REG1<0..0>;
@@ -1031,22 +1031,22 @@ op POP_thumb(P: setR_T, llist: THUMB_REG_LIST)
 			BranchWritePC_thumb(M32[TMP_START_ADDR]);
 		endif;
 		Set_ARM_GPR(13 + reg_offset(13), TMP_END_ADDR);
-                            
+
  		// Note that the assert mode is not implemented,
- 		// programmer may take care of the address in paramater !                            
+ 		// programmer may take care of the address in paramater !
 	}
 
 	number_of_set_bits_in = {
 		// Count the amount of bits into the list
 		if (TMP_IMM < 8) then
 			if (TMP_REGLIST & 1 == 1) then
-				TMP_SETBIT = TMP_SETBIT + 1;     
+				TMP_SETBIT = TMP_SETBIT + 1;
 			endif;
 		  	TMP_REGLIST = TMP_REGLIST >> 1;
 			TMP_IMM = TMP_IMM + 1;
 			number_of_set_bits_in;
 		endif;
-	}  
+	}
 
     boucle = {
 		if (TMP_IMM < 8) then
@@ -1067,15 +1067,15 @@ op PUSH_thumb(P: setR_T, llist: THUMB_REG_LIST)
    			if !P then "" else if llist then ", lr" else "lr" endif endif)
    	image = format("1011010%s%s", P.image, llist.image)
    	action = {
-   		//reg_list.action;	  
+   		//reg_list.action;
 		//Compute number of set bits in the register list to compute the start address
 		TMP_IMM  = 0;
-		TMP_REGLIST = llist;	
+		TMP_REGLIST = llist;
 		TMP_SETBIT = 0;
 		B15SET = 0;
 		TMP_REG1 = Get_ARM_GPR(13 + reg_offset(13));
 		number_of_set_bits_in;
-		TMP_START_ADDR = TMP_REG1 - ((P + TMP_SETBIT) * 4  ) ; 
+		TMP_START_ADDR = TMP_REG1 - ((P + TMP_SETBIT) * 4  ) ;
 		TMP_END_ADDR = TMP_START_ADDR ;
 		TMP_IMM = 0;
 		TMP_REGLIST = llist;
@@ -1087,7 +1087,7 @@ op PUSH_thumb(P: setR_T, llist: THUMB_REG_LIST)
 		endif;
 		Set_ARM_GPR(13 + reg_offset(13), TMP_END_ADDR);
  		//Note that the assert mode is not implemented, programmer may take
-		//		  care of the address in paramater !                            
+		//		  care of the address in paramater !
 	}
 	number_of_set_bits_in = {
 		//Count the amount of bits into the list
@@ -1096,13 +1096,13 @@ op PUSH_thumb(P: setR_T, llist: THUMB_REG_LIST)
 				TMP_SETBIT = TMP_SETBIT + 1;
 				if (TMP_IMM == 7) then
 					B15SET = 1;
-				endif;		     
+				endif;
 			endif;
 			TMP_REGLIST = TMP_REGLIST >> 1;
 			TMP_IMM = TMP_IMM + 1;
 			number_of_set_bits_in;
 		endif;
-	}  
+	}
     boucle = {
     	if (TMP_IMM != 8) then
     		if (TMP_REGLIST & 1 == 1) then
@@ -1122,7 +1122,7 @@ op REV_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
 	image = format("1011 1010 00 %s %s", rm, rd)
 	action = {
 		TMP_UREG1 = Get_ARM_GPR(rm);
-		
+
 		TMP_UREG2<31..24> = TMP_UREG1<7..0>;
 		TMP_UREG2<23..16> = TMP_UREG1<15..8>;
 		TMP_UREG2<15..8> = TMP_UREG1<23..16>;
@@ -1138,7 +1138,7 @@ op REV16_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
 	image = format("1011 1010 01 %s %s", rm, rd)
 	action = {
 		TMP_UREG1 = Get_ARM_GPR(rm);
-		
+
 		TMP_UREG2<31..24> = TMP_UREG1<23..16>;
 		TMP_UREG2<23..16> = TMP_UREG1<31..24>;
 		TMP_UREG2<15..8> = TMP_UREG1<7..0>;
@@ -1154,7 +1154,7 @@ op REVSH_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
 	image = format("1011 1010 11 %s %s", rm, rd)
 	action = {
 		TMP_UREG1 = Get_ARM_GPR(rm);
-		
+
 		TMP_UREG2<31..8> = SignExtend(TMP_UREG1<7..0>,24);
 		TMP_UREG2<7..0> = TMP_UREG1<15..8>;
 
@@ -1166,16 +1166,16 @@ op ROR_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("ror%s %s, %s", op_cond_syntax_16(ITCOND), rd.syntax, rs.syntax)
 	image = format("0100000111%s%s", rs.image, rd.image)
-	action = {  
+	action = {
 		TMP_IMM =  GPR[rs]<7..0>;
-		TMP_FIVE = GPR[rs]<4..0>; 
+		TMP_FIVE = GPR[rs]<4..0>;
 		TMP_REG1 = GPR[rd];
 		if (TMP_IMM == 0) then
 		else
 			if (TMP_FIVE == 0) then
 				//  TMP_IMM2 =  TMP_IMM - 1;
 				CFLAG = TMP_REG1<31..31>;
-			else 
+			else
 				TMP_IMM2 = TMP_FIVE - 1;
 				// in the next line, index was missing after GPR
 				// not sure if [rd] is the good one
@@ -1184,11 +1184,11 @@ op ROR_thumb( rd : REG_THUMB_INDEX, rs : REG_THUMB_INDEX)
 			endif;
 		endif;
 		NFLAG = TMP_REG1<31..31>;
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 	   
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 		GPR[rd]= TMP_REG1;
 	}
 
@@ -1201,39 +1201,39 @@ op SBC_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 		TMP_REG1 = GPR[rd];
 		TMP_REG2 = GPR[rm];
 		TMP_BIT = !CFLAG;
-		TMP_SWORD = TMP_REG1 - TMP_REG2 - !CFLAG; 
+		TMP_SWORD = TMP_REG1 - TMP_REG2 - !CFLAG;
 		TMP_REG1 = TMP_SWORD;
-		NFLAG = TMP_REG1<31..31>; 
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif; 
+		NFLAG = TMP_REG1<31..31>;
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 		// a revoir \
 		CFLAG =  ! CarryFromSub(TMP_REG1,TMP_REG1, TMP_BIT);
-		VFLAG = OverflowFromSub(TMP_REG1,TMP_REG1,TMP_BIT);  
+		VFLAG = OverflowFromSub(TMP_REG1,TMP_REG1,TMP_BIT);
 	}
 
 op STMIA_thumb(rn: REG_THUMB_INDEX, llist: THUMB_REG_LIST)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("stmia%s %s!, {%s}", op_cond_syntax_new(ITCOND), rn.syntax, llist.syntax)
 	image = format("11000%s%s", rn.image, llist.image)
-	action = {		  
+	action = {
 		//Compute number of set bits in the register list to compute the start address
 		TMP_REGLIST = llist;
 		TMP_IMM  = 0;
 		TMP_SETBIT = 0;
 		B15SET = 0;
 		number_of_set_bits_in;
-		
-		TMP_REGLIST = llist;	
+
+		TMP_REGLIST = llist;
 		TMP_REG1 = GPR[rn];
 		TMP_START_ADDR = TMP_REG1;
 		TMP_END_ADDR = TMP_REG1 + (TMP_SETBIT * 4) - 4;
 		TMP_IMM = 0;
 		boucle;
 		TMP_END_ADDR = TMP_START_ADDR - 4;
-		GPR[rn] = TMP_REG1 + TMP_SETBIT * 4;              
+		GPR[rn] = TMP_REG1 + TMP_SETBIT * 4;
 		//Note that the assert mode is not implemented, programmer may take
 		//		  care about the address in paramater !
 		}
@@ -1244,13 +1244,13 @@ op STMIA_thumb(rn: REG_THUMB_INDEX, llist: THUMB_REG_LIST)
 				TMP_SETBIT = TMP_SETBIT + 1;
 				if (TMP_IMM == 7) then
 					B15SET = 1;
-				endif;		     
+				endif;
 			endif;
 			TMP_REGLIST = TMP_REGLIST >> 1;
 			TMP_IMM = TMP_IMM + 1;
 			number_of_set_bits_in;
 		endif;
-	}  
+	}
 	boucle = {
 		if (TMP_IMM != 8) then
 			if (TMP_REGLIST & 1 == 1) then
@@ -1276,7 +1276,7 @@ op STR_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 		else
 			M32[TMP_START_ADDR] = UNPREDICTABLE;
 		endif;
-	} 
+	}
 
 op STR_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
@@ -1289,7 +1289,7 @@ op STR_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IND
 		else
 			M32[TMP_START_ADDR] = UNPREDICTABLE;
 		endif;
-	} 
+	}
 
 op STR_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
 	ITCOND = "f_get_update_ITSTATE"()
@@ -1303,7 +1303,7 @@ op STR_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
 		else
 			M32[TMP_START_ADDR] = UNPREDICTABLE;
 		endif;
-	} 
+	}
 
 
 op STRB_thumb = STRB_imm_thumb | STRB_shr_thumb
@@ -1314,9 +1314,9 @@ op STRB_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 	image = format("01110%s%s%s", imm.image, rn.image, rd.image)
 	action = {
 		TMP_START_ADDR  =  GPR[rn] + imm ;
-		TMP_IMM2 = GPR[rd]<7..0>; 
+		TMP_IMM2 = GPR[rd]<7..0>;
 		M[TMP_START_ADDR] = TMP_IMM2;
-	} 
+	}
 
 op STRB_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
@@ -1324,9 +1324,9 @@ op STRB_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IN
 	image = format("0101010%s%s%s", rm.image, rn.image, rd.image)
 	action = {
 		TMP_START_ADDR  =  GPR[rn] + GPR[rm];
-		TMP_IMM2 = GPR[rd]<7..0>; 
+		TMP_IMM2 = GPR[rd]<7..0>;
 		M[TMP_START_ADDR] = TMP_IMM2;
-	} 
+	}
 
 
 op STRH_thumb = STRH_imm_thumb | STRH_shr_thumb
@@ -1343,7 +1343,7 @@ op STRH_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 		else
 			M16[TMP_START_ADDR] = UNPREDICTABLE;
 		endif;
-	} 
+	}
 
 
 op STRH_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
@@ -1358,11 +1358,11 @@ op STRH_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IN
 		else
 			M16[TMP_START_ADDR] = UNPREDICTABLE;
 		endif;
-	} 
+	}
 
 
 op SUB_thumb =  SUB_imm1_thumb | SUB_imm2_thumb | SUB_imm3_thumb
-|  SUB_reg_thumb 
+|  SUB_reg_thumb
 
 op SUB_imm1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM3)
 	ITCOND = "f_get_update_ITSTATE"()
@@ -1374,13 +1374,13 @@ op SUB_imm1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM3)
 		TMP_SWORD = TMP_REG2 - imm;
 		GPR[rd] = TMP_SWORD;
 		CFLAG =  CarryFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
-		VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD); 
+		VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
 		TMP_REG1 = Get_THUMB_GPR(rd);
-		NFLAG = TMP_REG1<31..31>; 
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
+		NFLAG = TMP_REG1<31..31>;
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
 		endif;
 	}
 
@@ -1390,17 +1390,17 @@ op SUB_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
 	image = format("00111%s%s", rd.image, imm.image)
 	action = {
 		TMP_REG1 = Get_THUMB_GPR(rd);
-		TMP_SWORD = TMP_REG1 - imm; 
+		TMP_SWORD = TMP_REG1 - imm;
 		GPR[rd] = TMP_SWORD;
 		CFLAG =  CarryFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
-		VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD); 
+		VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
 		TMP_REG1 = GPR[rd];
-		NFLAG = TMP_REG1<31..31>; 
-		if TMP_REG1 == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
-		endif;  
+		NFLAG = TMP_REG1<31..31>;
+		if TMP_REG1 == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
+		endif;
 	}
 
 op SUB_reg_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
@@ -1410,15 +1410,15 @@ op SUB_reg_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm: REG_THUMB_INDE
 	action = {
 		TMP_REG1 = GPR[rm];
 		TMP_REG2 = GPR[rn];
-		TMP_SWORD = TMP_REG2 - TMP_REG1; 
+		TMP_SWORD = TMP_REG2 - TMP_REG1;
 		GPR[rd] = TMP_SWORD;
 		CFLAG =  CarryFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
-		VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD); 
-		NFLAG = TMP_SWORD<31..31>; 
-		if TMP_SWORD == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
+		VFLAG = OverflowFromSub(TMP_REG2,TMP_REG1,TMP_SWORD);
+		NFLAG = TMP_SWORD<31..31>;
+		if TMP_SWORD == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
 		endif;
 	}
 
@@ -1430,7 +1430,7 @@ op SUB_imm3_thumb( imm: IMM7)
 	image = format("101100001%s", imm.image)
 	action = {
 		TMP_REG1 = Get_ARM_GPR(13 + reg_offset(13));
-		TMP_SWORD = TMP_REG1 - coerce(u32, imm :: 0b00); 
+		TMP_SWORD = TMP_REG1 - coerce(u32, imm :: 0b00);
 		Set_ARM_GPR(13 + reg_offset(13), TMP_SWORD);
 	}
 
@@ -1440,7 +1440,7 @@ op SWI_thumb(imm: IMM8)
    ITCOND = 0
    syntax = format("swi %s", imm.syntax)
    image = format("11011111%s",imm.image)
-   action = 
+   action =
 	{
 		//GPR[24] = NPC;
 		//Uspsr[0] = Ucpsr;
@@ -1462,7 +1462,7 @@ op SXTB_thumb( rd : REG_THUMB_INDEX,  rm: REG_THUMB_INDEX)
 	syntax = format("sxtb%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax)
 	image = format("1011 0010 01 %s %s", rm.image, rd.image)
 	action = {
-		TMP_REG1 = Get_ARM_GPR(rm);	          	
+		TMP_REG1 = Get_ARM_GPR(rm);
 		TMP_REG3 = SignExtend(TMP_REG1<7..0>, 32);
 		Set_ARM_GPR(rd, TMP_REG3);
 	}
@@ -1472,11 +1472,11 @@ op SXTH_thumb( rd : REG_THUMB_INDEX,  rm: REG_THUMB_INDEX)
 	syntax = format("sxth%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax)
 	image = format("1011 0010 00 %s %s", rm.image, rd.image)
 	action = {
-		TMP_REG1 = Get_ARM_GPR(rm);	          	
+		TMP_REG1 = Get_ARM_GPR(rm);
 		TMP_REG3 = SignExtend(TMP_REG1<15..0>, 32);
 		Set_ARM_GPR(rd, TMP_REG3);
 	}
-	  	
+
 
 op TST_thumb(rn : REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
@@ -1485,12 +1485,12 @@ op TST_thumb(rn : REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
 	action = {
 		TMP_REG2 = GPR[rn];
 		TMP_REG1 = GPR[rm];
-		Temp = TMP_REG2 & TMP_REG1; 
-		NFLAG = Temp<31..31>; 
-		if Temp == 0 then 
-			ZFLAG = 1; 
-		else 
-			ZFLAG = 0; 
+		Temp = TMP_REG2 & TMP_REG1;
+		NFLAG = Temp<31..31>;
+		if Temp == 0 then
+			ZFLAG = 1;
+		else
+			ZFLAG = 0;
 		endif;
 	}
 
@@ -1501,18 +1501,18 @@ op NOP_thumb()
 	action = {}
 
 
-// From Jerabek	
+// From Jerabek
 op NOP_thumb_jer(firstcond: card(4), mask: card(4))
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = switch(firstcond::mask) {
-		case 0b00000000: format("nop%s",op_cond_syntax_new(ITCOND))	
+		case 0b00000000: format("nop%s",op_cond_syntax_new(ITCOND))
 		case 0b00100000: format("wfe%s",op_cond_syntax_new(ITCOND))
 		case 0b00110000: format("wfi%s",op_cond_syntax_new(ITCOND))
 		case 0b00010000: format("yield%s",op_cond_syntax_new(ITCOND))
-		default: if(mask != 0b0000) then 
-			format("it%s %s%s", IT_xyz_syntax(firstcond,mask), 
-					condition_syntax(firstcond), 
-					if("f_set_ITSTATE"(firstcond::mask)) then "" else "" endif) 
+		default: if(mask != 0b0000) then
+			format("it%s %s%s", IT_xyz_syntax(firstcond,mask),
+					condition_syntax(firstcond),
+					if("f_set_ITSTATE"(firstcond::mask)) then "" else "" endif)
 			else "unknown" endif
 		}
 	image = format("1011 1111 %4b %4b", firstcond, mask)
@@ -1520,16 +1520,16 @@ op NOP_thumb_jer(firstcond: card(4), mask: card(4))
 		//TODO
 
 		// it instruction
-		if(mask != 0b0000) then 
-				ITSTATE<7..0> = firstcond::mask;		
+		if(mask != 0b0000) then
+				ITSTATE<7..0> = firstcond::mask;
 		endif;
 	}
- 
 
-// From Jerabek	
+
+// From Jerabek
 op UXTB_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("uxtb%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax) 
+	syntax = format("uxtb%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax)
 	image = format("1011 0010 11 %s %s", rm.image, rd.image)
 	action = {
 		TMP_UREG1 = Get_ARM_GPR(rm);
@@ -1538,10 +1538,10 @@ op UXTB_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
 	}
 
 
-// From Jerabek	
+// From Jerabek
 op UXTH_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("uxth%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax) 
+	syntax = format("uxth%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax)
 	image = format("1011 0010 10 %s %s", rm.image, rd.image)
 	action = {
 		TMP_UREG1 = Get_ARM_GPR(rm);

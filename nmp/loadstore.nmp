@@ -95,12 +95,12 @@ macro ldst_shift_result(r, shiftKind, shiftAmt) = \
 
 
 mode loadstoreSpecifiedShift(shiftAmt: u5, shiftKind: u2, r: REG_INDEX) = ldst_shift_result(r, shiftKind, shiftAmt)
-	syntax = format("%s, %s #%d", r.syntax, 
+	syntax = format("%s, %s #%d", r.syntax,
 	switch (shiftKind) {
 		case LSL: "lsl"
 		case LSR: "lsr"
 		case ASR: "asr"
-		case ROR: "ror" }, 
+		case ROR: "ror" },
 	shiftAmt)
 	image  = format("%5b %2b 0 %s", shiftAmt, shiftKind, r.image)
 
@@ -130,7 +130,7 @@ op LDR_imm(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 	image = format("%s010%1b%1b%1b%1b1%s%s%s", cond.image, setpre,
 		setu, setb, setw, rn.image,rd.image,offset12.image)
 
-	action = {	   
+	action = {
 		TMP_REG3 = coerce(u32, offset12);
 		if(cond) then
 			if setu == 0 then TMP_REG3 = -TMP_REG3; endif;
@@ -142,22 +142,22 @@ op LDR_imm(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 			TMP_REG2 = Get_ARM_GPR(rn);
 			if (setpre == 1) then TMP_REG2 = TMP_REG2 + TMP_REG3; endif;
 			if (setb == 1) then
-				LDRB(rd);	  
+				LDRB(rd);
 			else
 				LDR(rd);
-			endif;	
+			endif;
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
 			endif;
 			if (setpre == 0)  && (setw == 1) then
 				MBITS = TMP_FIVE;
 			endif;
-		endif;              
+		endif;
 	}
 
 
@@ -165,8 +165,8 @@ op STR_imm(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 	syntax = format("str%s%s%s %s, [%s%s,%s%s%s%s",
 		cond.syntax,
 		if setb then "b" else "" endif ,
-		if setw then 
-			if (setpre == 0) then  "T"					 
+		if setw then
+			if (setpre == 0) then  "T"
 			else		  ""
 			endif
 		else "" endif,
@@ -176,12 +176,12 @@ op STR_imm(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 		if setu then "" else "-" endif ,
 		offset12.syntax,
 		if setpre then "]" else "" endif ,
-		if setw then "!" else "" endif ) 
+		if setw then "!" else "" endif )
 
 	image = format("%s010%1b%1b%1b%1b0%s%s%s", cond.image, setpre,
 		setu, setb, setw, rn.image,rd.image,offset12.image)
 
-	action = {	   
+	action = {
 		TMP_REG3 = coerce(u32, offset12);
 		if (cond) then
 			if setu == 0 then TMP_REG3 = - TMP_REG3; endif;
@@ -198,24 +198,24 @@ op STR_imm(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 					STRB();
 			else
 					STR();
-			endif;	
+			endif;
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
 			endif;
 			if (setpre == 0)  && (setw == 1) then
 				MBITS = TMP_FIVE;
 			endif;
 		endif;
-              
+
 	}
 
 op LDR_shr(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_INDEX, rd: REG_INDEX, shifter_operand: loadstoreSpecifiedShift)
-			 
+
 	syntax = format("ldr%s%s%s %s, [%s%s, %s%s%s%s",
 		cond.syntax,
 		if setb then "b" else "" endif,
@@ -246,20 +246,20 @@ op LDR_shr(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
 			endif;
 			if (setb == 1) then
-					LDRB(rd);  
+					LDRB(rd);
 			else
 					LDR(rd);
-			endif;	 
+			endif;
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
 			endif;
-			if (setpre == 0)  && (setw == 1) then               
-				MBITS = TMP_FIVE; 
+			if (setpre == 0)  && (setw == 1) then
+				MBITS = TMP_FIVE;
 			endif;
 		endif;
 
@@ -267,7 +267,7 @@ op LDR_shr(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 
 
 op STR_shr(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_INDEX, rd: REG_INDEX, shifter_operand: loadstoreSpecifiedShift)
-			 
+
 	syntax = format("str%s%s%s %s, [%s%s, %s%s%s%s",
 		cond.syntax,
 		if setb then "b" else "" endif,
@@ -294,20 +294,20 @@ op STR_shr(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 			TMP_REG2 = Get_ARM_GPR(rn);
 			if (setpre == 1) then TMP_REG2 = TMP_REG2 + TMP_REG3; endif;
 			if (setb == 1) then
-				STRB();			  
+				STRB();
 			else
 				STR();
-			endif;	 
+			endif;
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
 			endif;
-			if (setpre == 0)  && (setw == 1) then               
-				MBITS = TMP_FIVE; 
+			if (setpre == 0)  && (setw == 1) then
+				MBITS = TMP_FIVE;
 			endif;
 		endif;
 
@@ -316,8 +316,8 @@ op STR_shr(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 
 op STRH_imm(cond: condition, setpre: u1,setu:u1,setw:u1,rn : REG_INDEX, rd :	 REG_INDEX , immh: u4, imml:u4)
 
-	syntax = format("str%sh %s, [%s%s,%s#%lu%s%s",
-		cond.syntax, 
+	syntax = format("str%sh %s, [%s%s,%s#%u%s%s",
+		cond.syntax,
 		rd.syntax,
 		rn.syntax,
 		if setpre then "" else "]" endif,
@@ -325,7 +325,7 @@ op STRH_imm(cond: condition, setpre: u1,setu:u1,setw:u1,rn : REG_INDEX, rd :	 RE
 		immh::imml,
 		if setpre then "]" else "" endif,
 		if setw then "!" else "" endif )
- 
+
 	image = format("%s000%1b%1b1%1b0%s%s%4b1011%4b", cond.image, setpre,setu, setw,rn.image,rd.image,immh,imml)
 	action = {
 		TMP_REG3 = immh::imml;
@@ -341,19 +341,19 @@ op STRH_imm(cond: condition, setpre: u1,setu:u1,setw:u1,rn : REG_INDEX, rd :	 RE
 			STRH();
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
-			endif;	 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
+			endif;
 		endif;
        }
 
 
 op STRH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , rm: REG_INDEX)
 	syntax = format("str%sh %s, [%s%s,%s%s%s%s",
-		cond.syntax, 
+		cond.syntax,
 		rd.syntax,
 		rn.syntax,
 		if setpre then "" else "]" endif,
@@ -378,19 +378,19 @@ op STRH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_
 			STRH();
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
 			endif;
 		endif;
        }
 
 
 op LDRH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , immh: u4, imml:u4)
-	syntax = format("ldr%sh %s, [%s%s,%s#%lu%s%s",
-		cond.syntax, 
+	syntax = format("ldr%sh %s, [%s%s,%s#%u%s%s",
+		cond.syntax,
 		rd.syntax,
 		rn.syntax,
 		if setpre then "" else "]" endif,
@@ -398,7 +398,7 @@ op LDRH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_
 		immh::imml,
 		if setpre then "]" else "" endif,
 		if setw then "!" else "" endif )
-	 
+
 
 	image = format("%s000%1b%1b1%1b1%s%s%4b1011%4b", cond.image, setpre,setu, setw,rn.image,rd.image,immh,imml)
 
@@ -416,12 +416,12 @@ op LDRH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_
 			LDRH();
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
-			endif;	 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
+			endif;
 		endif;
        }
 
@@ -429,7 +429,7 @@ op LDRH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_
 op LDRH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , rm: REG_INDEX)
 
 	syntax = format("ldr%sh %s, [%s%s,%s%s%s%s",
-		cond.syntax, 
+		cond.syntax,
 		rd.syntax,
 		rn.syntax,
 		if setpre then "" else "]" endif,
@@ -453,21 +453,21 @@ op LDRH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_
 			LDRH();
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
 			endif;
 		endif;
        }
- 
+
 
 
 op LDRSB_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , immh: u4, imml:u4)
 
-	syntax = format("ldr%ssb %s, [%s%s,%s#%lu%s%s",
-		cond.syntax, 
+	syntax = format("ldr%ssb %s, [%s%s,%s#%u%s%s",
+		cond.syntax,
 		rd.syntax,
 		rn.syntax,
 		if setpre then "" else "]" endif,
@@ -491,18 +491,18 @@ op LDRSB_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG
 			LDRSB();
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-				Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
-			endif;	 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+				Set_ARM_GPR(rn,TMP_REG2);
+				endif;
+			endif;
 		endif;
        }
 
 op LDRSB_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd :REG_INDEX , rm: REG_INDEX)
 	syntax = format("ldr%ssb %s, [%s%s,%s%s%s%s",
-		cond.syntax, 
+		cond.syntax,
 		rd.syntax,
 		rn.syntax,
 		if setpre then "" else "]" endif,
@@ -527,20 +527,20 @@ op LDRSB_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd :REG_
 			LDRSB();
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
 			endif;
 		endif;
-       } 
+       }
 
 
 op LDRSH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd :REG_INDEX , immh: u4, imml:u4)
 
-	syntax = format("ldr%ssh %s, [%s%s,%s#%lu%s%s",
-	cond.syntax, 
+	syntax = format("ldr%ssh %s, [%s%s,%s#%u%s%s",
+	cond.syntax,
 		rd.syntax,
 		rn.syntax,
 		if setpre then "" else "]" endif,
@@ -565,18 +565,18 @@ op LDRSH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd :REG_
 			LDRSH();
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
-			endif;	 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
+			endif;
 		endif;
        }
 
 op LDRSH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , rm: REG_INDEX)
 	syntax = format("ldr%ssh %s, [%s%s,%s%s%s%s",
-		cond.syntax, 
+		cond.syntax,
 		rd.syntax,
 		rn.syntax,
 		if setpre then "" else "]" endif,
@@ -600,12 +600,12 @@ op LDRSH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG
 			LDRSH();
 			if setpre == 0 then
 				TMP_REG2 = TMP_REG2 + TMP_REG3;
-				Set_ARM_GPR(rn,TMP_REG2);	
-			else 
-				if (setw == 1 ) then		     		     
-					Set_ARM_GPR(rn,TMP_REG2);		     
-				endif; 
-			endif;	 
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
+			endif;
 		endif;
 
        }
@@ -636,7 +636,7 @@ macro  SWPW(rn, rd, rm) = \
 					TMP_SWORD = TMP_REGSWORD >>> 24;\
 				endif;\
 			endif;\
-		endif;\	
+		endif;\
 	endif;\
 	TMP_REG3 = Get_ARM_GPR(rm);\
 	SetWord(TMP_EA,TMP_REG3);\
@@ -653,7 +653,7 @@ op SWP(cond: condition, setb: setB, rn: REG_INDEX, rd: REG_INDEX, rm: REG_INDEX)
 			else
 				SWPW(rn,rd,rm);
 			endif;
-		endif;	
+		endif;
 	}
 
 

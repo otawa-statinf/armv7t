@@ -2647,9 +2647,9 @@ op SMMLA_SMMUL_thumb2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, ra: REG_INDEX
 		TMP_REG3 = Get_ARM_GPR(ra);
 
 		if (ra.number == 0b1111) then // SMMUL{R}<c> <Rd>,<Rn>,<Rm>
-			TMP_DOUBLE = TMP_REG1 * TMP_REG2;
+			TMP_DOUBLE = coerce(int(64), TMP_REG1) * TMP_REG2;
 		else
-			TMP_DOUBLE = (TMP_REG3 << 32) + TMP_REG1 * TMP_REG2;
+			TMP_DOUBLE = (coerce(int(64), TMP_REG3) << 32) + coerce(int(64), TMP_REG1) * TMP_REG2;
 		endif;
 
 		if (r == 0b1) then 
@@ -2670,7 +2670,7 @@ op SMMLS_thumb2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, ra: REG_INDEX, r: c
 		TMP_REG2 = Get_ARM_GPR(rn);
 		TMP_REG3 = Get_ARM_GPR(ra);
 
-		TMP_DOUBLE = (TMP_REG3 << 32) - TMP_REG1 * TMP_REG2;
+		TMP_DOUBLE = (coerce(int(64), TMP_REG3) << 32) - coerce(int(64), TMP_REG1) * TMP_REG2;
 
 		if (r == 0b1) then 
 			TMP_DOUBLE = TMP_DOUBLE + 0x80000000;

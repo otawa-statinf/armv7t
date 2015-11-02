@@ -7,6 +7,7 @@
  *
  */
 
+#include <stdio.h>
 
 #if DBG == 12 /* use instrumentation to verify functionality */
 #include "shift.h"
@@ -159,19 +160,14 @@ uint32_t f_LSL_C(uint32_t value, int shift, uint8_t *carry_out)
 }
 
 /* Logical Shift Left with 0 shift */
-uint32_t f_LSL(uint32_t value, int shift)
-{
+uint32_t f_LSL(uint32_t value, int shift) {
     uint32_t tmp = 0;
     uint8_t carry;
     if(shift == 0)
-    {
         tmp = value;
-    }
     else
-    {
-        tmp = f_LSL_C(value,shift,carry);
-    }
-
+        tmp = f_LSL_C(value, shift, &carry);
+ 
     return tmp;
 }
 
@@ -209,7 +205,7 @@ uint32_t f_LSR(uint32_t value, int shift)
     }
     else
     {
-        tmp = f_LSR_C(value,shift,carry);
+        tmp = f_LSR_C(value,shift,&carry);
     }
 
     return tmp;
@@ -266,7 +262,7 @@ uint32_t f_ASR(int32_t value, int shift)
     }
     else
     {
-        tmp = f_ASR_C(value,shift,carry);
+        tmp = f_ASR_C(value,shift,&carry);
     }
 
     return tmp;
@@ -316,18 +312,16 @@ uint32_t f_ROR(uint32_t value, int shift)
 
 
 /* Rotate Right with Extend */
-uint32_t f_RRX_C(uint32_t value, uint8_t carry_in, uint8_t *carry_out)
-{
+uint32_t f_RRX_C(uint32_t value, uint8_t carry_in, uint8_t *carry_out) {
     *carry_out = value & 0x00000001; /* lsb */
 
     return ((value >> 1) | (carry_in<<31));
 }
 
 /* Rotate Right with Extend with 0 shift */
-uint32_t f_RRX(uint32_t value, uint8_t carry_in)
-{
+uint32_t f_RRX(uint32_t value, uint8_t carry_in) {
     uint8_t carry;
-    return f_RRX_C(value,carry_in,carry);
+    return f_RRX_C(value, carry_in, &carry);
 }
 
 
