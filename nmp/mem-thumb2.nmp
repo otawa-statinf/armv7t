@@ -38,7 +38,7 @@ mode REG_INDEX_1_P_U_W_rst(val: enum(8..13, 15, 24..29, 31, 40..45,
 	number = r
 
 
-op mem_thumb2 = coproc
+op mem_thumb2 = coproc_thumb2
 	| LDR_reg_Thumb
 	| STR_reg_Thumb
 	| LDRB_reg

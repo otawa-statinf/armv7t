@@ -42,6 +42,7 @@ op ARM_instr = dataProcessing
 	| semaphore 
 	| misc 
 	| sra
+	| coproc
 
 
 op dataProcessing = ADD_imm | ADC_shr | ADC_imm | ADD_shr | AND_shr | AND_imm | BIC_shr | BIC_imm
@@ -67,6 +68,8 @@ op semaphore = SWP
 op misc = CLZ
 
 op sra = MSR_imm | MSR_shr | MRS
+
+op coproc = STC | LDC | MRC
 
 
 // ****** includes ******

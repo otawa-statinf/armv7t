@@ -1,14 +1,15 @@
-op coproc = STC | LDC_imm 
+op coproc_thumb2 = STC_thumb2 | LDC_thumb2
 	//| MRC_MRC2 // Shadowed by the work from Jerabek
 
-op STC(x: STC_list)
+op STC_thumb2(x: STC_thumb2_list)
 	syntax = x.syntax
 	image = x.image
+	cond = x.cond
 	action = {
 		// TODO
 	}
 
-op STC_list = STC_T1 | STC_T2
+op STC_thumb2_list = STC_T1 | STC_T2
 
 op STC_T1(D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
 	ITCOND = "f_get_update_ITSTATE"()
@@ -22,6 +23,7 @@ op STC_T1(D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
 	index = addr.P
 	add = addr.U
 	wback = addr.W
+	cond = 1
 	// if n == 15 then UNPREDICTABLE
 
 op STC_T2(N: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
@@ -36,10 +38,11 @@ op STC_T2(N: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
 	index = addr.P
 	add = addr.U
 	wback = addr.W
+	cond = 1
 	// if n == 15 then UNPREDICTABLE
 
 
-op LDC_imm(x: LDC_imm_list)
+op LDC_thumb2(x: LDC_thumb2_list)
 	syntax = x.syntax
 	image = x.image
 	cond = x.cond
@@ -58,6 +61,9 @@ op LDC_imm(x: LDC_imm_list)
 		//		until Coproc_DoneLoading(cp, ThisInstr());
 		//		if wback then R[n] = offset_addr;
 	}
+
+op LDC_thumb2_list = LDC_imm_list
+	//| LDC_lit_list
 
 op LDC_imm_list = LDC_imm_T1 | LDC_imm_T2
 
@@ -121,4 +127,4 @@ op MRC_T1(opc1: card(3), CRn: card(4), Rt: REG_INDEX, coproc: enum(0..9, 12..15)
 	t = UInt(Rt)
 	cp = UInt(coproc)
 	//if t == 13 && (CurrentInstrSet() != InstrSet_ARM) then UNPREDICTABLE;
-	
+
