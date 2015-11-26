@@ -1152,7 +1152,7 @@ op MOVT_thumb2(i: card(1), rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: ca
 	}
 
 
-op B_thumb2 = B_T3_thumb2 //| B_T4_thumb2
+op B_thumb2 = B_T3_thumb2 | B_T4_thumb2
 
 op B_T3_thumb2(S: setS, j1: card(1), j2: card(1), cond: condition, imm6: card(6), imm11: card(11))
 	ITCOND = "f_get_update_ITSTATE"()
