@@ -119,10 +119,10 @@ macro ConditionPassed_sub(tmp) = \
 		case 0b010: if (NFLAG == 1) then 0b1 else 0b0 endif \
 		case 0b011: if (VFLAG == 1) then 0b1 else 0b0 endif \
 		case 0b100: if (CFLAG == 1) && (ZFLAG == 0) then 0b1 else 0b0 endif \
-		case 0b101: if (NFLAG == VFLAG) then 0b1 else 0b0 endif \		
+		case 0b101: if (NFLAG == VFLAG) then 0b1 else 0b0 endif \
 		case 0b110: if (NFLAG == VFLAG) && (ZFLAG == 0) then 0b1 else 0b0 endif \
 		case 0b111: 0b1 \
-	} 
+	}
 macro ConditionPassed = \
 	if ITSTATE<3..0> != 0b0000 then \
 		if ((ITSTATE<4..4> == 0b1) && (ITSTATE<7..4> != 0b1111)) then \
@@ -182,7 +182,6 @@ reg GPR[GPRNum, u32]
 
 reg PC[1, u32] 			alias = GPR[15] pc = 1
 reg NPC[1, u32]
-reg R14_svc [1, u32]	alias = GPR[24]			// TODO: document it
 
 // for internal relativelt fast access
 let offset_fiq	= 16
@@ -194,8 +193,8 @@ let offset_und	= 29
 //macro reg_id(m, i) = coerce(card(8), (((m) << 4) | (i)))
 macro reg_id(m, i) = (((m)<3..0>) :: ((i)<3..0>))
 
-macro reg_offset(i) = \
-	switch(reg_id(MBITS, i)) { \
+macro reg_offset_mode(i, m) = \
+	switch(reg_id(m, i)) { \
 	case reg_id(mode_fiq, 8): offset_fiq - 8 \
 	case reg_id(mode_fiq, 9): offset_fiq - 8 \
 	case reg_id(mode_fiq, 10): offset_fiq - 8 \
@@ -213,11 +212,18 @@ macro reg_offset(i) = \
 	case reg_id(mode_und, 14): offset_und - 13 \
 	default: 0 \
 	}
+macro reg_offset(i) = reg_offset_mode(i, MBITS)
 macro LR = GPR[14 + reg_offset(14)]
 
 
+// direct access to saved registers
+macro getLR(m) = GPR[14 + reg_offset_mode(i, m)]
+macro setLR(m, x) = GPR[14 + reg_offset_mode(i, m)] = (x)
+
+
 // mode for register access
-mode REG_INDEX(r: card(4)) = r + reg_offset(r)
+macro reg_index(r) = (r) + reg_offset(r)
+mode REG_INDEX(r: card(4)) = reg_index(r)
 	syntax = if r < 10 then format("r%d", r) else
 				switch(r) {
 				case 10: "sl"

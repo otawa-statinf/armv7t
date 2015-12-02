@@ -283,7 +283,7 @@ op ADD_imm4_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
 	syntax = format("add%s %s, sp, %s", op_cond_syntax_new(ITCOND),  rd.syntax,imm.syntax)
 	image = format("10101%s%s", rd.image, imm.image)
 	action = {
-		GPR[rd] = Get_ARM_GPR(13 + reg_offset(13)) + (coerce(u32, imm) << 2);
+		GPR[rd] = Get_ARM_GPR(13) + (coerce(u32, imm) << 2);
 	}
 
 // ADD SP plus immediate
@@ -292,7 +292,7 @@ op ADD_imm5_thumb( imm: IMM7)
 	syntax = format("add%s sp, sp, #%d", op_cond_syntax_new(ITCOND),  imm * 4)
 	image = format("101100000%s", imm.image)
 	action = {
-		Set_ARM_GPR(13 + reg_offset(13), Get_ARM_GPR(13 + reg_offset(13)) + (coerce(u32, imm) << 2));
+		Set_ARM_GPR(13, Get_ARM_GPR(13) + (coerce(u32, imm) << 2));
 	}
 
 op AND_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
@@ -474,7 +474,7 @@ op BLX2_thumb(rm: REG_INDEX)
 	syntax = format("blx%s %s", op_cond_syntax_new(ITCOND), rm.syntax)
 	image  = format("010001111%s000",rm.image)
 	action = {
-		Set_ARM_GPR(14 + reg_offset(14), (__IADDR + 2) | 1);
+		Set_ARM_GPR(14, (__IADDR + 2) | 1);
 		TMP_REG1 = Get_ARM_GPR(rm);
 		TFLAG = TMP_REG1<0..0>;
 		NPC = TMP_REG1 & 0xfffffffe;
@@ -683,7 +683,7 @@ op LDR_imm3_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
 	syntax = format("ldr%s %s, [sp, #0x%x]", op_cond_syntax_new(ITCOND), rd.syntax, imm*4)
 	image = format("10011%s%s", rd.image, imm.image)
 	action = {
-		 TMP_START_ADDR = Get_ARM_GPR(13 + reg_offset(13)) + (coerce(u32, imm) << 2);
+		 TMP_START_ADDR = Get_ARM_GPR(13) + (coerce(u32, imm) << 2);
                  if ((TMP_START_ADDR & 3 ) == 0) then
                       TMP_REG1 = M32[TMP_START_ADDR];
                  else
@@ -936,7 +936,7 @@ op MOV_shr2_thumb(H: u1, rd: REG_THUMB_INDEX, rm: REG_INDEX)
 	d = rd + if H then 8 else 0 endif
 	action = {
 		TMP_SWORD = Get_ARM_GPR(rm);
-		Set_ARM_GPR(d + reg_offset(d), TMP_SWORD);
+		Set_ARM_GPR(d, TMP_SWORD);
 	}
 
 op MUL_thumb(rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
@@ -1019,7 +1019,7 @@ op POP_thumb(P: setR_T, llist: THUMB_REG_LIST)
 		number_of_set_bits_in;
 
 		TMP_REGLIST = llist;
-		TMP_START_ADDR = Get_ARM_GPR(13 + reg_offset(13));
+		TMP_START_ADDR = Get_ARM_GPR(13);
 		TMP_END_ADDR = TMP_START_ADDR + ((P + TMP_SETBIT) * 4) ;
 		TMP_IMM = 0;
 		boucle;
@@ -1030,7 +1030,7 @@ op POP_thumb(P: setR_T, llist: THUMB_REG_LIST)
 			TFLAG = TBIT;
 			BranchWritePC_thumb(M32[TMP_START_ADDR]);
 		endif;
-		Set_ARM_GPR(13 + reg_offset(13), TMP_END_ADDR);
+		Set_ARM_GPR(13, TMP_END_ADDR);
 
  		// Note that the assert mode is not implemented,
  		// programmer may take care of the address in paramater !
@@ -1051,7 +1051,7 @@ op POP_thumb(P: setR_T, llist: THUMB_REG_LIST)
     boucle = {
 		if (TMP_IMM < 8) then
 			if (TMP_REGLIST & 1 == 1) then
-				Set_ARM_GPR(TMP_IMM + reg_offset(TMP_IMM), M32[TMP_START_ADDR]);
+				Set_ARM_GPR(TMP_IMM, M32[TMP_START_ADDR]);
 				TMP_START_ADDR = TMP_START_ADDR + 4;
 			endif;
 			TMP_REGLIST = TMP_REGLIST >> 1;
@@ -1073,7 +1073,7 @@ op PUSH_thumb(P: setR_T, llist: THUMB_REG_LIST)
 		TMP_REGLIST = llist;
 		TMP_SETBIT = 0;
 		B15SET = 0;
-		TMP_REG1 = Get_ARM_GPR(13 + reg_offset(13));
+		TMP_REG1 = Get_ARM_GPR(13);
 		number_of_set_bits_in;
 		TMP_START_ADDR = TMP_REG1 - ((P + TMP_SETBIT) * 4  ) ;
 		TMP_END_ADDR = TMP_START_ADDR ;
@@ -1081,11 +1081,11 @@ op PUSH_thumb(P: setR_T, llist: THUMB_REG_LIST)
 		TMP_REGLIST = llist;
 		boucle;
 		if (P == 1) then
-			TMP_REG2 = Get_ARM_GPR(14 + reg_offset(14));
+			TMP_REG2 = Get_ARM_GPR(14);
 			M32[TMP_START_ADDR] = TMP_REG2;
 			TMP_START_ADDR = TMP_START_ADDR + 4;
 		endif;
-		Set_ARM_GPR(13 + reg_offset(13), TMP_END_ADDR);
+		Set_ARM_GPR(13, TMP_END_ADDR);
  		//Note that the assert mode is not implemented, programmer may take
 		//		  care of the address in paramater !
 	}
@@ -1106,7 +1106,7 @@ op PUSH_thumb(P: setR_T, llist: THUMB_REG_LIST)
     boucle = {
     	if (TMP_IMM != 8) then
     		if (TMP_REGLIST & 1 == 1) then
-    			M32[TMP_START_ADDR] = GPR[TMP_IMM + reg_offset(TMP_IMM)];
+    			M32[TMP_START_ADDR] = GPR[TMP_IMM];
 				TMP_START_ADDR = TMP_START_ADDR + 4;
 			endif;
 			TMP_REGLIST = TMP_REGLIST >> 1;
@@ -1296,7 +1296,7 @@ op STR_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
 	syntax = format("str%s %s, [sp, #%d]", op_cond_syntax_new(ITCOND), rd.syntax, imm*4)
 	image = format("10010%s%s", rd.image, imm.image)
 	action = {
-		TMP_REG1 = Get_ARM_GPR(13 + reg_offset(13)); // SP
+		TMP_REG1 = Get_ARM_GPR(13); // SP
 		TMP_START_ADDR = TMP_REG1 + imm *4;
 		if ((TMP_START_ADDR & 3 ) == 0) then
 			M32[TMP_START_ADDR] = GPR[rd];
@@ -1429,9 +1429,9 @@ op SUB_imm3_thumb( imm: IMM7)
 	syntax = format("sub%s sp, #%d", op_cond_syntax_new(ITCOND), imm*4)
 	image = format("101100001%s", imm.image)
 	action = {
-		TMP_REG1 = Get_ARM_GPR(13 + reg_offset(13));
+		TMP_REG1 = Get_ARM_GPR(13);
 		TMP_SWORD = TMP_REG1 - coerce(u32, imm :: 0b00);
-		Set_ARM_GPR(13 + reg_offset(13), TMP_SWORD);
+		Set_ARM_GPR(13, TMP_SWORD);
 	}
 
 

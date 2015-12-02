@@ -73,7 +73,7 @@ op SWI(cond : condition, Immed_24: IMM24)
 	image = format("%s1111%s",cond.image,Immed_24.image)
 	action = {
 		if cond then
-			R14_svc = __IADDR + 4;
+			setLR(mode_svc, __IADDR + 4);
 			SPSR_svc = CPSR;
 			MBITS = mode_supervisor;
 			TFLAG = 0;

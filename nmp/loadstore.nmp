@@ -96,12 +96,12 @@ macro ldst_shift_result(r, shiftKind, shiftAmt) = \
 
 mode loadstoreSpecifiedShift(shiftAmt: u5, shiftKind: u2, r: REG_INDEX) = ldst_shift_result(r, shiftKind, shiftAmt)
 	syntax = format("%s, %s #%d", r.syntax,
-	switch (shiftKind) {
+		switch (shiftKind) {
 		case LSL: "lsl"
 		case LSR: "lsr"
 		case ASR: "asr"
 		case ROR: "ror" },
-	shiftAmt)
+		shiftAmt)
 	image  = format("%5b %2b 0 %s", shiftAmt, shiftKind, r.image)
 
 

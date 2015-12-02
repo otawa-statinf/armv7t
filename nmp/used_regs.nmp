@@ -107,7 +107,7 @@ extend BX_ARM
 	used_regs = { cond.used_regs; "read"(GPR[rd.number]); "write"(PC); }
 
 extend SWI
-	used_regs = { "write"(R14_svc); "write"(SPSR_svc); "write"(PC); "write"(CPSR); }
+	used_regs = { "write"(LR); "write"(SPSR); "write"(PC); "write"(CPSR); }
 
 
 // ****** memory instructions ******

@@ -104,7 +104,7 @@ STATE_NMP=state-fast.nmp
 else
 STATE_NMP=state-normal.nmp
 endif
-nmp/state.nmp:
+nmp/state.nmp: nmp/$(STATE_NMP) config.mk
 	cp nmp/$(STATE_NMP) nmp/state.nmp  
 
 src include: arm.irg
