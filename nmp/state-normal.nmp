@@ -219,6 +219,7 @@ macro LR = GPR[14 + reg_offset(14)]
 // direct access to saved registers
 macro getLR(m) = GPR[14 + reg_offset_mode(i, m)]
 macro setLR(m, x) = GPR[14 + reg_offset_mode(i, m)] = (x)
+reg LR_static[1, u32] alias = GPR[14 + reg_offset_mode(14, mode_svc)]
 
 
 // mode for register access

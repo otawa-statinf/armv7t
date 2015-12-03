@@ -193,6 +193,7 @@ macro getLR(m) = \
 	else LR_saved[mode_index(m)] \
 	endif
 
+reg LR_static[1, u32] alias = GPR[14]
 
 // register access
 macro reg_index(r) = (r)
