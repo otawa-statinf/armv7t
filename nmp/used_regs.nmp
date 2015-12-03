@@ -262,3 +262,35 @@ extend STM
 			used_regs_rec;
 		endif;
 	}
+
+extend STMDB_T1
+	used_regs = {
+		"read"(GPR[n]);
+		if wback then "write"(GPR[n]); endif;
+		i = 0;
+		used_regs_rec;
+	}
+		used_regs_rec = {
+		if i <= 15 then
+			if registers<i..i> == 1 then "read"(GPR[i]); endif;
+			i = i + 1;
+			used_regs_rec;
+		endif;
+	}
+	
+extend PUSH_thumb
+	used_regs = {
+		"read"(GPR[13]);
+		"write"(GPR[13]);
+		if P then "read"(GPR[14]); endif;
+		i = 0;
+		used_regs_rec;
+	}
+		used_regs_rec = {
+		if i <= 7 then
+			if llist<i..i> == 1 then "read"(GPR[i]); endif;
+			i = i + 1;
+			used_regs_rec;
+		endif;
+	}
+	
