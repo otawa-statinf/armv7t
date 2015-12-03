@@ -1306,7 +1306,9 @@ op LDM_T2(W: bool, Rn: REG_INDEX, register_list: RegisterListThumb)
 			LoadWritePC(M32[address]);
 			bitcount = bitcount + 1;
 		endif;
-		GPR[n] = GPR[n] + 4 * bitcount;
+		if wback then
+			GPR[n] = GPR[n] + 4 * bitcount;
+		endif;
 	}
 	loop = {
 		if registers<i..i> == 1 then

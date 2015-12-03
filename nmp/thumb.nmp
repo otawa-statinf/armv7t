@@ -601,11 +601,11 @@ op LDMIA_thumb(rn: REG_THUMB_INDEX, llist: THUMB_REG_LIST)
 
 		TMP_REGLIST = llist;
 		TMP_REG1 = GPR[rn];
+		GPR[rn] = TMP_REG1 + TMP_SETBIT * 4;
 		TMP_START_ADDR = TMP_REG1;
 		TMP_END_ADDR = TMP_REG1 + (TMP_SETBIT * 4) - 4;
 		TMP_IMM = 0;
 		boucle;
-		GPR[rn] = TMP_REG1 + TMP_SETBIT * 4;
 
 		//Note that the assert mode is not implemented, programmer may take
 		//		  care of the address in paramater !

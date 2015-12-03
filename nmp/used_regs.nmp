@@ -270,7 +270,7 @@ extend STMDB_T1
 		i = 0;
 		used_regs_rec;
 	}
-		used_regs_rec = {
+	used_regs_rec = {
 		if i <= 15 then
 			if registers<i..i> == 1 then "read"(GPR[i]); endif;
 			i = i + 1;
@@ -286,7 +286,7 @@ extend PUSH_thumb
 		i = 0;
 		used_regs_rec;
 	}
-		used_regs_rec = {
+	used_regs_rec = {
 		if i <= 7 then
 			if llist<i..i> == 1 then "read"(GPR[i]); endif;
 			i = i + 1;
@@ -294,3 +294,63 @@ extend PUSH_thumb
 		endif;
 	}
 	
+extend POP_thumb
+	used_regs = {
+		"read"(GPR[13]);
+		"write"(GPR[13]);
+		if P then "write"(GPR[15]); endif;
+		i = 0;
+		used_regs_rec;
+	}
+	used_regs_rec = {
+		if i <= 7 then
+			if llist<i..i> == 1 then "write"(GPR[i]); endif;
+			i = i + 1;
+			used_regs_rec;
+		endif;
+	}
+	
+extend LDM_T2
+	used_regs = {
+		"read"(GPR[n]);
+		if wback then "write"(GPR[n]); endif;
+		i = 0;
+		used_regs_rec;
+	}
+	used_regs_rec = {
+		if i <= 15 then
+			if registers<i..i> == 1 then "write"(GPR[i]); endif;
+			i = i + 1;
+			used_regs_rec;
+		endif;
+	}
+	
+extend LDMIA_thumb
+	used_regs = {
+		"read"(GPR[n]);
+		"write"(GPR[n]);
+		i = 0;
+		used_regs_rec;
+	}
+	used_regs_rec = {
+		if i <= 7 then
+			if llist<i..i> == 1 then "write"(GPR[i]); endif;
+			i = i + 1;
+			used_regs_rec;
+		endif;
+	}
+	
+extend STMIA_thumb
+	used_regs = {
+		"read"(GPR[n]);
+		"write"(GPR[n]);
+		i = 0;
+		used_regs_rec;
+	}
+	used_regs_rec = {
+		if i <= 7 then
+			if llist<i..i> == 1 then "read"(GPR[i]); endif;
+			i = i + 1;
+			used_regs_rec;
+		endif;
+	}
