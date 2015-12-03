@@ -36,9 +36,11 @@ op thumb2_32(x: thumb2_32_list)
 	image = x.image
 	syntax = x.syntax
 	action = {
+		"//no_collect_regs"();
 		NPC = PC + 4;
 		PC = PC + 4;
 		if ConditionPassed then
+			"//do_collect_regs"();
 			x.action;
 		endif;
 		if InITBlock then 
