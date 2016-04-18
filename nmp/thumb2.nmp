@@ -51,7 +51,7 @@ op thumb2_32(x: thumb2_32_list)
 
 op thumb2_32_list = 
 	fp
-	// | AND_imm_T1 // Shadowed by the work from Jerabek
+	//| AND_imm_T1 // Shadowed by the work from Jerabek
 	//| EOR_imm_T1 // Shadowed by the work from Jerabek
 	| BL_imm_T1
 	//| B_T3 // Shadowed by the work from Jerabek

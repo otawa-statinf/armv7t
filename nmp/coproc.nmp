@@ -26,10 +26,10 @@ op STC_T1(D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
 	cond = 1
 	// if n == 15 then UNPREDICTABLE
 
-op STC_T2(N: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
+op STC_T2(D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("stc2%s%s %d, %d, %s", if N then "l" else "" endif, op_cond_syntax_new(ITCOND), UInt(coproc), CRd, addr)
-	image = format("1111 110 %1b %1b %1b %1b 0 %4b %4b %4b %8b", addr.P, addr.U, N, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
+	syntax = format("stc2%s%s %d, %d, %s", if D then "l" else "" endif, op_cond_syntax_new(ITCOND), UInt(coproc), CRd, addr)
+	image = format("1111 110 %1b %1b %1b %1b 0 %4b %4b %4b %8b", addr.P, addr.U, D, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
 	// if P == '0' && U == '0' && D == '0' && W == '0' then UNDEFINED;
 	// if P == '0' && U == '0' && D == '1' && W == '0' then SEE MCRR, MCRR2;
 	n = UInt(addr.Rn)
@@ -82,13 +82,13 @@ op LDC_imm_T1(D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddr
 	wback = addr.W
 	cond = 1
 
-op LDC_imm_T2(N: bool, CRd: card(4), coproc: card(4), addr: CoproAddress)
+op LDC_imm_T2(D: bool, CRd: card(4), coproc: card(4), addr: CoproAddress)
 	// if Rn == '1111' then SEE LDC (literal) and if W == '1' || (P == '0' && CurrentInstrSet() != InstrSet_ARM) then UNPREDICTABLE;;
 	// if P == '0' && U == '0' && D == '0' && W == 0 then UNDEFINED
 	// if P == '0' && U == '0' && D == '1' && W == 0 then see MRRC, MRRC2
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("ldc2%s%s %d, %d, %s", if N then "l" else "" endif, op_cond_syntax_new(ITCOND), coproc, CRd, addr)
-	image = format("1111 110 %1b %1b %1b %1b 1 %4b %4b %4b %8b", addr.P, addr.U, N, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
+	syntax = format("ldc2%s%s %d, %d, %s", if D then "l" else "" endif, op_cond_syntax_new(ITCOND), coproc, CRd, addr)
+	image = format("1111 110 %1b %1b %1b %1b 1 %4b %4b %4b %8b", addr.P, addr.U, D, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
 	n = UInt(addr.Rn)
 	cp = UInt(coproc)
 	imm32 = ZeroExtend(addr.imm8 :: 0b00, 32)

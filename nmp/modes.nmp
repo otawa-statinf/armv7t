@@ -75,7 +75,7 @@ mode OFFSET_12(n: u12) = n
 mode CoproAddress = CoproOffset | CoproPreInc | CoproPostInc | CoproBased
 
 mode CoproOffset(r: REG_INDEX, i: card(8), u: bool)
-	syntax = format("[R%d, #%s%d]", r.number, if u then "+" else "-" endif, i :: 0b00)
+	syntax = format("[r%d, #%s%d]", r.number, if u then "+" else "-" endif, i :: 0b00)
 	Rn = r.number
 	imm8 = i
 	U = u
@@ -83,7 +83,7 @@ mode CoproOffset(r: REG_INDEX, i: card(8), u: bool)
 	W = 0
 
 mode CoproPreInc(r: REG_INDEX, i: card(8), u: bool)
-	syntax = format("[R%d, #%s%d]!", r.number, if u then "+" else "-" endif, i :: 0b00)
+	syntax = format("[r%d, #%s%d]!", r.number, if u then "+" else "-" endif, i :: 0b00)
 	Rn = r.number
 	imm8 = i
 	U = u
@@ -91,7 +91,7 @@ mode CoproPreInc(r: REG_INDEX, i: card(8), u: bool)
 	W = 1
 
 mode CoproPostInc(r: REG_INDEX, i: card(8), u: bool)
-	syntax = format("[R%d], #%s%d", r.number, if u then "+" else "-" endif, i :: 0b00)
+	syntax = format("[r%d], #%s%d", r.number, if u then "+" else "-" endif, i :: 0b00)
 	Rn = r.number
 	imm8 = i
 	U = u
@@ -99,7 +99,7 @@ mode CoproPostInc(r: REG_INDEX, i: card(8), u: bool)
 	W = 1
 
 mode CoproBased(r: REG_INDEX, i: card(8))
-	syntax = format("[R%d], %d", r.number, i)
+	syntax = format("[r%d], %d", r.number, i)
 	Rn = r.number
 	imm8 = i
 	U = 0b1

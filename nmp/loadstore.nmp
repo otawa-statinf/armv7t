@@ -660,7 +660,7 @@ op SWP(cond: condition, setb: setB, rn: REG_INDEX, rd: REG_INDEX, rm: REG_INDEX)
 // ****** Coprocessor instructions ******
 
 op STC(cond: condition, D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
-	syntax = format("stc%s%s %d, %d, %s", if cond.value == 0b1111 then '2' else cond.syntax endif, if D then "l" else "" endif, UInt(coproc), CRd, addr)
+	syntax = format("stc%s%s%s %d, %d, %s", if cond.value == 0b1111 then '2' else '' endif, if D then "l" else "" endif, if cond.value == 0b1111 then '' else cond.syntax endif, UInt(coproc), CRd, addr)
 	image = format("%s 110 %1b %1b %1b %1b 0 %4b %4b %4b %8b", cond.image, addr.P, addr.U, D, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
 	// if P == '0' && U == '0' && D == '0' && W == '0' then UNDEFINED;
 	// if P == '0' && U == '0' && D == '1' && W == '0' then SEE MCRR, MCRR2;
@@ -679,7 +679,7 @@ op LDC(cond: condition, D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr:
 	// if Rn == '1111' then SEE LDC (literal) and if W == '1' || (P == '0' && CurrentInstrSet() != InstrSet_ARM) then UNPREDICTABLE;;
 	// if P == '0' && U == '0' && D == '0' && W == 0 then UNDEFINED
 	// if P == '0' && U == '0' && D == '1' && W == 0 then see MRRC, MRRC2
-	syntax = format("ldc%s%s %d, %d, %s", if cond.value == 0b1111 then '2' else cond.syntax endif, if D then "l" else "" endif, UInt(coproc), CRd, addr)
+	syntax = format("ldc%s%s%s %d, %d, %s", if cond.value == 0b1111 then '2' else '' endif, if D then "l" else "" endif, if cond.value == 0b1111 then '' else cond.syntax endif, UInt(coproc), CRd, addr)
 	image = format("%s 110 %1b %1b %1b %1b 1 %4b %4b %4b %8b", cond.image, addr.P, addr.U, D, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
 	n = UInt(addr.Rn)
 	cp = UInt(coproc)
