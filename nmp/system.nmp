@@ -346,7 +346,7 @@ op MRS(cond : condition,  setr : setR, rn : REG_INDEX)
 
 
 // ARMv6
-op CDP(cond: condition, opc1: card(4), CRn: card(4), CRd: card(4), coproc: card(4), opc2: card(3), CRm: card(4))
+op CDP(cond: condition, opc1: card(4), CRn: card(4), CRd: card(4), coproc: enum(0-9, 12-15), opc2: card(3), CRm: card(4))
 	syntax = format("cdp%s %d, %d, %d, %d, %d, %d", cond, coproc, opc1, CRd,  CRn, CRm, opc2)
 	image = format("%s 1110 %4b %4b %4b %4b %3b 0 %4b", cond, opc1, CRn, CRd, coproc, opc2, CRm)
 	action = {

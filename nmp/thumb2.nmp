@@ -50,7 +50,7 @@ op thumb2_32(x: thumb2_32_list)
 	}
 
 op thumb2_32_list = 
-	fp
+	fp_thumb
 	//| AND_imm_T1 // Shadowed by the work from Jerabek
 	//| EOR_imm_T1 // Shadowed by the work from Jerabek
 	| BL_imm_T1
@@ -214,7 +214,6 @@ op ADD_imm_Thumb_T3(i: card(1), S: setS, Rd: REG_INDEX, Rn: enum(0..12, 14..15),
 	setflags = S
 	imm32 = ThumbExpandImm(i :: imm3 :: imm8)
 	//if d == 13 || (d == 15 && S == '0') || n == 15 then UNPREDICTABLE;
-	cond = 1
 
 op ADD_imm_Thumb_T4(i: card(1), Rd: REG_INDEX, Rn: enum(0..12, 14), imm3: card(3), imm8: card(8))
 	// TODO: range decoding
@@ -1454,10 +1453,9 @@ op EOR_reg_thumb2(S: setS, rn: REG_INDEX, rm: REG_INDEX, rd: REG_INDEX, t: card(
 
 op LDMDB_thumb2(M: card(1), P: card(1), rn: REG_INDEX, llist: THUMB2_REG_LIST, W: card(1))
 	ITCOND = "f_get_update_ITSTATE"()
-   syntax = format("ldmdb%s %s%s, {%s}",op_cond_syntax_new(ITCOND), rn,
-   	if W then "!" else "" endif, llist.syntax)
-   image = format("11101 00 100 %1b 1 %s %1b %1b 0 %s", W, rn, P, M, llist.image)
-   action = {
+	syntax = format("ldmdb%s %s%s, {%s}",op_cond_syntax_new(ITCOND), rn, if W then "!" else "" endif, llist.syntax)
+	image = format("11101 00 100 %1b 1 %s %1b %1b 0 %s", W, rn, P, M, llist.image)
+	action = {
 		//reg_list.action;
 		TMP_REGLIST = P::M::0b0::llist;		  
 		//Compute number of set bits in the register list to compute the start address
@@ -1478,36 +1476,36 @@ op LDMDB_thumb2(M: card(1), P: card(1), rn: REG_INDEX, llist: THUMB2_REG_LIST, W
 		if (W == 0b1) && (TMP_SETBIT == 0) then
                   Set_ARM_GPR(rn, TMP_END_ADDR);
 		endif;
-   //Note that the assert mode is not implemented, programmer may take
-  //		  care of the address in paramater !                            
-             }
+		//Note that the assert mode is not implemented, programmer may take
+		//care of the address in paramater !
+	}
+	
+	number_of_set_bits_in = {
+		//Count the amount of bits into the list
+		if (TMP_IMM16 != 16) then
+			if (TMP_REGLIST & 1 == 1) then
+				TMP_SETBIT = TMP_SETBIT + 1;
+				if (TMP_IMM16 == 15) then
+					B15SET = 1;
+				endif;		     
+			endif;
+			TMP_REGLIST = TMP_REGLIST >> 1;
+			TMP_IMM16 = TMP_IMM16 + 1;
+			number_of_set_bits_in;
+		endif;
+	}  
 
-   number_of_set_bits_in = {
-	     //Count the amount of bits into the list
-             if (TMP_IMM16 != 16) then
-		  if (TMP_REGLIST & 1 == 1) then
-		     TMP_SETBIT = TMP_SETBIT + 1;
-		     if (TMP_IMM16 == 15) then
-			B15SET = 1;
-		     endif;		     
-		  endif;
-		  TMP_REGLIST = TMP_REGLIST >> 1;
-		  TMP_IMM16 = TMP_IMM16 + 1;
-		  number_of_set_bits_in;
-	       endif;
-	       }  
-
-    boucle = {
-               if (TMP_IMM16 != 15) then
-                    if (TMP_REGLIST & 1 == 1) then
-		        SetWord(TMP_START_ADDR,GPR[TMP_IMM16]);
-			TMP_START_ADDR = TMP_START_ADDR + 4;
-		    endif;
-		  TMP_REGLIST = TMP_REGLIST >> 1;
-                  TMP_IMM16 = TMP_IMM16 + 1;
-	          boucle;
-                endif;
-               }
+	boucle = {
+		if (TMP_IMM16 != 15) then
+			if (TMP_REGLIST & 1 == 1) then
+				SetWord(TMP_START_ADDR,GPR[TMP_IMM16]);
+				TMP_START_ADDR = TMP_START_ADDR + 4;
+			endif;
+			TMP_REGLIST = TMP_REGLIST >> 1;
+			TMP_IMM16 = TMP_IMM16 + 1;
+			boucle;
+		endif;
+	}
 
 
 op LSR_thumb2 = /*LSR_imm_thumb2 |*/ LSR_reg_thumb2

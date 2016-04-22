@@ -1050,7 +1050,7 @@ VCNT
 VCVT (between floating-point and integer)
 	AT1		aSIMD
 VCVT, VCVTR (between floating-point and integer, floating-point)
-	AT1		aSIMD
+	AT1		aSIMD	action
 VCVT (between floating-point and fixed-point)
 	AT1		aSIMD
 VCVT (between floating-point and fixed-point, floating-point)
@@ -1094,15 +1094,15 @@ VMOV (immediate)
 	T1		aSIMD
 	A1		aSIMD
 	T2		VFPv3	ok
-	A2		VFPv3
+	A2		VFPv3	ok
 VMOV (register)
 	T1		aSIMD
 	A1		aSIMD
 	T2		VFPv2	ok
-	A2		VFPv2
+	A2		VFPv2	ok
 VMOV (between ARM core register and single-precision register)
 	T1		VFPv2	ok
-	A1		VFPv2
+	A1		VFPv2	ok
 VMRS
 	T1		VFPv2	action
 	A1		VFPv2
@@ -1121,6 +1121,11 @@ VMUL, VMULL (by scalar)
 	A1		aSIMD
 	T2		aSIMD
 	A2		aSIMD
+VPUSH
+	T1		VFPv2	action
+	A1		VFPv2	action
+	T2		VFPv2	action
+	A2		VFPv2	action
 VSTR
 	T1		VFPv2	ok
 	A1		VFPv2	ok

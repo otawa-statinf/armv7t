@@ -67,6 +67,16 @@ op BX_ARM(cond : condition, rd : REG_INDEX)
 			NPC  = (TMP_REG1 & 0xFFFFFFFE);
 		endif;
 	}
+	
+op BLX_ARM(cond : condition, rd : REG_INDEX)
+	syntax = format("blx%s %s", cond.syntax, rd.syntax)
+	image  = format("%s000100101111111111110011%s", cond.image, rd.image)
+	action = {
+		if (cond) then
+			LR = __IADDR + 4;
+			BXWritePC(Get_ARM_GPR(rd));
+		endif;
+	}
 
 op SWI(cond : condition, Immed_24: IMM24)
 	syntax = format("swi%s %s", cond.syntax, Immed_24.syntax)
