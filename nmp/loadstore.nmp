@@ -114,7 +114,7 @@ op LDR_imm(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 	syntax =
 		if clrex then "clrex"
 		else
-			format("ldr%s%s%s %s, [%s%s,%s%s%s%s",
+			format("ldr%s%s%s %s, [%s%s, %s%s%s%s",
 				cond.syntax,
 				if setb then "b" else "" endif ,
 				if setw then  if (setpre == 0) then  "T" else "" endif else "" endif,
@@ -161,8 +161,145 @@ op LDR_imm(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 	}
 
 
+op LDREX = LDREX_A1 | LDREXB_A1 | LDREXD_A1 | LDREXH_A1
+
+op LDREX_A1(cond: condition, rn: REG_INDEX, rt: REG_INDEX)
+	syntax = format("ldrex%s %s, [%s]", cond, rt, rn)
+	image = format("%s00011001%s%s111110011111", cond, rn, rt)
+	//if t == 15 || n == 15 then UNPREDICTABLE;
+	action = {
+		if ConditionPassed() then
+			//NullCheckIfThumbEE(n);
+			TMP_REG1 = Get_ARM_GPR(rn);
+			//SetExclusiveMonitors(TMP_REG1,4);
+			Set_ARM_GPR(rt,M32[TMP_REG1]);
+		endif;
+	}
+
+op LDREXB_A1(cond: condition, rn: REG_INDEX, rt: REG_INDEX)
+	syntax = format("ldrexb%s %s, [%s]", cond, rt, rn)
+	image = format("%s00011101%s%s111110011111", cond, rn, rt)
+	//if t == 15 || n == 15 then UNPREDICTABLE;
+	action = {
+		if ConditionPassed() then
+			//NullCheckIfThumbEE(n);
+			TMP_REG1 = Get_ARM_GPR(rn);
+			//SetExclusiveMonitors(TMP_REG1,1);
+			Set_ARM_GPR(rt,M[TMP_REG1]);
+		endif;
+	}
+
+op LDREXD_A1(cond: condition, rn: REG_INDEX, rt: REG_INDEX)
+	syntax = format("ldrexd%s %s, [%s]", cond, rt, rn)
+	image = format("%s00011011%s%s111110011111", cond, rn, rt)
+	//if Rt<0> == '1' || Rt == '1110' || n == 15 then UNPREDICTABLE;
+	action = {
+		if ConditionPassed() then
+			//NullCheckIfThumbEE(n);
+			TMP_REG1 = Get_ARM_GPR(rn);
+			// LDREXD requires doubleword-aligned address
+			//if TMP_REG1<2..0> != 0b000 then AlignmentFault(address, FALSE) endif;
+			//SetExclusiveMonitors(TMP_REG1,8);
+			// See the description of Single-copy atomicity for details of whether 
+			// the two loads are 64-bit single-copy atomic.
+			Set_ARM_GPR(rt,M32[TMP_REG1]);
+			Set_ARM_GPR(rt+1,M32[TMP_REG1+4]);
+		endif;
+	}
+
+op LDREXH_A1(cond: condition, rn: REG_INDEX, rt: REG_INDEX)
+	syntax = format("ldrexh%s %s, [%s]", cond, rt, rn)
+	image = format("%s00011111%s%s111110011111", cond, rn, rt)
+	//if t == 15 || n == 15 then UNPREDICTABLE;
+	action = {
+		if ConditionPassed() then
+			//NullCheckIfThumbEE(n);
+			TMP_REG1 = Get_ARM_GPR(rn);
+			//SetExclusiveMonitors(TMP_REG1,2);
+			Set_ARM_GPR(rt,M16[TMP_REG1]);
+		endif;
+	}
+
+
+op STREX = STREX_A1 | STREXB_A1 | STREXD_A1 | STREXH_A1
+
+op STREX_A1(cond: condition, rn: REG_INDEX, rd: REG_INDEX, rt: REG_INDEX)
+	syntax = format("strex%s %s, %s, [%s]", cond, rd, rt, rn)
+	image = format("%s00011000%s%s11111001%s", cond, rn, rd, rt)
+	//if d == 15 || t == 15 || n == 15 then UNPREDICTABLE;
+	//if d == n || d == t then UNPREDICTABLE;
+	action = {
+		if ConditionPassed() then
+			//NullCheckIfThumbEE(n);
+			TMP_REG1 = Get_ARM_GPR(rn);
+			//if ExclusiveMonitorsPass(TMP_REG1,4) then
+				M32[TMP_REG1] = Get_ARM_GPR(rt);
+				Set_ARM_GPR(rd,0);
+			//else
+				//Set_ARM_GPR(rd,1);
+		endif;
+	}
+
+op STREXB_A1(cond: condition, rn: REG_INDEX, rd: REG_INDEX, rt: REG_INDEX)
+	syntax = format("strexb%s %s, %s, [%s]", cond, rd, rt, rn)
+	image = format("%s00011100%s%s11111001%s", cond, rn, rd, rt)
+	//if d == 15 || t == 15 || n == 15 then UNPREDICTABLE;
+	//if d == n || d == t then UNPREDICTABLE;
+	action = {
+		if ConditionPassed() then
+			//NullCheckIfThumbEE(n);
+			TMP_REG1 = Get_ARM_GPR(rn);
+			//if ExclusiveMonitorsPass(TMP_REG1,1) then
+				M[TMP_REG1] = Get_ARM_GPR(rt);
+				Set_ARM_GPR(rd,0);
+			//else
+				//Set_ARM_GPR(rd,1);
+		endif;
+	}
+
+op STREXD_A1(cond: condition, rn: REG_INDEX, rd: REG_INDEX, rt: REG_INDEX)
+	syntax = format("strexd%s %s, %s, [%s]", cond, rd, rt, rn)
+	image = format("%s00011010%s%s11111001%s", cond, rn, rd, rt)
+	//if d == 15 || Rt<0> == '1' || Rt == '1110' || n == 15 then UNPREDICTABLE;
+	//if d == n || d == t || d == t+1 then UNPREDICTABLE;
+	action = {
+		if ConditionPassed() then
+			//NullCheckIfThumbEE(n);
+			TMP_REG1 = Get_ARM_GPR(rn);
+			// For the alignment requirements see "Aborts and alignment"
+			// Create doubleword to store such that R[rt] will be stored at TMP_REG1 and R[rt+1] at TMP_REG1+4.
+			//if BigEndian() // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
+				TMP64_REG1 = R[rt]::R[rt+1]; 
+			//else 
+				//R[t+1]::R[t]; endif;
+			//if ExclusiveMonitorsPass(TMP_REG1,8) then
+				M64[TMP_REG1] = TMP64_REG1;
+				Set_ARM_GPR(rd,0); 
+			//else
+				//Set_ARM_GPR(rd,1);
+		endif;
+	}
+
+op STREXH_A1(cond: condition, rn: REG_INDEX, rd: REG_INDEX, rt: REG_INDEX)
+	syntax = format("strexh%s %s, %s, [%s]", cond, rd, rt, rn)
+	image = format("%s00011110%s%s11111001%s", cond, rn, rd, rt)
+	//if d == 15 || t == 15 || n == 15 then UNPREDICTABLE;
+	//if d == n || d == t then UNPREDICTABLE;
+	action = {
+		if ConditionPassed() then
+			//NullCheckIfThumbEE(n);
+			TMP_REG1 = Get_ARM_GPR(rn);
+			//if ExclusiveMonitorsPass(TMP_REG1,2) then
+				M16[TMP_REG1] = Get_ARM_GPR(rt);
+				Set_ARM_GPR(rd,0); 
+			//else
+				//Set_ARM_GPR(rd,1); 
+		endif;
+	}
+
+
 op STR_imm(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_INDEX, rd: REG_INDEX, offset12: OFFSET_12)
-	syntax = format("str%s%s%s %s, [%s%s,%s%s%s%s",
+	syntax = format("str%s%s%s %s, [%s%s, %s%s%s%s",
 		cond.syntax,
 		if setb then "b" else "" endif ,
 		if setw then
@@ -316,7 +453,7 @@ op STR_shr(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 
 op STRH_imm(cond: condition, setpre: u1,setu:u1,setw:u1,rn : REG_INDEX, rd :	 REG_INDEX , immh: u4, imml:u4)
 
-	syntax = format("str%sh %s, [%s%s,%s#%u%s%s",
+	syntax = format("strh%s %s, [%s%s, %s#%u%s%s",
 		cond.syntax,
 		rd.syntax,
 		rn.syntax,
@@ -352,7 +489,7 @@ op STRH_imm(cond: condition, setpre: u1,setu:u1,setw:u1,rn : REG_INDEX, rd :	 RE
 
 
 op STRH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , rm: REG_INDEX)
-	syntax = format("str%sh %s, [%s%s,%s%s%s%s",
+	syntax = format("strh%s %s, [%s%s, %s%s%s%s",
 		cond.syntax,
 		rd.syntax,
 		rn.syntax,
@@ -388,8 +525,44 @@ op STRH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_
        }
 
 
+op STRD_imm(cond: condition, setpre: u1, setu: u1, setw: u1, rn: REG_INDEX, rt: REG_INDEX, immh: u4, imml: u4)
+	syntax = format("strd%s %s, [%s%s, %s#%u%s%s",
+		cond.syntax,
+		rt.syntax,
+		rn.syntax,
+		if setpre then "" else "]" endif,
+		if setu then "" else "-" endif,
+		immh::imml,
+		if setpre then "]" else "" endif,
+		if setw then "!" else "" endif )
+
+	image = format("%s000%1b%1b1%1b0%s%s%4b1111%4b", cond.image, setpre, setu, setw, rn.image, rt.image, immh, imml)
+	action = {
+		TMP_REG3 = immh::imml;
+		if (cond) then
+			if setu == 0 then
+				TMP_REG3 = -TMP_REG3;
+			endif;
+			TMP_REG1 = Get_ARM_GPR(rt);
+			TMP_REG2 = Get_ARM_GPR(rn);
+			if (setpre == 1) then
+				TMP_REG2 = TMP_REG2 + TMP_REG3;
+			endif;
+			//STRD();
+			if setpre == 0 then
+				TMP_REG2 = TMP_REG2 + TMP_REG3;
+				Set_ARM_GPR(rn,TMP_REG2);
+			else
+				if (setw == 1 ) then
+					Set_ARM_GPR(rn,TMP_REG2);
+				endif;
+			endif;
+		endif;
+       }
+
+
 op LDRH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , immh: u4, imml:u4)
-	syntax = format("ldr%sh %s, [%s%s,%s#%u%s%s",
+	syntax = format("ldr%sh %s, [%s%s, %s#%u%s%s",
 		cond.syntax,
 		rd.syntax,
 		rn.syntax,
@@ -428,7 +601,7 @@ op LDRH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_
 
 op LDRH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , rm: REG_INDEX)
 
-	syntax = format("ldr%sh %s, [%s%s,%s%s%s%s",
+	syntax = format("ldr%sh %s, [%s%s, %s%s%s%s",
 		cond.syntax,
 		rd.syntax,
 		rn.syntax,
@@ -466,7 +639,7 @@ op LDRH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_
 
 op LDRSB_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , immh: u4, imml:u4)
 
-	syntax = format("ldr%ssb %s, [%s%s,%s#%u%s%s",
+	syntax = format("ldr%ssb %s, [%s%s, %s#%u%s%s",
 		cond.syntax,
 		rd.syntax,
 		rn.syntax,
@@ -501,7 +674,7 @@ op LDRSB_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG
        }
 
 op LDRSB_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd :REG_INDEX , rm: REG_INDEX)
-	syntax = format("ldr%ssb %s, [%s%s,%s%s%s%s",
+	syntax = format("ldr%ssb %s, [%s%s, %s%s%s%s",
 		cond.syntax,
 		rd.syntax,
 		rn.syntax,
@@ -539,7 +712,7 @@ op LDRSB_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd :REG_
 
 op LDRSH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd :REG_INDEX , immh: u4, imml:u4)
 
-	syntax = format("ldr%ssh %s, [%s%s,%s#%u%s%s",
+	syntax = format("ldr%ssh %s, [%s%s, %s#%u%s%s",
 	cond.syntax,
 		rd.syntax,
 		rn.syntax,
@@ -575,7 +748,7 @@ op LDRSH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd :REG_
        }
 
 op LDRSH_shr(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , rm: REG_INDEX)
-	syntax = format("ldr%ssh %s, [%s%s,%s%s%s%s",
+	syntax = format("ldr%ssh %s, [%s%s, %s%s%s%s",
 		cond.syntax,
 		rd.syntax,
 		rn.syntax,
@@ -659,7 +832,7 @@ op SWP(cond: condition, setb: setB, rn: REG_INDEX, rd: REG_INDEX, rm: REG_INDEX)
 
 // ****** Coprocessor instructions ******
 
-op STC(cond: condition, D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
+op STC(cond: full_condition, D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
 	syntax = format("stc%s%s%s %d, %d, %s", if cond.value == 0b1111 then '2' else '' endif, if D then "l" else "" endif, if cond.value == 0b1111 then '' else cond.syntax endif, UInt(coproc), CRd, addr)
 	image = format("%s 110 %1b %1b %1b %1b 0 %4b %4b %4b %8b", cond.image, addr.P, addr.U, D, addr.W, addr.Rn, CRd, coproc, addr.imm8)  
 	// if P == '0' && U == '0' && D == '0' && W == '0' then UNDEFINED;
@@ -675,7 +848,7 @@ op STC(cond: condition, D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr:
 		// TODO!
 	}
 
-op LDC(cond: condition, D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
+op LDC(cond: full_condition, D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr: CoproAddress)
 	// if Rn == '1111' then SEE LDC (literal) and if W == '1' || (P == '0' && CurrentInstrSet() != InstrSet_ARM) then UNPREDICTABLE;;
 	// if P == '0' && U == '0' && D == '0' && W == 0 then UNDEFINED
 	// if P == '0' && U == '0' && D == '1' && W == 0 then see MRRC, MRRC2
@@ -691,7 +864,7 @@ op LDC(cond: condition, D: bool, CRd: card(4), coproc: enum(0..9, 12..15), addr:
 		// TODO!
 	}
 
-op MRC(cond: condition, opc1: card(3), CRn: card(4), Rt: REG_INDEX, coproc: enum(0..9, 12..15), opc2: card(3), CRm: card(4))
+op MRC(cond: full_condition, opc1: card(3), CRn: card(4), Rt: REG_INDEX, coproc: enum(0..9, 12..15), opc2: card(3), CRm: card(4))
 	syntax = format("mrc%s %d, %d, %s, cr%d, cr%d, %d", if cond.value == 0b1111 then '2' else cond.syntax endif, UInt(coproc), opc1, Rt, CRn, CRm, opc2)
 	image = format("%s 1110 %3b 1 %4b  %s %4b %3b 1 %4b", cond.image, opc1, CRn, Rt, coproc, opc2, CRm)
 	t = UInt(Rt)

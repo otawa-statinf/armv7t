@@ -19,7 +19,7 @@
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 
-op B_Cond(cond: condition, setl: u1, signed_immed_24: IMM24)
+op B_Cond(cond: full_condition, setl: u1, signed_immed_24: IMM24)
 	target = __IADDR + 8 + (coerce(int(32), signed_immed_24) :: (if cond.value == 0b1111 then setl else 0b0 endif) :: 0b0)
 	syntax = format("b%s%s %@",
 		if setl || cond.value ==  0b1111 then "l" else "" endif,

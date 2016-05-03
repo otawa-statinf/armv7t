@@ -192,7 +192,7 @@ op MOV_shr(cond : condition, sets : setS, rd : REG_INDEX, shifter_operand	: shif
 		endif;
 	}
 
-op MOV_imm(cond : condition, sets : setS, rd : REG_INDEX, shifter_operand : rotatedImmediate )
+op MOV_imm(cond : condition, sets : setS, rd : REG_INDEX, shifter_operand : rotatedImmediate)
 	syntax = format("mov%s%s %s, %s", cond.syntax, sets.syntax, rd.syntax, shifter_operand.syntax)
 	image = format("%s0011101%s0000%s%s", cond.image, sets.image, rd.image, shifter_operand.image)
 	action = {
@@ -203,7 +203,26 @@ op MOV_imm(cond : condition, sets : setS, rd : REG_INDEX, shifter_operand : rota
 		endif;
 	}
 
-op MVN_shr(cond : condition, sets : setS, rd : REG_INDEX, shifter_operand	: shiftedRegister)
+op MOVW_imm(cond : condition, imm4 : card(4), rd : REG_INDEX, imm12 : card(12))
+	syntax = format("mov%s %s, #%d", cond.syntax, rd.syntax, imm4::imm12)
+	image = format("%s00110000%4b%s%12b", cond.image, imm4, rd.image, imm12)
+	action = {
+		if (cond) then
+			MOV(rd,imm4::imm12);
+		endif;
+	}
+
+op MOVT(cond : condition, imm4 : u4, rd : REG_INDEX, imm12 : u12)
+	syntax = format("movt%s %s, #%d", cond.syntax, rd.syntax, imm4::imm12)
+	image = format("%s 0011 0100 %4b %s %12b", cond.image, imm4, rd.image, imm12)
+	action = {
+		if (cond) then
+			TMP_SWORD = imm4::imm12::Get_ARM_GPR(rd)<15..0>;
+			Set_ARM_GPR(rd,TMP_SWORD);
+		endif;
+	}
+
+op MVN_shr(cond : condition, sets : setS, rd : REG_INDEX, shifter_operand : shiftedRegister)
 	syntax = format("mvn%s%s %s, %s", cond.syntax, sets.syntax, rd.syntax, shifter_operand.syntax)
 	image = format("%s0001111%s0000%s%s", cond.image, sets.image, rd.image, shifter_operand.image)
 	action = {
@@ -214,7 +233,7 @@ op MVN_shr(cond : condition, sets : setS, rd : REG_INDEX, shifter_operand	: shif
 		endif;
 	}
 
-op MVN_imm(cond : condition, sets : setS, rd : REG_INDEX, shifter_operand	: rotatedImmediate)
+op MVN_imm(cond : condition, sets : setS, rd : REG_INDEX, shifter_operand : rotatedImmediate)
 	syntax = format("mvn%s%s %s, %s", cond.syntax, sets.syntax, rd.syntax, shifter_operand.syntax)
 	image = format("%s0011111%s0000%s%s", cond.image, sets.image, rd.image, shifter_operand.image)
 	action = {

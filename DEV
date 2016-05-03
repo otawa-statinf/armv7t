@@ -297,7 +297,7 @@ DBG
 	A1		7
 DMB
 	T1		7	action
-	A1		7
+	A1		7	action
 DSB
 	T1		7	action
 	A1		7
@@ -375,17 +375,17 @@ LDRD (literal)
 LDRD (register)
 	A1		5	check
 LDREX
-	T1		6	action
-	A1		6
+	T1		6	check
+	A1		6	check
 LDREXB
-	T1		7	action
-	A1		7
+	T1		7	check
+	A1		7	check
 LDREXD
-	T1		7	action
-	A1		6
+	T1		7
+	A1		6	check
 LDREXH
-	T1		7	action
-	A1		6
+	T1		7	check
+	A1		6	check
 LDRH (immediate)
 	T1		4	ok
 	T2		6	ok
@@ -473,7 +473,7 @@ MOV (immediate)
 	T2		6	ok
 	T3		6	ok
 	A1		4	ok
-	A2		6
+	A2		6	ok
 MOV (register)
 	T1		4/6	check
 	T2		4	ok
@@ -481,10 +481,10 @@ MOV (register)
 	A1		4	ok
 MOVT
 	T1		6	ok
-	A1		6
+	A1		6	ok
 MRC, MRC2
 	T1		6	action
-	A1		4
+	A1		4	action
 	T2		6	action
 	A2		5	action
 MRRC, MRRC2
@@ -789,21 +789,21 @@ STRBT
 	A1		4	ok
 STRD (immediate)
 	T1		6	action
-	A1		5	check
+	A1		5	action
 STRD (register)
-	A1		5	check
+	A1		5
 STREX
-	T1		6	action
-	A1		6
+	T1		6	test
+	A1		6	test
 STREXB
-	T1		7	action
-	A1		6
+	T1		7	test
+	A1		6	test
 STREXD
-	T1		7	action
-	A1		6
+	T1		7
+	A1		6	test
 STREXH
-	T1		7	action
-	A1		6
+	T1		7	test
+	A1		6	test
 STRH (immediate)
 	T1		4	ok
 	T2		6	ok
@@ -1005,8 +1005,8 @@ VACGE, VACGT, VACLE, VACLT
 VADD (integer)
 	AT1		aSIMD
 VADD (floating_point)
-	AT1		aSIMD
-	AT2		aSIMD
+	AT1		aSIMD	action
+	AT2		aSIMD	action
 VADDHN
 	AT1		aSIMD
 VADDL, VADDW
@@ -1063,7 +1063,7 @@ VCVTB, VCVTT
 	AT1		aSIMD
 VDIV
 	T1		VFPv2	action
-	A1		VFPv2
+	A1		VFPv2	action
 VDUP (scalar)
 	AT1		aSIMD
 VDUP (core register)
@@ -1100,27 +1100,65 @@ VMOV (register)
 	A1		aSIMD
 	T2		VFPv2	ok
 	A2		VFPv2	ok
+VMOV (ARM core register to scalar)
+	T1		aSIMD
+	A1		aSIMD
+VMOV (scalar to ARM core register)
+	T1		aSIMD
+	A1		aSIMD
 VMOV (between ARM core register and single-precision register)
 	T1		VFPv2	ok
 	A1		VFPv2	ok
+VMOV (between two ARM core registers and two single-precision registers)
+	T1		VFPv2
+	A1		VFPv2
+VMOV (between two ARM core registers and a doubleword extension register)
+	T1		aSIMD	action
+	A1		aSIMD	action
+VMOVL
+	T1		aSIMD
+	A1		aSIMD
+VMOVN
+	T1		aSIMD
+	A1		aSIMD
 VMRS
 	T1		VFPv2	action
 	A1		VFPv2
+VMLA, VMLAL, VMLS, VMLSL (integer)
+	T1		aSIMD
+	A1		aSIMD
+	T2		aSIMD
+	A2		aSIMD
+VMLA, VMLS (floating-point)
+	T1		aSIMD	action
+	A1		aSIMD	action
+	T2		VFPv2	action
+	A2		VFPv2	action
+VMLA, VMLAL, VMLS, VMLSL (by scalar)
+	T1		aSIMD
+	A1		aSIMD
+	T2		aSIMD
+	A2		aSIMD
 VMUL, VMULL (integer and polynomial)
 	T1		aSIMD
 	A1		aSIMD
 	T2		aSIMD
 	A2		aSIMD
 VMUL (floating-point)
-	T1		aSIMD
-	A1		aSIMD
+	T1		aSIMD	action
+	A1		aSIMD	action
 	T2		VFPv2	action
-	A2		VFPv2
+	A2		VFPv2	action
 VMUL, VMULL (by scalar)
 	T1		aSIMD
 	A1		aSIMD
 	T2		aSIMD
 	A2		aSIMD
+VPOP
+	T1		VFPv2	action
+	A1		VFPv2	action
+	T2		VFPv2	action
+	A2		VFPv2	action
 VPUSH
 	T1		VFPv2	action
 	A1		VFPv2	action

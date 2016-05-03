@@ -21,8 +21,8 @@
 
 // modes
 
-extend condition
-	used_regs = { if cond < 14 then "read"(Ucpsr); endif; }
+extend condition, full_condition
+	used_regs = { if value < 14 then "read"(Ucpsr); endif; }
 
 extend setS
 	used_regs = { if set then "write"(CPSR); endif; }
