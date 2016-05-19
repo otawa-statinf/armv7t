@@ -207,7 +207,7 @@ endif
 
 //add shiftoperation and value correctly to syntax
 macro DecodeImmShift_syntax(t, imm5) = \
-	switch (t) { \
+	switch (coerce(card(3), t)) { \
 	case 0: if (imm5 == 0b00000) then "" else format(", lsl #%d",imm5) endif \
 	case 1: format(", lsr #%d",imm5) \
 	case 2: if (imm5 == 0b00000) then ", asr #32" else format(", asr #%d",imm5) endif \
