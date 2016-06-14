@@ -94,6 +94,7 @@ extend CLZ
 		"write"(GPR[rd.number]);
 	}
 
+// TODO! Remove when the bug in automatic finding is fixed
 extend MOV_ORR_imm_T2_thumb2
 	used_regs = {
 		if rn.number != 15 then
@@ -104,6 +105,7 @@ extend MOV_ORR_imm_T2_thumb2
 		S.used_regs;
 	}
 
+// TODO! Remove when the bug in automatic finding is fixed
 extend BIC_imm_thumb2
 	used_regs = {
 		"read"(GPR[rn.number]);
@@ -111,6 +113,7 @@ extend BIC_imm_thumb2
 		S.used_regs;
 	}
 	
+// TODO! Remove when the bug in automatic finding is fixed
 extend BIC_reg_thumb2
 	used_regs = {
 		"read"(GPR[rm.number]);
