@@ -87,7 +87,6 @@ extend MOV_imm, MVN_imm
 		sets.used_regs;
 	}
 
-
 extend CLZ
 	used_regs = {
 		cond.used_regs;
@@ -95,7 +94,32 @@ extend CLZ
 		"write"(GPR[rd.number]);
 	}
 
+extend MOV_ORR_imm_T2_thumb2
+	used_regs = {
+		if rn.number != 15 then
+			// ORR_imm
+			"read"(GPR[rn.number]);
+		endif;
+		"write"(GPR[rd.number]);
+		S.used_regs;
+	}
 
+extend BIC_imm_thumb2
+	used_regs = {
+		"read"(GPR[rn.number]);
+		"write"(GPR[rd.number]);
+		S.used_regs;
+	}
+	
+extend BIC_reg_thumb2
+	used_regs = {
+		"read"(GPR[rm.number]);
+		"read"(GPR[rn.number]);
+		"write"(GPR[rd.number]);
+		S.used_regs;
+	}
+
+	
 // ****** control instructions ******
 
 extend B_Cond
