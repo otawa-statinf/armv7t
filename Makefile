@@ -79,7 +79,7 @@ LIB_DEPS	=	include/arm/config.h
 
 ifdef WITH_FAST_STATE
 GFLAGS		+=	-a used_regs.c
-LIBS_DEPS	+=	src/used_regs.c
+LIB_DEPS	+=	src/used_regs.c
 endif
 
 ifdef WITH_DISASM
