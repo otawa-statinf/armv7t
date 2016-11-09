@@ -31,7 +31,6 @@ GFLAGS= \
 	-m shift:extern/shift \
 	-v \
 	-a disasm.c \
-	-a used_regs.c \
 	-S \
 	-switch \
 	-D
@@ -76,7 +75,12 @@ GOALS		=
 SUBDIRS		=	src
 CLEAN		=	arm.nml arm.irg nmp/state.nmp
 DISTCLEAN	=	include src $(CLEAN) config.mk
-LIB_DEPS	=	include/arm/config.h src/used_regs.c
+LIB_DEPS	=	include/arm/config.h
+
+ifdef WITH_FAST_STATE
+GFLAGS		+=	-a used_regs.c
+LIBS_DEPS	+=	src/used_regs.c
+endif
 
 ifdef WITH_DISASM
 GOALS		+=	arm-disasm
