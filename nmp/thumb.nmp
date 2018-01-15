@@ -19,6 +19,9 @@
 //                                                                         //
 //*************************************************************************//
 
+canon "//no_collect_regs"()
+canon "swi_impl"(card(32))
+
 // From Jerabek
 canon u8 "f_set_ITSTATE"(u8)
 canon u8 "f_get_ITSTATE"()

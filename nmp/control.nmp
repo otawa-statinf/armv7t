@@ -47,7 +47,6 @@ op B_Cond(cond: full_condition, setl: u1, signed_immed_24: IMM24)
 		else
 			if (cond) then
 				if (setl == 1) then
-					"//DEBUG"();
 					LR = __IADDR + 4;
 				endif;
 				TMP_SWORD = coerce(int(30), signed_immed_24) :: 0b00;

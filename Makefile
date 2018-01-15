@@ -53,6 +53,7 @@ NMP = \
 	nmp/dataProcessingMacro.nmp \
 	nmp/dataProcessing.nmp \
 	nmp/exception.nmp \
+	nmp/fp.nmp  \
 	nmp/loadstore.nmp \
 	nmp/loadStoreM.nmp \
 	nmp/loadStoreM_Macro.nmp \
@@ -66,7 +67,7 @@ NMP = \
 	nmp/thumb2.nmp \
 	nmp/tempVar.nmp
 ifdef WITH_THUMB
-NMP += nmp/thumb.nmp nmp/thumb2.nmp nmp/mem-thumb2.nmp nmp/gen.nmp nmp/fp.nmp nmp/coproc.nmp
+NMP += nmp/thumb.nmp nmp/thumb2.nmp nmp/mem-thumb2.nmp nmp/gen.nmp nmp/coproc.nmp
 endif
 
 
