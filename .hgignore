@@ -1,0 +1,10 @@
+\.cproject
+\.project
+disasm
+include
+sim
+src
+arm.irg
+arm.nml
+config.mk
+nmp/state.nmp

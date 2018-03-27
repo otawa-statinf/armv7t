@@ -30,17 +30,18 @@ var next_instr_addr[1, card(32)]
 op thumb2 = thumb2_32
 
 
+		//"//no_collect_regs"();
+		//"//do_collect_regs"();
+
 
 // ****** thumb-32 32-bits ******
 op thumb2_32(x: thumb2_32_list)
 	image = x.image
 	syntax = x.syntax
 	action = {
-		"//no_collect_regs"();
 		NPC = PC + 4;
 		PC = PC + 4;
 		if ConditionPassed then
-			"//do_collect_regs"();
 			x.action;
 		endif;
 		if InITBlock then 
