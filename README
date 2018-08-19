@@ -1,0 +1,69 @@
+====== ARM v7T Instruction Set Description for GLISS v2 =====
+
+This package contains the description in SimNML of the ARM v7T
+instruction set. It can be turned into an Instruction Set Simulator
+(ISS) and a disassembler using GLISS v2 (refer to http://www.otawa.fr).
+
+
+===== Building =====
+
+To generate a configuration file, type:
+<code sh>
+	make config
+</code>
+
+Edit the generated configuration file ''make.mk'' and comment / uncomment
+the options to disable / enable them.
+
+As a default, GLISS v2 must be unpacked and built in the same parent
+directory as this directory. But you can change this in the configuration
+file.
+
+Then compile all with:
+<code sh>
+	make
+</code>
+
+
+===== Usage =====
+
+The simulator is generated in ''sim/arm-sim'' and requires en ELF
+executable as input.
+<code sh>
+./sim/arm-sim EXECUTABLE
+</code>
+
+The disassembler works also on an ELF executable file:
+<code sh>
+./disasm/arm-disasm EXECUTABLE
+</code>
+
+Finally, a library is produced to embed the USS or the disassembler in
+a custom application. In this case, the following files and directories
+are useful:
+  * ''include/arm'' -- header files of the library
+  * ''src/libarm.a'' -- library itself
+
+To obtain the documentation of the library, ''doxygen'' tool is required:
+<code sh>
+make autodoc
+</code>
+
+The entry point of the documentation is in ''autodoc/index.html''.
+
+
+===== License =====
+
+This instruction set description is delivered under LGPL v3 and 
+a copyright of University of Toulouse (see ''COPYING'' file).
+
+For any issue, contact us:
+  * H. Cassé <casse@irit.fr>
+  * C. Rochange <rochange@irit.fr>
+  * P. Sainrat <sainrat@irit.fr>
+
+Authors includes:
+  * J. Barre
+  * H. Cassé
+  * T. Jerabek
+  * H. Ozaktas

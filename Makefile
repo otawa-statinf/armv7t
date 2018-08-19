@@ -150,3 +150,6 @@ config.mk:
 	cp config.mk.in config.mk
 	echo "Created config.mk. Edit it for configuration."
 
+autodoc: all
+	doxygen
+
