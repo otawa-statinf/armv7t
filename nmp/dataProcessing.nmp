@@ -204,7 +204,7 @@ op MOV_imm(cond : condition, sets : setS, rd : REG_INDEX, shifter_operand : rota
 	}
 
 op MOVW_imm(cond : condition, imm4 : card(4), rd : REG_INDEX, imm12 : card(12))
-	syntax = format("mov%s %s, #%d", cond.syntax, rd.syntax, imm4::imm12)
+	syntax = format("movw%s %s, #%d", cond.syntax, rd.syntax, imm4::imm12)
 	image = format("%s00110000%4b%s%12b", cond.image, imm4, rd.image, imm12)
 	action = {
 		if (cond) then
