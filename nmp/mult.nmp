@@ -23,7 +23,7 @@ macro UGet_ARM_GPR(r) = coerce(u32, Get_ARM_GPR(r))
 
 op MLA(cond : condition, sets : setS, rd : REG_INDEX, rn : REG_INDEX, rs : REG_INDEX, rm : REG_INDEX)
 	syntax = format("mla%s%s %s, %s, %s, %s", cond.syntax, sets.syntax, rd.syntax, rm.syntax, rs.syntax, rn.syntax)
-	image = format("%s0000001%s%s%s%s1001%s", cond.image,sets.image, rd.image, rn.image, rs.image, rm.image)
+	image = format("%s 0000001 %s%s%s%s1001%s", cond.image,sets.image, rd.image, rn.image, rs.image, rm.image)
 	action = {
 		if (cond) then
 			sets.action;
@@ -44,6 +44,22 @@ op MLA(cond : condition, sets : setS, rd : REG_INDEX, rn : REG_INDEX, rs : REG_I
 			endif;
 		endif;
 	}
+
+op MLS(cond: condition, rd: REG_INDEX, rn: REG_INDEX, rs: REG_INDEX, rm: REG_INDEX)
+	syntax = format("mls%s %s, %s, %s, %s", cond.syntax, rd.syntax, rm.syntax, rs.syntax, rn.syntax)
+	image = format("%s 0000 0110 %s%s%s 1001 %s", cond.image, rd.image, rn.image, rs.image, rm.image)
+	action = {
+		if (cond) then
+			TMP_REG1 = Get_ARM_GPR(rm);
+			TMP_REG2 = Get_ARM_GPR(rs);
+			TMP_REG4 = Get_ARM_GPR(rn);
+			TMP_DOUBLE = TMP_REG1 * TMP_REG2 - TMP_REG4;
+			TMP_REG4 = TMP_DOUBLE<31..0>;
+			Set_ARM_GPR(rd,TMP_REG4);
+			TMP_REG3 = Get_ARM_GPR(rd);
+		endif;
+	}
+
 op MUL(cond: condition, sets: setS, rd: REG_INDEX, rs: REG_INDEX, rm: REG_INDEX)
 	syntax = format("mul%s%s %s, %s, %s", cond.syntax, sets.syntax, rd.syntax, rm.syntax, rs.syntax)
 	image = format("%s0000000%s%s0000%s1001%s", cond.image,sets.image, rd.image, rs.image, rm.image)
