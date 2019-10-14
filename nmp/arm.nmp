@@ -61,7 +61,7 @@ op LoadStoreM = STM | LDM
 
 op interrupt = SWI
 
-op multiply = MLA | MUL | SMULL | UMULL | SMLAL | UMLAL
+op multiply = MLA | MUL | SMULL | UMULL | SMLAL | UMLAL | MLS
 
 op semaphore = SWP
 
