@@ -38,45 +38,47 @@ mode REG_INDEX_1_P_U_W_rst(val: enum(8..13, 15, 24..29, 31, 40..45,
 	number = r
 
 
-op mem_thumb2 = coproc_thumb2
-	| LDR_reg_Thumb
-	| STR_reg_Thumb
-	| LDRB_reg
-	| STRB_reg
-	| LDRSB_reg
-	| LDRBT
-	| STRBT
-	| LDRHT
-	| STRHT
-	| LDRT
-	| STRT
-	| LDRSBT
-	| LDRSHT
-	| LDR_imm_Thumb
-	| LDRH_reg
-	| STRH_reg
-	| LDRSH_reg
-	| LDRH_imm_Thumb
-	| STRH_imm_Thumb
+op mem_thumb2 =
+	  coproc_thumb2
+	| LDMDB_thumb2
 	| LDM_T2
-	| STR_imm_Thumb
-	| STRB_imm
+	| LDRBT
 	| LDRB_imm
-	| LDRSB_immediate
-	| LDRSB_lit_T1
-	| LDRSH_immediate
-	| STMDB_T1
-	| STMIA_T2
-	| LDREX_T1
+	| LDRB_reg
+	| LDRD
 	| LDREXB_T1
 	| LDREXD_T1
 	| LDREXH_T1
-	| STREX_T1
+	| LDREX_T1
+	| LDRHT
+	| LDRH_imm_Thumb
+	| LDRH_reg
+	| LDRSBT
+	| LDRSB_immediate
+	| LDRSB_lit_T1
+	| LDRSB_reg
+	| LDRSHT
+	| LDRSH_immediate
+	| LDRSH_reg
+	| LDRT
+	| LDR_imm_Thumb
+	| LDR_reg_Thumb
+	| STMDB_T1
+	| STMIA_T2
+	| STRBT
+	| STRB_imm
+	| STRB_reg
+	| STRD_Thumb
 	| STREXB_T1
 	| STREXD_T1
 	| STREXH_T1
-	| STRD_Thumb
-	| LDRD
+	| STREX_T1
+	| STRHT
+	| STRH_imm_Thumb
+	| STRH_reg
+	| STRT
+	| STR_imm_Thumb
+	| STR_reg_Thumb
 
 
 op LDR_reg_Thumb(x: LDR_reg_Thumb_list)

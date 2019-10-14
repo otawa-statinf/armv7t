@@ -52,37 +52,60 @@ op thumb2_32(x: thumb2_32_list)
 
 op thumb2_32_list = 
 	  fp_thumb
-	/* | VABS_thumb2 | VADD_thumb2 | VCMP_thumb2 | VCVT_thumb2 | VCVT_fbits_thumb2 | VCVTB_thumb2 | VDIV_thumb2 | VFMA_thumb2 | VFNMA_thumb2 | VLDM_thumb2 | VLDR_thumb2 | VLMA_thumb2 | VMOV_thumb2 | VMRS_thumb2 | VMSR_thumb2 | VMUL_thumb2 | VNEG_thumb2 | VNMLA_thumb2 | VNMUL_thumb2 | VPOP_thumb2 | VPUSH_thumb2 | VSQRT_thumb2 | VSTM_thumb2 | VSTR_thumb2 | VSUB_thumb2 | WFE_thumb2 | WFI_thumb2 | YIELD_thumb2 */
-	| ADC_thumb2
+	| control_thumb2
+	| data_thumb2
+	| mult_thumb2
+	| system_thumb2
+	| saturate_thumb2
+	| vector_thumb2
+	| mem_thumb2
+
+op data_thumb2 =
+	  ADC_thumb2
 	| ADD_thumb2
 	| AND_thumb2
 	| ASR_thumb2
 	| BFC_BFI_thumb2
 	| BIC_thumb2
-	| BLX_imm_T2
-	| BL_imm_T1
-	| B_thumb2
-	| CDP_CDP2_thumb2
-	| CLZ_thumb2
-	| EOR_thumb2
-	| LDMDB_thumb2
-	| LSL_reg_T2
-	| LSR_thumb2
-	| MCRR_MCRR2_thumb2
-	| MCR_MCR2_thumb2
-	| MLA_MUL_thumb2
-	| MLS_thumb2
 	| MOVT_thumb2
 	| MOV_ORR_thumb2
-	| MRC_MRC2_thumb2
-	| MRRC_MRRC2_thumb2
 	| MVN_ORN_thumb2
 	| PKHBT_PKHTB_thumb2
+	| RBIT_thumb2
+	| REV16_thumb2
+	| REVSH_thumb2
+	| REV_thumb2
+	| ROR_thumb2
+	| RSB_imm_T2
+	| RSB_thumb2
+
+op control_thumb2 =
+	  BLX_imm_T2
+	| BL_imm_T1
+	| B_thumb2
+	| CLZ_thumb2
+	| EOR_thumb2
+	| LSL_reg_T2
+	| LSR_thumb2
+	| TBB_TBH
+
+op mult_thumb2 =
+	  MLA_MUL_thumb2
+	| MLS_thumb2
+
+op system_thumb2 =
+	  CDP_CDP2_thumb2
+	| MCRR_MCRR2_thumb2
+	| MCR_MCR2_thumb2
+	| MRC_MRC2_thumb2
+	| MRRC_MRRC2_thumb2
 	| PLD_PLDW_imm 
 	| PLD_PLDW_reg_T2
 	| PLI_imm_lit 
 	| PLI_reg_T1
-	| QADD16_thumb2
+
+op saturate_thumb2 =
+	  QADD16_thumb2
 	| QADD8_thumb2
 	| QADD_thumb2
 	| QASX_thumb2
@@ -92,14 +115,9 @@ op thumb2_32_list =
 	| QSUB16_thumb2
 	| QSUB8_thumb2
 	| QSUB_thumb2
-	| RBIT_thumb2
-	| REV16_thumb2
-	| REVSH_thumb2
-	| REV_thumb2
-	| ROR_thumb2
-	| RSB_imm_T2
-	| RSB_thumb2
-	| SADD16_thumb2
+
+op vector_thumb2 =
+	  SADD16_thumb2
 	| SADD8_thumb2
 	| SASX_thumb2
 	| SBC_thumb2
@@ -131,7 +149,6 @@ op thumb2_32_list =
 	| SXTAB16_SXTB16_thumb2
 	| SXTAB_SXTB_thumb2
 	| SXTAH_SXTH_thumb2
-	| TBB_TBH
 	| UADD16_thumb2
 	| UADD8_thumb2
 	| UASX_thumb2
@@ -160,7 +177,7 @@ op thumb2_32_list =
 	| UXTAB16_UXTB16_thumb2
 	| UXTAB_UXTB_thumb2
 	| UXTAH_UXTH_thumb2
-	| mem_thumb2
+
 
 
 op LSL_reg_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
@@ -218,7 +235,7 @@ op BLX_imm_T2(S: card(1), imm10H: card(10), J1: card(1), J2: card(1), imm10L: ca
 	}
 
 	
-op AND_imm_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, imm8: card(8))
+/*op AND_imm_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, imm8: card(8))
 	// range decoding
 	//	rd = 0b1111 && S == 1 -> TST (immediate)
 	syntax = format("and%s %s, %s, #0x%08x", S, Rd, Rn, ThumbExpandImm(i :: imm3 :: imm8))
@@ -243,7 +260,7 @@ op AND_imm_T1(i: card(1), S: setS, Rn: REG_INDEX, imm3: card(3), Rd: REG_INDEX, 
 					// APSR.V unchanged
 				endif;
 			endif;
-	}
+	}*/
 
 op EOR_imm_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	// range decoding
@@ -314,7 +331,7 @@ op ADD_imm_Thumb_T4(i: card(1), Rd: REG_INDEX, Rn: enum(0..12, 14), imm3: card(3
 	cond = 1
 
 
-op ADD_reg_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
+/*op ADD_reg_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
 	syntax = format("add%s.w %s, %s, %s", if S then ".s" else "" endif, Rd.syntax, Rn.syntax, shift.syntax) 
 	image = format("11101 01 1000 %1b %s  0 %3b %s %2b %2b %4b", S, Rn.image, shift.n<4..2>, Rd.image, shift.n<1..0>, shift.t, shift.Rm)
 	action = {
@@ -339,7 +356,7 @@ op ADD_reg_T3(S: bool, Rd: REG_INDEX, Rn: REG_INDEX, shift: ShiftOperand)
 				APSR_V = overflow;
 			endif;
 		endif;			
-	}
+	}*/
 
 
 op SUB_imm_Thumb(x: SUB_imm_Thumb_list)
@@ -462,7 +479,7 @@ op CLZ_T1(Rd: REG_INDEX, Rm: REG_INDEX)
 		endif;
 	}
 
-op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), imm11: card(11))
+/*op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), imm11: card(11))
 	imm32 = SignExtend(S :: J2 :: J1 :: imm6 :: imm11 :: 0b0, 32)
 	target = __IADDR + imm32 + 4
 	syntax =
@@ -480,10 +497,10 @@ op B_T3(S: card(1), cond: condition, imm6: card(6), J1: card(1), J2: card(1), im
 				BranchWritePC(PC + imm32);
 			endif;
 		endif;
-	}
+	}*/
 
 
-op B_T4(S: card(1), imm10: card(10), J1: card(1), J2: card(1), imm11: card(11))
+/*op B_T4(S: card(1), imm10: card(10), J1: card(1), J2: card(1), imm11: card(11))
 	imm32 = SignExtend(S :: J1 :: J2 :: imm10 :: imm11 :: 0b0, 32)
 	target = __IADDR + imm32 + 4
 	syntax = format("b.w %l", target)
@@ -493,7 +510,7 @@ op B_T4(S: card(1), imm10: card(10), J1: card(1), J2: card(1), imm11: card(11))
 		//if ConditionPassed() then
 			BranchWritePC(PC + imm32);
 		//endif;
-	}
+	}*/
 	  
 op TBB_TBH(Rn: REG_INDEX, Rm: REG_INDEX, H:card(1))
 	ITCOND = "f_get_update_ITSTATE"()
@@ -896,9 +913,9 @@ macro ABS(value) = \
 	
 
 
-op ADC_thumb2 = ADC_imm_thumb2 | ADC_reg_thumb2
+op ADC_thumb2 = ADC_imm_T1 | ADC_reg_T2
 
-op ADC_imm_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+op ADC_imm_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	ITCOND = "f_get_update_ITSTATE"()
 	imm12 = i :: imm3 :: imm8
 	imm32 = ThumbExpandImm_C_jer(imm12)
@@ -908,7 +925,7 @@ op ADC_imm_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(
 		ADC(rd,rn,imm32);	
 	}
 
-op ADC_reg_thumb2( S: setS, rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, imm3: card(3), imm2: card(2), t: card(2))
+op ADC_reg_T2( S: setS, rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, imm3: card(3), imm2: card(2), t: card(2))
 	ITCOND = "f_get_update_ITSTATE"()
 	imm5 = imm3 :: imm2
 	syntax = format("adc%s%s.w %s, %s, %s%s",S,op_cond_syntax_new(ITCOND), rd, rn, rm, DecodeImmShift_syntax(t,imm5))
@@ -921,9 +938,10 @@ op ADC_reg_thumb2( S: setS, rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, imm3: c
 	}
 
 	
-op ADD_thumb2 = ADD_imm_T3_thumb2 | ADD_imm_T4_thumb2 | ADD_reg_thumb2
+op ADD_thumb2 = ADD_imm_T3 | ADD_imm_T4 | ADD_reg_T3
+	/* MISSING:		ADD_spimm_T3, ADD_spimm_T4, ADD_spreg_T3 */
 
-op ADD_imm_T3_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+op ADD_imm_T3(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	ITCOND = "f_get_update_ITSTATE"()
 	imm12 = i :: imm3 :: imm8
 	imm32 = ThumbExpandImm_C_jer(imm12)
@@ -947,7 +965,7 @@ op ADD_imm_T3_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: ca
 		endif;	
 	}
 
-op ADD_imm_T4_thumb2(i: card(1), rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+op ADD_imm_T4(i: card(1), rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	ITCOND = "f_get_update_ITSTATE"()
 	imm12 = i :: imm3 :: imm8
 	imm32 = ZeroExtend(imm12,32)
@@ -976,7 +994,7 @@ op ADD_imm_T4_thumb2(i: card(1), rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), im
 		endif;			
 	}
 
-op ADD_reg_thumb2(S: setS, rd : REG_INDEX, rn : REG_INDEX, rm: REG_INDEX, imm3: card(3), t: card(2), imm2: card(2))
+op ADD_reg_T3(S: setS, rd : REG_INDEX, rn : REG_INDEX, rm: REG_INDEX, imm3: card(3), t: card(2), imm2: card(2))
 	ITCOND = "f_get_update_ITSTATE"()
 	imm5 = imm3 :: imm2	
 	syntax = 
@@ -1002,9 +1020,9 @@ op ADD_reg_thumb2(S: setS, rd : REG_INDEX, rn : REG_INDEX, rm: REG_INDEX, imm3: 
 	}
 
 
-op AND_thumb2 = AND_imm_thumb2 | AND_reg_thumb2
+op AND_thumb2 = AND_imm_T1 | AND_reg_T2
 
-op AND_imm_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
+op AND_imm_T1(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm8: card(8))
 	ITCOND = "f_get_update_ITSTATE"()
 	imm12 = i :: imm3 :: imm8
 	imm32 = ThumbExpandImm_C_jer(imm12)
@@ -1030,7 +1048,7 @@ op AND_imm_thumb2(i: card(1), S: setS, rd: REG_INDEX, rn: REG_INDEX, imm3: card(
 		endif; 	
 	}
 
-op AND_reg_thumb2(S: setS, rd : REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, imm3: card(3), t: card(2), imm2: card(2) )
+op AND_reg_T2(S: setS, rd : REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, imm3: card(3), t: card(2), imm2: card(2) )
 	ITCOND = "f_get_update_ITSTATE"()
 	imm5 = imm3 :: imm2
 	syntax = if(rd.number == 0b1111)  && (S == 0b1) then
@@ -1059,33 +1077,10 @@ op AND_reg_thumb2(S: setS, rd : REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, imm3: c
 	}
 
 
-op ASR_thumb2 = /*ASR_imm_thumb2 |*/ ASR_reg_thumb2
+op ASR_thumb2 = ASR_reg_T2	/* ASR_imm_T2 implemented in MOV_ORR_reg_thumb2 */ 
 
-/*
-see MOV_ORR_reg_thumb2
-//op ASR_imm_thumb2(S: setS, rd: REG_INDEX, rm: REG_INDEX, imm3: card(3), imm2: card(2))
-	imm5 = imm3 :: imm2
-	syntax = format("asr%s.w %s, %s, #%d", S, rd, rm, imm5)
-	image = format("11101 01 0010 %s 1111 0 %3b %s %2b 10 %s",  S, imm3, rd, imm2, rm)
-	action = {
-		TMP_REG1 = Get_ARM_GPR(rm);
-		TMP_USHIFTED1 = "Decode_and_Shift"(ASR,imm5,TMP_REG1,CFLAG);
 
-		Set_ARM_GPR(rd,TMP_USHIFTED1);
-
-		if S == 1 then 
-			NFLAG = TMP_REG1<31..31>;
-			if TMP_REG1 == 0 then
-				ZFLAG = 1; 
-			else 
-				ZFLAG = 0; 
-			endif; 
-			CFLAG = "f_get_C"();	
-		endif; 	
-	}
-*/
-
-op ASR_reg_thumb2(S: setS, rd : REG_INDEX, rm: REG_INDEX, rn: REG_INDEX)
+op ASR_reg_T2(S: setS, rd : REG_INDEX, rm: REG_INDEX, rn: REG_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("asr%s%s.w %s, %s, %s",S,op_cond_syntax_new(ITCOND), rd, rn, rm)
 	image = format("11111 010 0 10 %s %s 1111 %s 0 000 %s", S, rn, rd, rm)
@@ -1215,9 +1210,9 @@ op MOVT_thumb2(i: card(1), rd: REG_INDEX, imm3: card(3), imm4: card(4), imm8: ca
 	}
 
 
-op B_thumb2 = B_T3_thumb2 | B_T4_thumb2
+op B_thumb2 = B_T3 | B_T4
 
-op B_T3_thumb2(S: setS, j1: card(1), j2: card(1), cond: full_condition, imm6: card(6), imm11: card(11))
+op B_T3(S: setS, j1: card(1), j2: card(1), cond: full_condition, imm6: card(6), imm11: card(11))
 	ITCOND = "f_get_update_ITSTATE"()
 	imm4 = imm11<3..0>
  	//SignExtend(S:J2:J1:imm6:imm11:'0', 32) -> see old armv7 reference manual(2007!!)
@@ -1283,7 +1278,7 @@ op B_T3_thumb2(S: setS, j1: card(1), j2: card(1), cond: full_condition, imm6: ca
 	}
 
 //S::j1::j2::imm10::imm11::0b0
-op B_T4_thumb2(S: setS, j1: card(1), j2: card(1), imm10: card(10), imm11: card(11))
+op B_T4(S: setS, j1: card(1), j2: card(1), imm10: card(10), imm11: card(11))
 	ITCOND = "f_get_update_ITSTATE"()
 	addr = __IADDR + 4 + SignExtend(S :: ~(j1 ^ S) :: ~(j2 ^ S) :: imm10 :: imm11 :: 0<0..0>,32)
 	syntax = format("b%s.w %08x",op_cond_syntax_new(ITCOND), addr)
