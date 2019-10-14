@@ -66,6 +66,7 @@ op mem_thumb2 = coproc_thumb2
 	| LDRSB_lit_T1
 	| LDRSH_immediate
 	| STMDB_T1
+	| STMIA_T2
 	| LDREX_T1
 	| LDREXB_T1
 	| LDREXD_T1
@@ -1371,6 +1372,41 @@ op STMDB_T1(W: bool, Rn: REG_INDEX, register_list: RegisterListThumbLtd)
 		endif;
 	}
 
+op STMIA_T2(W: bool, Rn: REG_INDEX, list: RegisterListThumbLtd)
+	ITCOND = "f_get_update_ITSTATE"()
+	MM = list.MM
+	register_list = list.l
+	
+	
+	syntax = format("stmia%s.w %s%s, %s",
+				op_cond_syntax_new(ITCOND), Rn,
+				if W then "!" else "" endif,
+				list)
+	image = format("11101 00 010%1b0 %s  0%1b0 %13b", W, Rn, MM, register_list)
+	
+	action = {
+		let n = UInt(Rn);
+		let registers = 0b0 :: MM :: 0b0 :: register_list;
+		let wback = W == 1;
+		// if n == 15 || BitCount(registers) < 2 then UNPREDICTABLE;
+		//if wback && registers<n..n> == 1 then UNPREDICTABLE;
+		
+		//if ConditionPassed() then
+			// EncodingSpecficOperations();
+			// NullCheckIfThumbEE(n);
+			let address = GPR[n];
+			for i in 0..14 do
+				if registers<i..i> == 1 then
+					//if i == n && wback && i != LowestSetBit(registers) then
+					//	M32[address] = UNKNOWN;
+					//else
+						M32[address] = GPR[i];
+					//endif;
+					address = address + 4;
+				endif;
+			enddo;
+		//endif;
+	}
 
 op LDREX_T1(Rn: REG_INDEX, Rt: REG_INDEX, imm8: card(8))
 	ITCOND = "f_get_update_ITSTATE"()

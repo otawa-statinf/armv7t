@@ -51,31 +51,117 @@ op thumb2_32(x: thumb2_32_list)
 	}
 
 op thumb2_32_list = 
-	fp_thumb
-	//| AND_imm_T1 // Shadowed by the work from Jerabek
-	//| EOR_imm_T1 // Shadowed by the work from Jerabek
-	| BL_imm_T1
-	//| B_T3 // Shadowed by the work from Jerabek
-	//| B_T4 // Shadowed by the work from Jerabek
-	| TBB_TBH
-	//| ADD_reg_T3 // Shadowed by the work from Jerabek
-	//| ADD_imm_Thumb // Shadowed by the work from Jerabek
-	//| SUB_imm_Thumb // Shadowed by the work from Jerabek
-	//| BIC_imm_T1 // Shadowed by the work from Jerabek
-	//| CLZ_T1 // Shadowed by the work from Jerabek
+	  fp_thumb
+	/* | VABS_thumb2 | VADD_thumb2 | VCMP_thumb2 | VCVT_thumb2 | VCVT_fbits_thumb2 | VCVTB_thumb2 | VDIV_thumb2 | VFMA_thumb2 | VFNMA_thumb2 | VLDM_thumb2 | VLDR_thumb2 | VLMA_thumb2 | VMOV_thumb2 | VMRS_thumb2 | VMSR_thumb2 | VMUL_thumb2 | VNEG_thumb2 | VNMLA_thumb2 | VNMUL_thumb2 | VPOP_thumb2 | VPUSH_thumb2 | VSQRT_thumb2 | VSTM_thumb2 | VSTR_thumb2 | VSUB_thumb2 | WFE_thumb2 | WFI_thumb2 | YIELD_thumb2 */
+	| ADC_thumb2
+	| ADD_thumb2
+	| AND_thumb2
+	| ASR_thumb2
+	| BFC_BFI_thumb2
+	| BIC_thumb2
 	| BLX_imm_T2
-	| mem_thumb2
+	| BL_imm_T1
+	| B_thumb2
+	| CDP_CDP2_thumb2
+	| CLZ_thumb2
+	| EOR_thumb2
+	| LDMDB_thumb2
 	| LSL_reg_T2
-	//| MUL_T2 // Shadowed by the work from Jerabek
-	//| MOV_immediate // Shadowed by the work from Jerabek
-	//| MOVT_T1 // Shadowed by the work from Jerabek
-	//| BFIC_T1 // Shadowed by the work from Jerabek
-	| RSB_imm_T2
+	| LSR_thumb2
+	| MCRR_MCRR2_thumb2
+	| MCR_MCR2_thumb2
+	| MLA_MUL_thumb2
+	| MLS_thumb2
+	| MOVT_thumb2
+	| MOV_ORR_thumb2
+	| MRC_MRC2_thumb2
+	| MRRC_MRRC2_thumb2
+	| MVN_ORN_thumb2
+	| PKHBT_PKHTB_thumb2
 	| PLD_PLDW_imm 
 	| PLD_PLDW_reg_T2
 	| PLI_imm_lit 
 	| PLI_reg_T1
-	| JERABEK
+	| QADD16_thumb2
+	| QADD8_thumb2
+	| QADD_thumb2
+	| QASX_thumb2
+	| QDADD_thumb2
+	| QDSUB_thumb2
+	| QSAX_thumb2
+	| QSUB16_thumb2
+	| QSUB8_thumb2
+	| QSUB_thumb2
+	| RBIT_thumb2
+	| REV16_thumb2
+	| REVSH_thumb2
+	| REV_thumb2
+	| ROR_thumb2
+	| RSB_imm_T2
+	| RSB_thumb2
+	| SADD16_thumb2
+	| SADD8_thumb2
+	| SASX_thumb2
+	| SBC_thumb2
+	| SBFX_thumb2
+	| SDIV_thumb2
+	| SEL_thumb2
+	| SHADD16_thumb2
+	| SHADD8_thumb2
+	| SHASX_thumb2
+	| SHSAX_thumb2
+	| SHSUB16_thumb2
+	| SHSUB8_thumb2
+	| SMLABB_SMULBB_thumb2
+	| SMLAD_SMUAD_thumb2
+	| SMLALBB_thumb2
+	| SMLALD_thumb2
+	| SMLAL_thumb2
+	| SMLAWB_SMULWB_thumb2
+	| SMLSD_SMUSD_thumb2
+	| SMLSLD_thumb2
+	| SMMLA_SMMUL_thumb2
+	| SMMLS_thumb2
+	| SMULL_thumb2
+	| SSAT_SSAT16_thumb2
+	| SSAX_thumb2
+	| SSUB16_thumb2
+	| SSUB8_thumb2
+	| SUB_thumb2
+	| SXTAB16_SXTB16_thumb2
+	| SXTAB_SXTB_thumb2
+	| SXTAH_SXTH_thumb2
+	| TBB_TBH
+	| UADD16_thumb2
+	| UADD8_thumb2
+	| UASX_thumb2
+	| UBFX_thumb2
+	| UDIV_thumb2
+	| UHADD16_thumb2
+	| UHADD8_thumb2
+	| UHASX_thumb2
+	| UHSAX_thumb2
+	| UHSUB16_thumb2
+	| UHSUB8_thumb2
+	| UMAAL_thumb2
+	| UMLAL_thumb2
+	| UMULL_thumb2 
+	| UQADD16_thumb2 
+	| UQADD8_thumb2
+	| UQASX_thumb2
+	| UQSAX_thumb2
+	| UQSUB16_thumb2
+	| UQSUB8_thumb2
+	| USADA8_USAD8_thumb2
+	| USAT_USAT16_thumb2
+	| USAX_thumb2
+	| USUB16_thumb2
+	| USUB8_thumb2
+	| UXTAB16_UXTB16_thumb2
+	| UXTAB_UXTB_thumb2
+	| UXTAH_UXTH_thumb2
+	| mem_thumb2
+
 
 op LSL_reg_T2(rd: REG_INDEX, rn: REG_INDEX, rm: REG_INDEX, S: setS)
 	ITCOND = "f_get_update_ITSTATE"()
@@ -808,31 +894,6 @@ macro ABS(value) = \
 		value \
 	endif;
 	
-op JERABEK = ADC_thumb2 | ADD_thumb2 |AND_thumb2 | ASR_thumb2 | MOV_ORR_thumb2
-	| MOVT_thumb2 | B_thumb2 | BFC_BFI_thumb2 |BIC_thumb2
-	| CDP_CDP2_thumb2 | CLZ_thumb2 | EOR_thumb2
-	| LDMDB_thumb2 | LSR_thumb2 | MCR_MCR2_thumb2 | MCRR_MCRR2_thumb2
-	| MLA_MUL_thumb2 | MLS_thumb2 | MRC_MRC2_thumb2 | MRRC_MRRC2_thumb2
-	| MVN_ORN_thumb2 | PKHBT_PKHTB_thumb2 | QADD_thumb2 | QADD16_thumb2
-	| QADD8_thumb2 | QASX_thumb2 | QDADD_thumb2 | QDSUB_thumb2 | QSAX_thumb2
-	| QSUB_thumb2 | QSUB16_thumb2 | QSUB8_thumb2 | RBIT_thumb2 | REV_thumb2
-	| REV16_thumb2 | REVSH_thumb2 | ROR_thumb2 | RSB_thumb2 | SADD16_thumb2
-	| SADD8_thumb2 | SASX_thumb2 | SBC_thumb2 | SBFX_thumb2 | SDIV_thumb2
-	| SEL_thumb2 | SHADD16_thumb2 | SHADD8_thumb2 | SHASX_thumb2 | SHSAX_thumb2
-	| SHSUB16_thumb2 | SHSUB8_thumb2 | SMLABB_SMULBB_thumb2 | SMLAD_SMUAD_thumb2
-	| SMLAL_thumb2 | SMLALBB_thumb2 | SMLALD_thumb2 | SMLAWB_SMULWB_thumb2
-	| SMLSD_SMUSD_thumb2 | SMLSLD_thumb2 | SMMLA_SMMUL_thumb2 | SMMLS_thumb2
-	| SMULL_thumb2 | SSAT_SSAT16_thumb2 | SSAX_thumb2 | SSUB16_thumb2
-	| SSUB8_thumb2 | SUB_thumb2 | SXTAB_SXTB_thumb2 | SXTAB16_SXTB16_thumb2
-	| SXTAH_SXTH_thumb2 | UADD16_thumb2 | UADD8_thumb2 | UASX_thumb2
-	| UBFX_thumb2 | UDIV_thumb2 | UHADD16_thumb2 | UHADD8_thumb2 | UHASX_thumb2
-	| UHSAX_thumb2 | UHSUB16_thumb2 | UHSUB8_thumb2 | UMAAL_thumb2
-	| UMLAL_thumb2 | UMULL_thumb2 | UQADD16_thumb2 | UQADD8_thumb2
-	| UQASX_thumb2 | UQSAX_thumb2 | UQSUB16_thumb2 | UQSUB8_thumb2
-	| USADA8_USAD8_thumb2 | USAT_USAT16_thumb2 | USAX_thumb2 | USUB16_thumb2
-	| USUB8_thumb2 | UXTAB_UXTB_thumb2 | UXTAB16_UXTB16_thumb2
-	| UXTAH_UXTH_thumb2
-	/* | VABS_thumb2 | VADD_thumb2 | VCMP_thumb2 | VCVT_thumb2 | VCVT_fbits_thumb2 | VCVTB_thumb2 | VDIV_thumb2 | VFMA_thumb2 | VFNMA_thumb2 | VLDM_thumb2 | VLDR_thumb2 | VLMA_thumb2 | VMOV_thumb2 | VMRS_thumb2 | VMSR_thumb2 | VMUL_thumb2 | VNEG_thumb2 | VNMLA_thumb2 | VNMUL_thumb2 | VPOP_thumb2 | VPUSH_thumb2 | VSQRT_thumb2 | VSTM_thumb2 | VSTR_thumb2 | VSUB_thumb2 | WFE_thumb2 | WFI_thumb2 | YIELD_thumb2 */
 
 
 op ADC_thumb2 = ADC_imm_thumb2 | ADC_reg_thumb2
