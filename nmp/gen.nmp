@@ -154,9 +154,9 @@ macro ThumbExpandImm(imm12) = \
 
 // thumb immediate expansion with carry
 macro ThumbExpandImm_C(imm12, result, carry_out) = \
-	if imm12<11..10> == 0b00 then \
+	if (imm12)<11..10> == 0b00 then \
 		result = ThumbExpandImm(imm12); \
 	else \
-		unrotated_value = ZeroExtend(1<0..0> :: imm12<6..0>, 32); \
-		ROR_C(unrotated_value, UInt(imm12<11..7>), imm32, carry_out); \
+		unrotated_value = ZeroExtend(0b1 :: (imm12)<6..0>, 32); \
+		ROR_C(unrotated_value, UInt((imm12)<11..7>), imm32, carry_out); \
 	endif

@@ -118,6 +118,9 @@ src include: arm.irg
 lib: src $(LIB_DEPS)
 	(cd src; make $(REC_FLAGS))
 
+check: arm.irg
+	$(GLISS_PREFIX)/gep/gep $(GFLAGS) arm.irg
+
 arm-disasm:
 	cd disasm; make
 

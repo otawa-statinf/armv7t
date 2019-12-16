@@ -1,5 +1,28 @@
-type sfp_index = card(5)
+/*
+ * Floating-point instructions of ARM instruction set.
+ * Copyright (C) 2009  University of Toulouse
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
+let FALSE = 0
+let TRUE = 1
+
+// State definitions
+type sfp_index = card(5)
+type fpindex = card(5)
+type bit = card(1)
 
 reg S[32, singlefp]
 reg D[16, doublefp] //alias = S[0] // TODO! This really should be an alias but it doesn't work as of yet.
@@ -23,16 +46,7 @@ reg FPSCR_DZC[1, card(1)] alias = FPSCR<1..1>
 reg FPSCR_IOC[1, card(1)] alias = FPSCR<0..0>
 
 
-//mode DoubleReg(i: card(5)) = i 
-//	syntax = format("d%d", i)
-//	image = format("%4b", i<3..0>)
-//	D = (i >> 4)
-//
-//mode SingleReg(i: card(5)) = i 
-//	syntax = format("s%d", i)
-//	image = format("%4b", i<4..1>)
-//	D = (i & 0b00001)
-
+// Modes definitions
 mode QuadReg(_p: card(1), _r: card(4)) = _p :: _r
 	p = _p
 	r = _r
@@ -53,25 +67,27 @@ mode SingleReg(_r: card(4), _p: card(1)) = _r :: _p
 	syntax = format("s%d", i)
 
 
-//macro bits(N) VFPExpandImm(bits(8) imm8, integer N) 
-//	assert N IN {32,64};
-//	if N == 32 then
-//		E = 8; 
-//	else
-//		E = 11;
-//	F = N - E - 1; 
-//	sign = imm8<7>;
-//	exp = NOT(imm8<6>):Replicate(imm8<6>,E-3):imm8<5:4>; 
-//	frac = imm8<3:0>:Zeros(F-4);
-//	return sign:exp:frac;
-	
-macro VFPExpandImm_sp(imm8) 	= coerce(float(23, 9), imm8)
-macro VFPExpandImm_dp(imm8) 	= coerce(float(52, 12), imm8)
-macro FPDoubleToSingle(x, _f) 	= coerce(singlefp, x)
-macro FPSingleToDouble(x, _f)	= coerce(doublefp, x)
-macro FPToFixed32(x, u, _r, _f)	= if u then coerce(card(32), x) else coerce(int(32), x) endif
+// Macro definitions
+macro BigEndian() = 0
+macro CheckAdvSIMDOrVFPEnabled(_1, _2) =
+macro CheckAdvSIMDOrVFEnabled(_1, _2) =
+macro CheckVFPEnabled(_) =
+macro Consistent(_) = TRUE
+macro EncodingSpecificOperations() =
 macro FixedToFP32(x, u, _r, _f)	= coerce(doublefp, if u then coerce(card(32), x) else coerce(int(32), x) endif)
 macro FixedToFP64(x, u, _r, _f)	= coerce(doublefp, if u then coerce(card(64), x) else coerce(int(64), x) endif)
+macro FPDoubleToSingle(x, _f) 	= coerce(singlefp, x)
+macro FPSingleToDouble(x, _f)	= coerce(doublefp, x)
+macro FPSub(x, y, _3) = x - y
+macro FPToFixed32(x, u, _r, _f)	= (if u then coerce(card(32), x) else coerce(int(32), x) endif)
+macro NullCheckIfThumbEE(_) = 
+macro UNDEFINED =
+macro VFPExpandImm_sp(imm8) 	= coerce(float(23, 9), imm8)
+macro VFPExpandImm_dp(imm8) 	= coerce(float(52, 12), imm8)
+
+macro fpsize() = if dp_operation then 64 else 32 endif
+macro fpreg(n) = format("%s%d", if dp_operation then "d" else "s" endif, n)
+
 
 var r_[1, card(2)]
 var imm32_fp[1, float(23, 9)]
@@ -80,6 +96,7 @@ var word1[1, card(32)]
 var word2[1, card(32)]
 
 
+// top level normal mode
 op fp_arm =
 	  VADD_arm
 	| VCVT_arm
@@ -91,267 +108,383 @@ op fp_arm =
 	| VMUL_arm
 	| VSTM_arm
 	| VSTR_arm
+	| VSUB_arm_fp
 	//| VPUSH_arm
 	//| VPOP_arm
 
 
+// top level thumb mode
 op fp_thumb =
-	  VMOV_thumb
-	| VSUB_thumb
+	  VADD_thumb
+	| VCVT_thumb
 	| VDIV_thumb
 	| VLDR_thumb 
-	| VSTR_thumb
+	| VMLA_thumb
+	| VMOV_thumb
 	| VMRS_thumb
 	| VMUL_thumb
-	| VPUSH_thumb
-	| VCVT_thumb
-	| VADD_thumb
 	| VPOP_thumb
-	| VMLA_thumb
+	| VPUSH_thumb
+	| VSTR_thumb
+	| VSUB_thumb_fp
 
 
+////// VADD (normal and thumb) //////
+op VADD_arm = VADD_arm_fp
 
-/* Encoding of VSTxx
- *	P UDW1
- *	0 1X00	VSTM
- *	0 1X10	VSTM
- *	1 XX00	VLDR
- *	1 0X10	VPUSH if Rn = 13, VSTM else
- *
- * from this, we derive 2 VSTM opcode families:
- *	P UDW1
- *	0 1XX0	VLDM with P = 0, U = 1
- *	1 0X10	VLDM with P = 1, U = 0
- */
-
-
-
-op VSTR_arm(x: VSTR_arm_list)
+// TODO - group VADD_arm_fp in VADD_fp_A1 and VADD_fp_A2
+op VADD_arm_fp(x: VADD_arm_fp_list)
 	syntax = x.syntax
 	image = x.image
-	cond = x.cond
+	action = {
+		//if ConditionPassed() then
+		//	EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd);
+		//	if advsimd then // Advanced SIMD instruction
+		//		for r = 0 to regs-1
+		//			for e = 0 to elements-1
+		//				Elem[D[d+r],e,esize] = FPAdd(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE); 
+		//	else // VFP instruction
+		//		if dp_operation then
+		//			D[d] = FPAdd(D[n], D[m], TRUE);
+		//		else
+		//			S[d] = FPAdd(S[n], S[m], TRUE);
+	}
+
+op VADD_arm_fp_list = VADD_fp_A1_double | VADD_fp_A1_quad | VADD_fp_A2_32 | VADD_fp_A2_64
+
+op VADD_fp_A1_double(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
+	syntax = format("vadd.f32 %s, %s, %s", Vd, Vn, Vm) 
+	image = format("1111 0010 0 %1b 0 0 %4b %4b 1101 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	advsimd = 1
+	dp_operation = 0
+	esize = 32
+	elements = 2
+	d = Vd
+	n = Vn
+	m = Vm
+	regs = 1
+
+op VADD_fp_A1_quad(Vn: QuadReg, Vd: QuadReg, Vm: QuadReg)
+	syntax = format("vadd.f32 %s, %s, %s", Vd, Vn, Vm) 
+	image = format("1111 0010 0 %1b 0 0 %4b %4b 1101 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if Vd<0> == '1' || Vn<0> == '1' || Vm<0> == '1' then UNDEFINED;
+	advsimd = 1
+	dp_operation = 0
+	esize = 32
+	elements = 2
+	d = Vd
+	n = Vn
+	m = Vm
+	regs = 2
+
+op VADD_fp_A2_32(cond: condition, Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
+	syntax = format("vadd%s.f32 %s, %s, %s", cond, Vd, Vn, Vm) 
+	image = format("%s 11100 %1b 11 %4b %4b 101 0 %1b 0 %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	advsimd = 0
+	dp_operation = 0
+	d = Vd
+	n = Vn
+	m = Vm
+
+op VADD_fp_A2_64(cond: condition, Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
+	syntax = format("vadd%s.f64 %s, %s, %s", cond, Vd, Vn, Vm) 
+	image = format("%s 11100 %1b 11 %4b %4b 101 1 %1b 0 %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	advsimd = 0
+	dp_operation = 1
+	d = Vd
+	n = Vn
+	m = Vm
+
+
+op VADD_thumb = VADD_thumb_fp
+
+op VADD_thumb_fp(x: VADD_thumb_fp_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		//EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd);
+		//if advsimd then // Advanced SIMD instruction
+		//	for r = 0 to regs-1
+		//		for e = 0 to elements-1
+		//			Elem[D[d+r],e,esize] = FPAdd(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE); 
+		//else // VFP instruction
+		//	if dp_operation then
+		//		D[d] = FPAdd(D[n], D[m], TRUE);
+		//	else
+		//		S[d] = FPAdd(S[n], S[m], TRUE);
+	}
+
+op VADD_thumb_fp_list = VADD_fp_T1_double | VADD_fp_T1_quad | VADD_fp_T2_32 | VADD_fp_T2_64
+
+op VADD_fp_T1_double(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vadd%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
+	image = format("1110 1111 0 %1b 0 0 %4b  %4b 1101 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	advsimd = 1
+	dp_operation = 0
+	esize = 32
+	elements = 2
+	d = Vd
+	n = Vn
+	m = Vm
+	regs = 1
+
+op VADD_fp_T1_quad(Vn: QuadReg, Vd: QuadReg, Vm: QuadReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vadd%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
+	image = format("1110 1111 0 %1b 0 0 %4b  %4b 1101 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if Vd<0> == '1' || Vn<0> == '1' || Vm<0> == '1' then UNDEFINED;
+	advsimd = 1
+	dp_operation = 0
+	esize = 32
+	elements = 2
+	d = Vd
+	n = Vn
+	m = Vm
+	regs = 2
+
+op VADD_fp_T2_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vadd%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
+	image = format("1110 11100 %1b 11 %4b  %4b 101 0 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	advsimd = 0
+	dp_operation = 0
+	d = Vd
+	n = Vn
+	m = Vm
+
+op VADD_fp_T2_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vadd%s.f64 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
+	image = format("1110 11100 %1b 11 %4b  %4b 101 1 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	advsimd = 0
+	dp_operation = 1
+	d = Vd
+	n = Vn
+	m = Vm
+
+
+
+////// VCVT //////
+
+op VCVT_arm = VCVT_arm_if_A1 | VCVT_arm_ff_A1
+
+// TODO rename VCVT_VCVTR_fp_int_FP_A1
+op VCVT_arm_if_A1(cond: condition, D_: card(1), opc2: card(3), Vd: card(4), sz: bool, op_: card(1), M: card(1), Vm: card(4))
+	// if opc2 != 0b000 && ((opc2 & 0b110) != 0b100) then SEE
+	to_integer		= (opc2<2..2> == 1)
+	dp_operation	= (sz == 1)
+	unsigned		= if to_integer then (opc2<0..0> == 0) else (op_ == 0) endif
+	round_zero		= if to_integer then (op_ == 1) else 0 endif
+	round_nearest	= if to_integer then 0 else 0 endif
+	d				= if to_integer then UInt(Vd::D_) else if dp_operation then UInt(D_::Vd) else UInt(Vd::D_) endif endif
+	m				= if to_integer then if dp_operation then UInt(M::Vm) else UInt(Vm::M) endif else UInt(Vm::M) endif
+
+	syntax = format("vcvt%s%s.%s.%s %s,%s",
+		if !to_integer then "R" else "" endif,
+		cond,
+		if to_integer then if unsigned then "u32" else "s32" endif else if dp_operation then "f64" else "f32" endif endif,
+		if to_integer then if dp_operation then "f64" else "f32" endif else if unsigned then "u32" else "s32" endif endif,
+		if to_integer then format("s%d", d) else if dp_operation then format("d%d", d) else format("s%d", d) endif endif,
+		if to_integer then if dp_operation then format("d%d", m) else format("s%d", m) endif else format("s%d", m) endif)
+	image = format("%s 1110 1%1b11 1%3b %4b 101%1b %1b1%1b0 %4b", cond, D_, opc2, Vd, sz, op_, M, Vm)
+
 	action = {
 		if ConditionPassed() then
-			//CheckVFPEnabled(TRUE); NullCheckIfThumbEE(n);
-			address = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
-			if x.single_reg then
-				M32[address] = S[x.d]<31..0>;
+			// EncodingSpecificOperations()
+			// CheckVFPEnabled(1)
+			if to_integer then
+				if dp_operation then
+					S[d]<31..0> = FPToFixed32(D[m], unsigned, round_zero, 1);
+				else
+					S[d]<31..0> = FPToFixed32(S[m], unsigned, round_zero, 1);
+				endif;
 			else
-		 		// Store as two word-aligned words in the correct order for current endianness.
-				M32[address] = //if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
-					//D[x.d]<63..32> else 
-					D[x.d]<31..0>; 
-				M32[address+4] = //if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
-					//D[x.d]<31..0> else 
-					D[x.d]<63..32>;
+				if dp_operation then
+					D[d] = FixedToFP64(S[m], unsigned, round_nearest, 1);
+				else
+					S[d] = FixedToFP32(S[m], unsigned, round_neasrest, 1);
+				endif;
 			endif;
 		endif;
 	}
+	
 
-op VSTR_arm_list = VSTR_A1 | VSTR_A2
-
-op VSTR_A1(cond: condition, U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
-	image = format("%s 1101 %1b%1b00 %s %4b 1011 %8b", cond, U, Vd.p, Rn, Vd.r, imm8)
-	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
-	single_reg = 0
-	add = U
-	imm32 = ZeroExtend(imm8 :: 0b00, 32)
-	d = UInt(Vd)
-	n = UInt(Rn)
-	// if n == 15 then UNPREDICTABLE
-	cond = cond
-
-op VSTR_A2(cond: condition, U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
-	image = format("%s 1101 %1b%1b00 %s %4b 1010 %8b", cond, U, Vd.p, Rn, Vd.r, imm8)
-	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
-	single_reg = 1
-	add = U
-	imm32 = ZeroExtend(imm8 :: 0b00, 32)
-	d = UInt(Vd)
-	n = UInt(Rn)
-	// if n == 15 then UNPREDICTABLE
-	cond = cond
-
-op VSTR_thumb(x: VSTR_thumb_list)
-	syntax = x.syntax
-	image = x.image
-	cond = x.cond
+// TODO rename VCVT_fp_fp_FP A1
+op VCVT_arm_ff_A1(cond: condition, D_: card(1), Vd: card(4), sz: bool, M: card(1), Vm: card(4))
+	double_to_single = (sz == 1)
+	d = if double_to_single then UInt(Vd::D_) else UInt(D_::Vd) endif
+	m = if double_to_single then UInt(M::Vm) else UInt(Vm::M) endif
+	syntax = format("vcvt.f%d.f%d %s, %s",
+		if double_to_single then 32 else 64 endif,
+		if double_to_single then 64 else 32 endif,
+		if double_to_single then format("s%d", d) else format("d%d", d) endif,
+		if double_to_single then format("d%d", m) else format("s%d", m) endif)
+	image = format("%s 1110 1%1b11 0111 %4b 101%1b 11%1b0 %4b", cond, D_, Vd, sz, M, Vm)
 	action = {
 		if ConditionPassed() then
-			//CheckVFPEnabled(TRUE); NullCheckIfThumbEE(n);
-			address = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
-			if x.single_reg then
-				M32[address] = S[x.d]<31..0>;
+			// EncodingSpecificOperation();
+			// CheckVFPEnabled(1);
+			if double_to_single then
+				S[d] = FPDoubleToSingle(D[m], 1);
 			else
-		 		// Store as two word-aligned words in the correct order for current endianness.
-				M32[address] = //if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
-					//D[x.d]<63..32> else 
-					D[x.d]<31..0>; 
-				M32[address+4] = //if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
-					//D[x.d]<31..0> else 
-					D[x.d]<63..32>;
+				D[d] = FPSingleToDouble(S[m], 1);
 			endif;
 		endif;
 	}
+	
+op VCVT_thumb = VCVT_VCVTR_thumb_fp_int_fp
 
-op VSTM_arm(x: VSTM_arm_list)
+op VCVT_VCVTR_thumb_fp_int_fp(x: VCVT_VCVTR_thumb_fp_int_fp_list)
 	syntax = x.syntax
 	image = x.image
-	cond = x.cond
 	action = {
-		if ConditionPassed() then
-			x.action; // EncodingSpecificOperations();
-			// CheckVFPEnabled(true);
-			// NullCheckIfThumbEE(n);
-			// TODO
-		endif;
+		//EncodingSpecificOperations(); CheckVFPEnabled(TRUE); 
+		//if to_integer then
+		//	if dp_operation then
+		//		S[d] = FPToFixed(D[m], 32, 0, unsigned, round_zero, TRUE);
+		//	else
+		//		S[d] = FPToFixed(S[m], 32, 0, unsigned, round_zero, TRUE);
+		//else
+		//	if dp_operation then
+		//		D[d] = FixedToFP(S[m], 64, 0, unsigned, round_nearest, TRUE); 
+		//	else
+		//		S[d] = FixedToFP(S[m], 32, 0, unsigned, round_nearest, TRUE);
 	}
 
-op VSTM_arm_list = VSTM_A1_01 | VSTM_A1_10 | VSTM_A2_01 | VSTM_A2_10
+op VCVT_VCVTR_thumb_fp_int_fp_list = VCVT_VCVTR_fp_int_fp_T1_D32_M32 
+	| VCVT_VCVTR_fp_int_fp_T1_D32_M64
+	| VCVT_VCVTR_fp_int_fp_T1_D64_M32
 
-op VSTM_A1_01(cond: condition, D: bool, W:bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
-	P = 0
-	U = 1
-	single_regs = 0
-	add = U
-	wback = W == 1
-	d = UInt(D :: Vd)
-	n = UInt(Rn)
-	imm32 = imm8 :: 0
-	regs = UInt(imm8) / 2
-	
-	syntax = format("vstm%s%s%s %s%s, {%s}",
-			if U then "i" else "d" endif,
-			if P then "b" else "a" endif,
-			cond,
-			Rn,
-			if W then "!" else "" endif,
-			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
-		)
-	image = format("%s 1100 1%1b%1b0 %s %s 1011 %8b", cond, D, W, Rn, Vd, imm8)
-	action = {
-		// TODO
-	}
-
-op VSTM_A1_10(cond: condition, D: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
-	P = 1
-	U = 0
-	W = 1
-	single_regs = 0
-	add = U
-	wback = W == 1
-	d = UInt(D :: Vd)
-	n = UInt(Rn)
-	imm32 = imm8 :: 0
-	regs = UInt(imm8) / 2
-	
-	syntax = format("vstm%s%s%s %s%s, {%s}",
-			if U then "i" else "d" endif,
-			if P then "b" else "a" endif,
-			cond,
-			Rn,
-			if W then "!" else "" endif,
-			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
-		)
-	image = format("%s 1101 0%1b10 %s %s 1011 %8b", cond, D, Rn, Vd, imm8)
-	action = {
-		// TODO
-	}
-
-op VSTM_A2_01(cond: condition, D: bool, W:bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
-	P = 0
-	U = 1
-	single_regs = 0
-	add = U
-	wback = W == 1
-	d = UInt(D :: Vd)
-	n = UInt(Rn)
-	imm32 = imm8 :: 0
-	regs = UInt(imm8)
-	
-	syntax = format("vstm%s%s%s %s%s, {%s}",
-			if U then "i" else "d" endif,
-			if P then "b" else "a" endif,
-			cond,
-			Rn,
-			if W then "!" else "" endif,
-			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
-		)
-	image = format("%s 1100 1%1b%1b0 %s %s 1010 %8b", cond, D, W, Rn, Vd, imm8)
-	action = {
-		// TODO
-	}
-
-op VSTM_A2_10(cond: condition, D: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
-	P = 1
-	U = 0
-	W = 1
-	single_regs = 0
-	add = U
-	wback = W == 1
-	d = UInt(D :: Vd)
-	n = UInt(Rn)
-	imm32 = imm8 :: 0
-	regs = UInt(imm8)
-	
-	syntax = format("vstm%s%s%s %s%s, {%s}",
-			if U then "i" else "d" endif,
-			if P then "b" else "a" endif,
-			cond,
-			Rn,
-			if W then "!" else "" endif,
-			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
-		)
-	image = format("%s 1101 0%1b10 %s %s 1010 %8b", cond, D, Rn, Vd, imm8)
-	action = {
-		// TODO
-	}
-
-
-op VSTR_thumb_list = VSTR_T1 | VSTR_T2
-
-op VSTR_T1(U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+// TODO rename VCVT_VCVTR_fp_int_FP_T1 (and group with next)
+op VCVT_VCVTR_fp_int_fp_T1_D32_M32(opc2: enum(0, 4..5), Vd: SingleReg, op_: bool, Vm: SingleReg)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
-	image = format("1110 1101 %1b %1b 00 %s %4b 1011 %8b", U, Vd.p, Rn, Vd.r, imm8)
-	single_reg = 0
-	add = U
-	imm32 = ZeroExtend(imm8 :: 0b00, 32)
-	d = UInt(Vd)
-	n = UInt(Rn)
-	// if n == 15 then UNPREDICTABLE
-	cond = 1
+	syntax = if opc2 == 0b101 then format("vcvt%s%s.s32.f32 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
+		else if opc2 == 0b100 then format("vcvt%s%s.u32.f32 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
+		else /* opc2 == 0b000 */ format("vcvt%s.f32.%s %s, %s", op_cond_syntax_new(ITCOND), if op_ then "s32" else "u32" endif, Vd, Vm) 
+		endif endif
+	image = format("1110 11101 %1b 11 1 %3b  %4b 101 0 %1b 1 %1b 0 %4b", Vd.p, opc2, Vd.r, op_, Vm.p, Vm.r)
+	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
+	to_integer = opc2<2..2>
+	dp_operation = 0
+	d = Vd
+	m = Vm
+	unsigned_ = if to_integer then opc2<0..0> == 0b0
+		else op_ == 0b0 endif
+	round_zero = op_
+	round_nearest = 0 // FALSE selects FPSCR rounding
 
-op VSTR_T2(U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
+op VCVT_VCVTR_fp_int_fp_T1_D32_M64(opc2: enum(4..5), Vd: SingleReg, op_: bool, Vm: DoubleReg)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
-	image = format("1110 1101 %1b %1b 00 %s %4b 1010 %8b", U, Vd.p, Rn, Vd.r, imm8)
-	single_reg = 1
-	add = U
-	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	syntax = if opc2 == 0b101 then format("vcvt%s%s.s32.f64 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
+		else /* opc2 == 0b100 */ format("vcvt%s%s.u32.f64 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm) endif
+	image = format("1110 11101 %1b 11 1 %3b  %4b 101 1 %1b 1 %1b 0 %4b", Vd.p, opc2, Vd.r, op_, Vm.p, Vm.r)
+	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
+	to_integer = opc2<2..2> // 0b1
+	dp_operation = 1
+	d = Vd
+	m = Vm
+	unsigned_ = if to_integer then opc2<0..0> == 0b0
+		else op_ == 0b0 endif
+	round_zero = op_
+	round_nearest = 0 // FALSE selects FPSCR rounding
+
+
+op VCVT_VCVTR_fp_int_fp_T1_D64_M32(opc2: enum(0), Vd: DoubleReg, op_: bool, Vm: SingleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vcvt%s.f64.%s %s, %s", op_cond_syntax_new(ITCOND), if op_ then "s32" else "u32" endif, Vd, Vm)
+	image = format("1110 11101 %1b 11 1 %3b  %4b 101 1 %1b 1 %1b 0 %4b", Vd.p, opc2, Vd.r, op_, Vm.p, Vm.r)
+	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
+	to_integer = 0b0
+	dp_operation = 1
+	d = Vd
+	m = Vm
+	unsigned_ = if to_integer then opc2<0..0> == 0b0
+		else op_ == 0b0 endif
+	round_zero = op_
+	round_nearest = 0 // FALSE selects FPSCR rounding
+
+
+
+
+////// VDIV //////
+
+op VDIV_arm(x: VDIV_arm_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		// TODO! Implement a floating point division
+		//if ConditionPassed() then
+		//	CheckVFPEnabled(TRUE); 
+		//	if x.dp_operation then
+		//		D[x.d] = FPDiv(D[x.n], D[x.m], TRUE); 
+		//	else
+		//		S[x.d] = FPDiv(S[x.n], S[x.m], TRUE);
+	}
+
+// TODO group and rename
+op VDIV_arm_list = VDIV_A1_32 | VDIV_A1_64
+
+op VDIV_A1_32(cond: condition, Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
+	syntax = format("vdiv%s.f32 %s, %s, %s", cond, Vd, Vn, Vm)
+	image = format("%s 11101 %1b 00 %4b %4b 101 0 %1b 0 %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	dp_operation = 0
 	d = UInt(Vd)
-	n = UInt(Rn)
-	// if n == 15 then UNPREDICTABLE
-	cond = 1
+	n = UInt(Vn)
+	m = UInt(Vm)
+	
+op VDIV_A1_64(cond: condition, Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
+	syntax = format("vdiv%s.f64 %s, %s, %s", cond, Vd, Vn, Vm)
+	image = format("%s 11101 %1b 00 %4b %4b 101 1 %1b 0 %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	dp_operation = 1
+	d = UInt(Vd)
+	n = UInt(Vn)
+	m = UInt(Vm)
 
 
+op VDIV_thumb(x: VDIV_thumb_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		// TODO! Implement a floating point division
+		//CheckVFPEnabled(TRUE); 
+		//if x.dp_operation then
+		//	D[x.d] = FPDiv(D[x.n], D[x.m], TRUE); 
+		//else
+		//	S[x.d] = FPDiv(S[x.n], S[x.m], TRUE);
+	}
+	
+op VDIV_thumb_list = VDIV_T1_32 | VDIV_T1_64
 
-/* Encoding of VLDxx
- *	P UDW1
- *	0 1X01	VLDM
- *	0 1X11	VPOP if Rn = 13, VLDM else
- *	1 XX01	VLDR
- *	1 0X11	VLDM
- *
- * from this, we derive 2 VLDM opcode families:
- *	P UDW1
- *	0 1XX1	VLDM with P = 0, U = 1
- *	1 0X11	VLDM with P = 1, U = 0, W = 1
- */
+op VDIV_T1_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vdiv%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
+	image = format("1110 11101 %1b 00 %4b  %4b 101 0 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	dp_operation = 0
+	d = UInt(Vd)
+	n = UInt(Vn)
+	m = UInt(Vm)
+	
+op VDIV_T1_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vdiv%s.f64 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
+	image = format("1110 11101 %1b 00 %4b  %4b 101 1 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	dp_operation = 1
+	d = UInt(Vd)
+	n = UInt(Vn)
+	m = UInt(Vm)
+	
+	
+
+////// VLDM //////
 
 op VLDM_arm(x: VLDM_arm_list)
 	syntax = x.syntax
@@ -446,51 +579,55 @@ op VLDM_arm_A2_10(cond: condition, D: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: 
 	action = {
 		// TODO
 	} 
-	
+
+
+
+////// VLDR //////
+
+op VLDR_A1(cond: condition, U: bit, D: bit, Rn: REG_INDEX, Vd: fpindex, imm8: card(8))
+	//ITCOND = "f_get_update_ITSTATE"()
+	//syntax = format("vldr%s d%d, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8 :: 0b00)
+	image = format("%s 1101 %1b%1b01 %s  %4b 1011 %8b", cond, U, D, Rn, Vd, imm8)
+	single_reg = FALSE
+	add = (U == 1)
+	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	d = UInt(D::Vd)
+	n = UInt(Rn)
+	syntax = format("vldr%s d%d, [%s, #%s%d]", cond, d, Rn, if U then "" else "-" endif, imm32)
+
+op VLDR_A2(c: condition, U: bit, D: bit, Rn: REG_INDEX, Vd: fpindex, imm8: card(8))
+	//ITCOND = "f_get_update_ITSTATE"()
+	//syntax = format("vldr%s d%d, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8 :: 0b00)
+	image = format("%s 1101 %1b%1b01 %s  %4b 1010 %8b", c, U, D, Rn, Vd, imm8)
+	single_reg = 1
+	add = U
+	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	d = UInt(Vd)
+	n = UInt(Rn)
+	cond = c
+	syntax = format("vldr%s d%d, [%s, #%s%d]", c.syntax, d, Rn, if U then "" else "-" endif, imm32)
+
+op VLDR_arm_list = VLDR_A1 | VLDR_A2 
 op VLDR_arm(x: VLDR_arm_list)
 	syntax = x.syntax
 	image = x.image
 	cond = x.cond
 	action = {
 		if ConditionPassed() then
-			//CheckVFPEnabled(TRUE); NullCheckIfThumbEE(n); 
-			base = if x.n == 15 then Align(PC,4) else R[x.n] endif;
-			address = if x.add then (base + x.imm32) else (base - x.imm32) endif;
+			EncodingSpecificOperations();
+			CheckVFPEnabled(TRUE);
+			NullCheckIfThumbEE(n); 
+			let base = if x.n == 15 then Align(PC, 4) else R[x.n] endif;
+			let address = if x.add then (base + x.imm32) else (base - x.imm32) endif;
 			if x.single_reg then
 				S[x.d]<31..0> = M32[address]; 
 			else
-				word1 = M32[address]; word2 = M32[address+4];
-				// Combine the word-aligned words in the correct order for current endianness. 
-				D[x.d]<63..0> = //if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
-					//word1:word2 else 
-					word2 :: word1;
+				let word1 = M32[address];
+				let word2 = M32[address+4];
+				D[x.d]<63..0> = if BigEndian() then word1::word2 else  word2 :: word1 endif;
 			endif;
 		endif;
 	}
-
-op VLDR_arm_list = VLDR_A1 | VLDR_A2 
-
-op VLDR_A1(cond: condition, U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vldr%s d%d, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8 :: 0b00)
-	image = format("%s 1101 %1b%1b01 %s  %4b 1011 %8b", cond, U, Vd.p, Rn, Vd.r, imm8)
-	single_reg = 0
-	add = U
-	imm32 = ZeroExtend(imm8 :: 0b00, 32)
-	d = UInt(Vd)
-	n = UInt(Rn)
-	cond = cond
-
-op VLDR_A2(cond: condition, U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vldr%s d%d, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8 :: 0b00)
-	image = format("%s 1101 %1b%1b01 %s  %4b 1010 %8b", cond, U, Vd.p, Rn, Vd.r, imm8)
-	single_reg = 1
-	add = U
-	imm32 = ZeroExtend(imm8 :: 0b00, 32)
-	d = UInt(Vd)
-	n = UInt(Rn)
-	cond = cond
 
 
 op VLDR_thumb(x: VLDR_thumb_list)
@@ -539,8 +676,170 @@ op VLDR_T2(U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
 	cond = 1
 	
 
-op VMOV_arm = VMOV_arm_imm | VMOV_arm_reg | VMOV_arm_creg_spreg | VMOV_arm_2creg_dereg
 
+////// VMLA_VMLS //////
+
+
+op VMLA_arm = VMLA_VMLS_arm_fp
+
+// TODO rename and group
+op VMLA_VMLS_arm_fp(x: VMLA_VMLS_arm_fp_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		//if ConditionPassed() then
+		//	EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd);
+		//	if advsimd then // Advanced SIMD instruction
+		//		for r = 0 to regs-1
+		//			for e = 0 to elements-1
+		//				product = FPMul(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE); 
+		//				addend = if add then product else FPNeg(product); 
+		//				Elem[D[d+r],e,esize] = FPAdd(Elem[D[d+r],e,esize], addend, FALSE);
+		//	else			// VFP instruction
+		//		if dp_operation then
+		//			addend64 = if add then FPMul(D[n], D[m], TRUE) else FPNeg(FPMul(D[n], D[m], TRUE));
+		//			D[d] = FPAdd(D[d], addend64, TRUE); 
+		//		else
+		//			addend32 = if add then FPMul(S[n], S[m], TRUE) else FPNeg(FPMul(S[n], S[m], TRUE)); 
+		//			S[d] = FPAdd(S[d], addend32, TRUE);
+	}
+
+op VMLA_VMLS_arm_fp_list = VMLA_VMLS_fp_A1_double | VMLA_VMLS_fp_A1_quad | VMLA_VMLS_fp_A2_32 | VMLA_VMLS_fp_A2_64
+
+op VMLA_VMLS_fp_A1_double(op_: bool, Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
+	syntax = format("v%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, Vd, Vn, Vm) 
+	image = format("1111 0010 0 %1b %1b 0 %4b %4b 1101 %1b 0 %1b 1 %4b", Vd.p, op_, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	advsimd = 1
+	dp_operation = 0
+	add = op_ == 0
+	esize = 32
+	elements = 2
+	d = Vd
+	n = Vn
+	m = Vm
+	regs = 1
+
+op VMLA_VMLS_fp_A1_quad(op_: bool, Vn: QuadReg, Vd: QuadReg, Vm: QuadReg)
+	syntax = format("v%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, Vd, Vn, Vm) 
+	image = format("1111 0010 0 %1b %1b 0 %4b %4b 1101 %1b 1 %1b 1 %4b", Vd.p, op_, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if Vd<0> == '1' || Vn<0> == '1' || Vm<0> == '1' then UNDEFINED;
+	advsimd = 1
+	dp_operation = 0
+	add = op_ == 0
+	esize = 32
+	elements = 2
+	d = Vd
+	n = Vn
+	m = Vm
+	regs = 2
+
+op VMLA_VMLS_fp_A2_32(cond: condition, Vn: SingleReg, Vd: SingleReg, op_: bool, Vm: SingleReg)
+	syntax = format("v%s%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, cond, Vd, Vn, Vm) 
+	image = format("%s 11100 %1b 00 %4b %4b 101 0 %1b %1b %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	advsimd = 0
+	dp_operation = 0
+	add = op_ == 0
+	d = Vd
+	n = Vn
+	m = Vm
+
+op VMLA_VMLS_fp_A2_64(cond: condition, Vn: DoubleReg, Vd: DoubleReg, op_: bool, Vm: DoubleReg)
+	syntax = format("v%s%s.f64 %s, %s, %s", if op_ then "mls" else "mla" endif, cond, Vd, Vn, Vm) 
+	image = format("%s 11100 %1b 00 %4b %4b 101 1 %1b %1b %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	advsimd = 0
+	dp_operation = 1
+	d = Vd
+	n = Vn
+	m = Vm
+
+
+
+op VMLA_thumb = VMLA_VMLS_thumb_fp
+
+// TODO rename and group
+op VMLA_VMLS_thumb_fp(x: VMLA_VMLS_thumb_fp_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		//EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd);
+		//if advsimd then // Advanced SIMD instruction
+		//	for r = 0 to regs-1
+		//		for e = 0 to elements-1
+		//			product = FPMul(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE); 
+		//			addend = if add then product else FPNeg(product); 
+		//			Elem[D[d+r],e,esize] = FPAdd(Elem[D[d+r],e,esize], addend, FALSE);
+		//else			// VFP instruction
+		//	if dp_operation then
+		//		addend64 = if add then FPMul(D[n], D[m], TRUE) else FPNeg(FPMul(D[n], D[m], TRUE));
+		//		D[d] = FPAdd(D[d], addend64, TRUE); 
+		//	else
+		//		addend32 = if add then FPMul(S[n], S[m], TRUE) else FPNeg(FPMul(S[n], S[m], TRUE)); 
+		//		S[d] = FPAdd(S[d], addend32, TRUE);
+	}
+
+op VMLA_VMLS_thumb_fp_list = VMLA_VMLS_fp_T1_double | VMLA_VMLS_fp_T1_quad | VMLA_VMLS_fp_T2_32 | VMLA_VMLS_fp_T2_64
+
+op VMLA_VMLS_fp_T1_double(op_: bool, Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("v%s%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
+	image = format("1110 1111 0 %1b %1b 0 %4b  %4b 1101 %1b 0 %1b 1 %4b", Vd.p, op_, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	advsimd = 1
+	dp_operation = 0
+	add = op_ == 0
+	esize = 32
+	elements = 2
+	d = Vd
+	n = Vn
+	m = Vm
+	regs = 1
+
+op VMLA_VMLS_fp_T1_quad(op_: bool, Vn: QuadReg, Vd: QuadReg, Vm: QuadReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("v%s%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
+	image = format("1110 1111 0 %1b %1b 0 %4b  %4b 1101 %1b 1 %1b 1 %4b", Vd.p, op_, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	//if Vd<0> == '1' || Vn<0> == '1' || Vm<0> == '1' then UNDEFINED;
+	advsimd = 1
+	dp_operation = 0
+	add = op_ == 0
+	esize = 32
+	elements = 2
+	d = Vd
+	n = Vn
+	m = Vm
+	regs = 2
+
+op VMLA_VMLS_fp_T2_32(Vn: SingleReg, Vd: SingleReg, op_: bool, Vm: SingleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("v%s%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
+	image = format("1110 11100 %1b 00 %4b  %4b 101 0 %1b %1b %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	advsimd = 0
+	dp_operation = 0
+	add = op_ == 0
+	d = Vd
+	n = Vn
+	m = Vm
+
+op VMLA_VMLS_fp_T2_64(Vn: DoubleReg, Vd: DoubleReg, op_: bool, Vm: DoubleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("v%s%s.f64 %s, %s, %s", if op_ then "mls" else "mla" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
+	image = format("1110 11100 %1b 00 %4b  %4b 101 1 %1b %1b %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
+	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
+	advsimd = 0
+	dp_operation = 1
+	d = Vd
+	n = Vn
+	m = Vm
+
+
+
+
+////// VMOV //////
+op VMOV_arm = VMOV_reg_A | VMOV_arm_imm | VMOV_arm_creg_spreg | VMOV_arm_2creg_dereg
+
+// TODO group
 op VMOV_arm_imm(x: VMOV_arm_imm_list)
 	syntax = x.syntax
 	image = x.image
@@ -586,30 +885,45 @@ op VMOV_imm_A2_64(cond: condition, Vd: DoubleReg, imm4H: card(4), imm4L: card(4)
 	imm64_fp = VFPExpandImm_dp(imm4H::imm4L)
 	regs = 1
 	imm32_fp = VFPExpandImm_sp(0) // Not used
-	
-op VMOV_arm_reg(x: VMOV_arm_reg_list)
+
+
+// VMOV (register)
+
+op VMOV_reg_A1(D: bit, Vm: card(4), Vd: card(4), M: bit, Q: bit)
+	image = format("1111 0010 0%1b10 %4b %4b 0001 %1b%1b%1b1 %4b", D, Vm, Vd, M, Q, M, Vm)
+	action = {
+		if !Consistent(M) || !Consistent(Vm) then SEE_VORR_register; endif;
+		if Q == 1 && (Vd<0..0> == 1 || Vm<0..0> == 1) then UNDEFINED; endif;
+	}
+	single_register = FALSE
+	advsimd = TRUE
+	d = UInt(D::Vd)
+	m = UInt(M::Vm)
+	regs = if Q == 0 then 1 else 2 endif
+	syntax = format("VMOV %s, %s",
+		if Q == 1 then format("q%d", d) else format("d%d", d) endif,
+		if Q == 1 then format("q%d", m) else format("d%d", m) endif)
+
+op VMOV_reg_A_list = VMOV_reg_A1
+op VMOV_reg_A(x: VMOV_reg_A_list)
 	syntax = x.syntax
 	image = x.image
 	action = {
 		if ConditionPassed() then
-			//CheckAdvSIMDOrVFPEnabled(TRUE, advsimd);
+			EncodingSpecificOperations();
+			CheckAdvSIMDOrVFEnabled(TRUE, x.advsimd);
 			if x.single_register then
-				S[x.d] = S[x.m];
+				S[d] = S[m];
 			else
-				r_ = 0; loop;
+				// for r in 0..regs-1 do
+				//	D[d+r] = D[m+r];
+				//enddo;
 			endif;
 		endif;
 	}
-	loop = {
-		if r_ <= x.regs-1 then
-			D[x.d + r_] = D[x.m + r_];
-			r_ = r_ + 1;
-			loop;
-		endif;
-	}
 
-op VMOV_arm_reg_list = VMOV_reg_A2_32 | VMOV_reg_A2_64
 
+/*
 op VMOV_reg_A2_32(cond: condition, Vd: SingleReg, Vm: SingleReg)
 	syntax = format("vmov%s.f32 %s, %s", cond, Vd, Vm)
 	image = format("%s 1110 1%1b11 0000 %4b 1010 01%1b0 %4b", cond, Vd.p, Vd.r, Vm.p, Vm.r)
@@ -630,6 +944,33 @@ op VMOV_reg_A2_64(cond: condition, Vd: DoubleReg, Vm: DoubleReg)
 	d = UInt(Vd)
 	m = UInt(Vm)
 	regs = 1
+
+op VMOV_arm_reg_list = VMOV_reg_A2_32 | VMOV_reg_A2_64
+op VMOV_arm_reg(x: VMOV_arm_reg_list)
+	syntax = x.syntax
+	image = x.image
+	action = {
+		if ConditionPassed() then
+			//CheckAdvSIMDOrVFPEnabled(TRUE, advsimd);
+			if x.single_register then
+				S[x.d] = S[x.m];
+			else
+				r_ = 0; loop;
+			endif;
+		endif;
+	}
+	loop = {
+		if r_ <= x.regs-1 then
+			D[x.d + r_] = D[x.m + r_];
+			r_ = r_ + 1;
+			loop;
+		endif;
+	}
+*/
+
+
+
+
 
 op VMOV_arm_creg_spreg = VMOV_creg_spreg_A1
 
@@ -819,232 +1160,9 @@ op VMOV_thumb_2creg_dereg_A1(op_: bool, Rt2: REG_INDEX, Rt: REG_INDEX, Rm: Doubl
  	}
 
 
-op VPUSH_arm(x: VPUSH_arm_list)
-	syntax = x.syntax
-	image = x.image
-	action = {
-		//if ConditionPassed() then
-		//	EncodingSpecificOperations(); CheckVFPEnabled(TRUE); NullCheckIfThumbEE(13); 
-		//	address = SP - imm32;
-		//	SP = SP - imm32;
-		//	if single_regs then
-		//		for r = 0 to regs-1
-		//			MemA[address,4] = S[d+r]; address = address+4;
-		//	else
-		//		for r = 0 to regs-1
-		//		// Store as two word-aligned words in the correct order for current endianness. 
-		//		MemA[address,4] = if BigEndian() then D[d+r]<63:32> else D[d+r]<31:0>; 
-		//		MemA[address+4,4] = if BigEndian() then D[d+r]<31:0> else D[d+r]<63:32>; 
-		//		address = address+8;
-	}
-
-op VPUSH_arm_list = VPUSH_A1 | VPUSH_A2
-
-op VPUSH_A1(cond: condition, Vd: DoubleReg, imm8: card(8))
-	regs = UInt(imm8) / 2 // If UInt(imm8) is odd, see "FSTMX".
-	syntax = if regs > 1 
-		then format("vpush%s {%s-d%d}", cond, Vd, Vd+regs-1)
-		else format("vpush%s {%s}", cond, Vd) endif
-	image = format("%s 1101 0%1b10 1101 %4b 1011 %8b", cond, Vd.p, Vd.r, imm8)
-	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
-	single_regs = 0
-	d = UInt(Vd)
-	imm32 = ZeroExtend(imm8::0b00, 32)
-	//if regs == 0 || regs > 16 || (d+regs) > 32 then UNPREDICTABLE;
-	//if VFPSmallRegisterBank() && (d+regs) > 16 then UNPREDICTABLE;
-
-op VPUSH_A2(cond: condition, Vd: SingleReg, imm8: card(8))
-	regs = UInt(imm8)
-	syntax = if regs > 1 
-		then format("vpush%s {%s-s%d}", cond, Vd, Vd+regs-1)
-		else format("vpush%s {%s}", cond, Vd) endif
-	image = format("%s 110 1 0 %1b 1 0 1101  %4b 1010 %8b", cond, Vd.p, Vd.r, imm8)
-	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
-	single_regs = 1
-	d = UInt(Vd)
-	imm32 = ZeroExtend(imm8::0b00, 32)
-	//if regs == 0 || regs > 16 || (d+regs) > 32 then UNPREDICTABLE;
-	//if VFPSmallRegisterBank() && (d+regs) > 16 then UNPREDICTABLE;
-	
-	
-op VPUSH_thumb(x: VPUSH_thumb_list)
-	syntax = x.syntax
-	image = x.image
-	action = {
-		//EncodingSpecificOperations(); CheckVFPEnabled(TRUE); NullCheckIfThumbEE(13); 
-		//address = SP - imm32;
-		//SP = SP - imm32;
-		//if single_regs then
-		//	for r = 0 to regs-1
-		//		MemA[address,4] = S[d+r]; address = address+4;
-		//else
-		//	for r = 0 to regs-1
-		//	// Store as two word-aligned words in the correct order for current endianness. 
-		//	MemA[address,4] = if BigEndian() then D[d+r]<63:32> else D[d+r]<31:0>; 
-		//	MemA[address+4,4] = if BigEndian() then D[d+r]<31:0> else D[d+r]<63:32>; 
-		//	address = address+8;
-	}
-
-op VPUSH_thumb_list = VPUSH_T1 | VPUSH_T2
-
-op VPUSH_T1(Vd: DoubleReg, imm8: card(8))
-	ITCOND = "f_get_update_ITSTATE"()
-	regs = UInt(imm8) / 2 // If UInt(imm8) is odd, see "FSTMX".
-	syntax = if regs > 1 
-		then format("vpush%s {%s-d%d}", op_cond_syntax_new(ITCOND), Vd, Vd+regs-1)
-		else format("vpush%s {%s}", op_cond_syntax_new(ITCOND), Vd) endif
-	image = format("1110 110 1 0 %1b 1 0 1101  %4b 1011 %8b", Vd.p, Vd.r, imm8)
-	single_regs = 0
-	d = UInt(Vd)
-	imm32 = ZeroExtend(imm8::0b00, 32)
-	//if regs == 0 || regs > 16 || (d+regs) > 32 then UNPREDICTABLE;
-	//if VFPSmallRegisterBank() && (d+regs) > 16 then UNPREDICTABLE;
-
-op VPUSH_T2(Vd: SingleReg, imm8: card(8))
-	ITCOND = "f_get_update_ITSTATE"()
-	regs = UInt(imm8)
-	syntax = if regs > 1 
-		then format("vpush%s {%s-s%d}", op_cond_syntax_new(ITCOND), Vd, Vd+regs-1)
-		else format("vpush%s {%s}", op_cond_syntax_new(ITCOND), Vd) endif
-	image = format("1110 110 1 0 %1b 1 0 1101  %4b 1010 %8b", Vd.p, Vd.r, imm8)
-	single_regs = 1
-	d = UInt(Vd)
-	imm32 = ZeroExtend(imm8::0b00, 32)
-	//if regs == 0 || regs > 16 || (d+regs) > 32 then UNPREDICTABLE;
-	//if VFPSmallRegisterBank() && (d+regs) > 16 then UNPREDICTABLE;
-	
-
-op VSUB_thumb = VSUB_thumb_fp
-
-op VSUB_thumb_fp(x: VSUB_thumb_fp_list)
-	syntax = x.syntax
-	image = x.image
-	action = {
-		// TODO! Implement a floating point substraction
-		//CheckAdvSIMDOrVFPEnabled(TRUE, advsimd); 
-		//if advsimd then // Advanced SIMD instruction
-		//	for r = 0 to regs-1
-		//		for e = 0 to elements-1
-		//			Elem[D[d+r],e,esize] = FPSub(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE); 
-		//else // VFP instruction
-		//	if dp_operation then
-		//		D[d] = FPSub(D[n], D[m], TRUE);
-		//	else
-		//		S[d] = FPSub(S[n], S[m], TRUE);
-	}
-
-op VSUB_thumb_fp_list = VSUB_fp_T2_32 | VSUB_fp_T2_64
-
-op VSUB_fp_T2_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vsub%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
-	image = format("1110 11100 %1b 11 %4b %4b 101 0 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors"; 
-	advsimd = 0
-	dp_operation = 0
-	d = UInt(Vd)
-	n = UInt(Vn)
-	m = UInt(Vm)
-	
-op VSUB_fp_T2_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vsub%s.f64 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
-	image = format("1110 11100 %1b 11 %4b %4b 101 1 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors"; 
-	advsimd = 0
-	dp_operation = 1
-	d = UInt(Vd)
-	n = UInt(Vn)
-	m = UInt(Vm)
 
 
-op VDIV_arm(x: VDIV_arm_list)
-	syntax = x.syntax
-	image = x.image
-	action = {
-		// TODO! Implement a floating point division
-		//if ConditionPassed() then
-		//	CheckVFPEnabled(TRUE); 
-		//	if x.dp_operation then
-		//		D[x.d] = FPDiv(D[x.n], D[x.m], TRUE); 
-		//	else
-		//		S[x.d] = FPDiv(S[x.n], S[x.m], TRUE);
-	}
-	
-op VDIV_arm_list = VDIV_A1_32 | VDIV_A1_64
-
-op VDIV_A1_32(cond: condition, Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
-	syntax = format("vdiv%s.f32 %s, %s, %s", cond, Vd, Vn, Vm)
-	image = format("%s 11101 %1b 00 %4b %4b 101 0 %1b 0 %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	dp_operation = 0
-	d = UInt(Vd)
-	n = UInt(Vn)
-	m = UInt(Vm)
-	
-op VDIV_A1_64(cond: condition, Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	syntax = format("vdiv%s.f64 %s, %s, %s", cond, Vd, Vn, Vm)
-	image = format("%s 11101 %1b 00 %4b %4b 101 1 %1b 0 %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	dp_operation = 1
-	d = UInt(Vd)
-	n = UInt(Vn)
-	m = UInt(Vm)
-
-
-op VDIV_thumb(x: VDIV_thumb_list)
-	syntax = x.syntax
-	image = x.image
-	action = {
-		// TODO! Implement a floating point division
-		//CheckVFPEnabled(TRUE); 
-		//if x.dp_operation then
-		//	D[x.d] = FPDiv(D[x.n], D[x.m], TRUE); 
-		//else
-		//	S[x.d] = FPDiv(S[x.n], S[x.m], TRUE);
-	}
-	
-op VDIV_thumb_list = VDIV_T1_32 | VDIV_T1_64
-
-op VDIV_T1_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vdiv%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
-	image = format("1110 11101 %1b 00 %4b  %4b 101 0 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	dp_operation = 0
-	d = UInt(Vd)
-	n = UInt(Vn)
-	m = UInt(Vm)
-	
-op VDIV_T1_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vdiv%s.f64 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
-	image = format("1110 11101 %1b 00 %4b  %4b 101 1 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	dp_operation = 1
-	d = UInt(Vd)
-	n = UInt(Vn)
-	m = UInt(Vm)
-	
-	
-op VMRS_thumb = VMRS_T1
-
-op VMRS_T1(Rt: REG_INDEX)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vmrs%s %s, fpscr", op_cond_syntax_new(ITCOND), if Rt.number != 15 then Rt.syntax else "APSR_nzcv" endif)
-	image = format("1110 11101111 0001  %s 1010 000 1 0000", Rt)
-	//if Rt == 13 && CurrentInstrSet() != InstrSet_ARM then UNPREDICTABLE;
-	t = UInt(Rt)
-	action = {
-		//CheckVFPEnabled(TRUE); 
-		//SerializeVFP(); VFPExcBarrier();
-		if t != 15 then
-			R[t] = FPSCR;
-		else
-			Ucpsr<28..31> = FPSCR<28..31>;
-		endif;
-	}
-
+////// VMUL //////
 
 op VMUL_arm = VMUL_arm_fp
 
@@ -1183,276 +1301,9 @@ op VMUL_fp_T2_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
 	m = UInt(Vm)
 
 	
-op VCVT_arm = VCVT_arm_if_A1 | VCVT_arm_ff_A1
-
-op VCVT_arm_if_A1(cond: condition, D_: card(1), opc2: card(3), Vd: card(4), sz: bool, op_: card(1), M: card(1), Vm: card(4))
-	// if opc2 != 0b000 && ((opc2 & 0b110) != 0b100) then SEE
-	to_integer		= (opc2<2..2> == 1)
-	dp_operation	= (sz == 1)
-	unsigned		= if to_integer then (opc2<0..0> == 0) else (op_ == 0) endif
-	round_zero		= if to_integer then (op_ == 1) else 0 endif
-	round_nearest	= if to_integer then 0 else 0 endif
-	d				= if to_integer then UInt(Vd::D_) else if dp_operation then UInt(D_::Vd) else UInt(Vd::D_) endif endif
-	m				= if to_integer then if dp_operation then UInt(M::Vm) else UInt(Vm::M) endif else UInt(Vm::M) endif
-
-	syntax = format("vcvt%s%s.%s.%s %s,%s",
-		if !to_integer then "R" else "" endif,
-		cond,
-		if to_integer then if unsigned then "u32" else "s32" endif else if dp_operation then "f64" else "f32" endif endif,
-		if to_integer then if dp_operation then "f64" else "f32" endif else if unsigned then "u32" else "s32" endif endif,
-		if to_integer then format("s%d", d) else if dp_operation then format("d%d", d) else format("s%d", d) endif endif,
-		if to_integer then if dp_operation then format("d%d", m) else format("s%d", m) endif else format("s%d", m) endif)
-	image = format("%s 1110 1%1b11 1%3b %4b 101%1b %1b1%1b0 %4b", cond, D_, opc2, Vd, sz, op_, M, Vm)
-
-	action = {
-		if ConditionPassed() then
-			// EncodingSpecificOperations()
-			// CheckVFPEnabled(1)
-			if to_integer then
-				if dp_operation then
-					S[d] = FPToFixed32(D[m], unsigned, round_zero, 1);
-				else
-					S[d] = FPToFixed32(S[m], unsigned, round_zero, 1);
-				endif;
-			else
-				if dp_operation then
-					D[d] = FixedToFP64(S[m], unsigned, round_nearest, 1);
-				else
-					S[d] = FixedToFP32(S[m], unsigned, round_neasrest, 1);
-				endif;
-			endif;
-		endif;
-	}
-	
-
-op VCVT_arm_ff_A1(cond: condition, D_: card(1), Vd: card(4), sz: bool, M: card(1), Vm: card(4))
-	double_to_single = (sz == 1)
-	d = if double_to_single then UInt(Vd::D_) else UInt(D_::Vd) endif
-	m = if double_to_single then UInt(M::Vm) else UInt(Vm::M) endif
-	syntax = format("vcvt.f%d.f%d %s, %s",
-		if double_to_single then 32 else 64 endif,
-		if double_to_single then 64 else 32 endif,
-		if double_to_single then format("s%d", d) else format("d%d", d) endif,
-		if double_to_single then format("d%d", m) else format("s%d", m) endif)
-	image = format("%s 1110 1%1b11 0111 %4b 101%1b 11%1b0 %4b", cond, D_, Vd, sz, M, Vm)
-	action = {
-		if ConditionPassed() then
-			// EncodingSpecificOperation();
-			// CheckVFPEnabled(1);
-			if double_to_single then
-				S[d] = FPDoubleToSingle(D[m], 1);
-			else
-				D[d] = FPSingleToDouble(S[m], 1);
-			endif;
-		endif;
-	}
-	
-op VCVT_thumb = VCVT_VCVTR_thumb_fp_int_fp
-
-op VCVT_VCVTR_thumb_fp_int_fp(x: VCVT_VCVTR_thumb_fp_int_fp_list)
-	syntax = x.syntax
-	image = x.image
-	action = {
-		//EncodingSpecificOperations(); CheckVFPEnabled(TRUE); 
-		//if to_integer then
-		//	if dp_operation then
-		//		S[d] = FPToFixed(D[m], 32, 0, unsigned, round_zero, TRUE);
-		//	else
-		//		S[d] = FPToFixed(S[m], 32, 0, unsigned, round_zero, TRUE);
-		//else
-		//	if dp_operation then
-		//		D[d] = FixedToFP(S[m], 64, 0, unsigned, round_nearest, TRUE); 
-		//	else
-		//		S[d] = FixedToFP(S[m], 32, 0, unsigned, round_nearest, TRUE);
-	}
-
-op VCVT_VCVTR_thumb_fp_int_fp_list = VCVT_VCVTR_fp_int_fp_T1_D32_M32 
-	| VCVT_VCVTR_fp_int_fp_T1_D32_M64
-	| VCVT_VCVTR_fp_int_fp_T1_D64_M32
-
-op VCVT_VCVTR_fp_int_fp_T1_D32_M32(opc2: enum(0, 4-5), Vd: SingleReg, op_: bool, Vm: SingleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = if opc2 == 0b101 then format("vcvt%s%s.s32.f32 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
-		else if opc2 == 0b100 then format("vcvt%s%s.u32.f32 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
-		else /* opc2 == 0b000 */ format("vcvt%s.f32.%s %s, %s", op_cond_syntax_new(ITCOND), if op_ then "s32" else "u32" endif, Vd, Vm) 
-		endif endif
-	image = format("1110 11101 %1b 11 1 %3b  %4b 101 0 %1b 1 %1b 0 %4b", Vd.p, opc2, Vd.r, op_, Vm.p, Vm.r)
-	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
-	to_integer = opc2<2..2>
-	dp_operation = 0
-	d = Vd
-	m = Vm
-	unsigned_ = if to_integer then opc2<0..0> == 0b0
-		else op_ == 0b0 endif
-	round_zero = op_
-	round_nearest = 0 // FALSE selects FPSCR rounding
-
-op VCVT_VCVTR_fp_int_fp_T1_D32_M64(opc2: enum(4-5), Vd: SingleReg, op_: bool, Vm: DoubleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = if opc2 == 0b101 then format("vcvt%s%s.s32.f64 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
-		else /* opc2 == 0b100 */ format("vcvt%s%s.u32.f64 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm) endif
-	image = format("1110 11101 %1b 11 1 %3b  %4b 101 1 %1b 1 %1b 0 %4b", Vd.p, opc2, Vd.r, op_, Vm.p, Vm.r)
-	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
-	to_integer = opc2<2..2> // 0b1
-	dp_operation = 1
-	d = Vd
-	m = Vm
-	unsigned_ = if to_integer then opc2<0..0> == 0b0
-		else op_ == 0b0 endif
-	round_zero = op_
-	round_nearest = 0 // FALSE selects FPSCR rounding
-
-op VCVT_VCVTR_fp_int_fp_T1_D64_M32(opc2: enum(0), Vd: DoubleReg, op_: bool, Vm: SingleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vcvt%s.f64.%s %s, %s", op_cond_syntax_new(ITCOND), if op_ then "s32" else "u32" endif, Vd, Vm)
-	image = format("1110 11101 %1b 11 1 %3b  %4b 101 1 %1b 1 %1b 0 %4b", Vd.p, opc2, Vd.r, op_, Vm.p, Vm.r)
-	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
-	to_integer = opc2<2..2> // 0b0
-	dp_operation = 1
-	d = Vd
-	m = Vm
-	unsigned_ = if to_integer then opc2<0..0> == 0b0
-		else op_ == 0b0 endif
-	round_zero = op_
-	round_nearest = 0 // FALSE selects FPSCR rounding
 
 
-op VADD_arm = VADD_arm_fp
-
-op VADD_arm_fp(x: VADD_arm_fp_list)
-	syntax = x.syntax
-	image = x.image
-	action = {
-		//if ConditionPassed() then
-		//	EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd);
-		//	if advsimd then // Advanced SIMD instruction
-		//		for r = 0 to regs-1
-		//			for e = 0 to elements-1
-		//				Elem[D[d+r],e,esize] = FPAdd(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE); 
-		//	else // VFP instruction
-		//		if dp_operation then
-		//			D[d] = FPAdd(D[n], D[m], TRUE);
-		//		else
-		//			S[d] = FPAdd(S[n], S[m], TRUE);
-	}
-
-op VADD_arm_fp_list = VADD_fp_A1_double | VADD_fp_A1_quad | VADD_fp_A2_32 | VADD_fp_A2_64
-
-op VADD_fp_A1_double(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	syntax = format("vadd.f32 %s, %s, %s", Vd, Vn, Vm) 
-	image = format("1111 0010 0 %1b 0 0 %4b %4b 1101 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	advsimd = 1
-	dp_operation = 0
-	esize = 32
-	elements = 2
-	d = Vd
-	n = Vn
-	m = Vm
-	regs = 1
-
-op VADD_fp_A1_quad(Vn: QuadReg, Vd: QuadReg, Vm: QuadReg)
-	syntax = format("vadd.f32 %s, %s, %s", Vd, Vn, Vm) 
-	image = format("1111 0010 0 %1b 0 0 %4b %4b 1101 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if Vd<0> == '1' || Vn<0> == '1' || Vm<0> == '1' then UNDEFINED;
-	advsimd = 1
-	dp_operation = 0
-	esize = 32
-	elements = 2
-	d = Vd
-	n = Vn
-	m = Vm
-	regs = 2
-
-op VADD_fp_A2_32(cond: condition, Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
-	syntax = format("vadd%s.f32 %s, %s, %s", cond, Vd, Vn, Vm) 
-	image = format("%s 11100 %1b 11 %4b %4b 101 0 %1b 0 %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	advsimd = 0
-	dp_operation = 0
-	d = Vd
-	n = Vn
-	m = Vm
-
-op VADD_fp_A2_64(cond: condition, Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	syntax = format("vadd%s.f64 %s, %s, %s", cond, Vd, Vn, Vm) 
-	image = format("%s 11100 %1b 11 %4b %4b 101 1 %1b 0 %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	advsimd = 0
-	dp_operation = 1
-	d = Vd
-	n = Vn
-	m = Vm
-
-
-op VADD_thumb = VADD_thumb_fp
-
-op VADD_thumb_fp(x: VADD_thumb_fp_list)
-	syntax = x.syntax
-	image = x.image
-	action = {
-		//EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd);
-		//if advsimd then // Advanced SIMD instruction
-		//	for r = 0 to regs-1
-		//		for e = 0 to elements-1
-		//			Elem[D[d+r],e,esize] = FPAdd(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE); 
-		//else // VFP instruction
-		//	if dp_operation then
-		//		D[d] = FPAdd(D[n], D[m], TRUE);
-		//	else
-		//		S[d] = FPAdd(S[n], S[m], TRUE);
-	}
-
-op VADD_thumb_fp_list = VADD_fp_T1_double | VADD_fp_T1_quad | VADD_fp_T2_32 | VADD_fp_T2_64
-
-op VADD_fp_T1_double(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vadd%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
-	image = format("1110 1111 0 %1b 0 0 %4b  %4b 1101 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	advsimd = 1
-	dp_operation = 0
-	esize = 32
-	elements = 2
-	d = Vd
-	n = Vn
-	m = Vm
-	regs = 1
-
-op VADD_fp_T1_quad(Vn: QuadReg, Vd: QuadReg, Vm: QuadReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vadd%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
-	image = format("1110 1111 0 %1b 0 0 %4b  %4b 1101 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if Vd<0> == '1' || Vn<0> == '1' || Vm<0> == '1' then UNDEFINED;
-	advsimd = 1
-	dp_operation = 0
-	esize = 32
-	elements = 2
-	d = Vd
-	n = Vn
-	m = Vm
-	regs = 2
-
-op VADD_fp_T2_32(Vn: SingleReg, Vd: SingleReg, Vm: SingleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vadd%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
-	image = format("1110 11100 %1b 11 %4b  %4b 101 0 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	advsimd = 0
-	dp_operation = 0
-	d = Vd
-	n = Vn
-	m = Vm
-
-op VADD_fp_T2_64(Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vadd%s.f64 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
-	image = format("1110 11100 %1b 11 %4b  %4b 101 1 %1b 0 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	advsimd = 0
-	dp_operation = 1
-	d = Vd
-	n = Vn
-	m = Vm
-
+////// VPOP //////
 
 op VPOP_arm(x: VPOP_arm_list)
 	syntax = x.syntax
@@ -1543,152 +1394,480 @@ op VPOP_T2(Vd: SingleReg, imm8: card(8))
 	//if regs == 0 || (d+regs) > 32 then UNPREDICTABLE;
 
 
-op VMLA_arm = VMLA_VMLS_arm_fp
 
-op VMLA_VMLS_arm_fp(x: VMLA_VMLS_arm_fp_list)
+
+////// VPUSH //////
+
+
+op VPUSH_arm(x: VPUSH_arm_list)
 	syntax = x.syntax
 	image = x.image
 	action = {
 		//if ConditionPassed() then
-		//	EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd);
-		//	if advsimd then // Advanced SIMD instruction
+		//	EncodingSpecificOperations(); CheckVFPEnabled(TRUE); NullCheckIfThumbEE(13); 
+		//	address = SP - imm32;
+		//	SP = SP - imm32;
+		//	if single_regs then
 		//		for r = 0 to regs-1
-		//			for e = 0 to elements-1
-		//				product = FPMul(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE); 
-		//				addend = if add then product else FPNeg(product); 
-		//				Elem[D[d+r],e,esize] = FPAdd(Elem[D[d+r],e,esize], addend, FALSE);
-		//	else			// VFP instruction
-		//		if dp_operation then
-		//			addend64 = if add then FPMul(D[n], D[m], TRUE) else FPNeg(FPMul(D[n], D[m], TRUE));
-		//			D[d] = FPAdd(D[d], addend64, TRUE); 
-		//		else
-		//			addend32 = if add then FPMul(S[n], S[m], TRUE) else FPNeg(FPMul(S[n], S[m], TRUE)); 
-		//			S[d] = FPAdd(S[d], addend32, TRUE);
+		//			MemA[address,4] = S[d+r]; address = address+4;
+		//	else
+		//		for r = 0 to regs-1
+		//		// Store as two word-aligned words in the correct order for current endianness. 
+		//		MemA[address,4] = if BigEndian() then D[d+r]<63:32> else D[d+r]<31:0>; 
+		//		MemA[address+4,4] = if BigEndian() then D[d+r]<31:0> else D[d+r]<63:32>; 
+		//		address = address+8;
 	}
 
-op VMLA_VMLS_arm_fp_list = VMLA_VMLS_fp_A1_double | VMLA_VMLS_fp_A1_quad | VMLA_VMLS_fp_A2_32 | VMLA_VMLS_fp_A2_64
+op VPUSH_arm_list = VPUSH_A1 | VPUSH_A2
 
-op VMLA_VMLS_fp_A1_double(op_: bool, Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
-	syntax = format("v%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, Vd, Vn, Vm) 
-	image = format("1111 0010 0 %1b %1b 0 %4b %4b 1101 %1b 0 %1b 1 %4b", Vd.p, op_, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	advsimd = 1
-	dp_operation = 0
-	add = op_ == 0
-	esize = 32
-	elements = 2
-	d = Vd
-	n = Vn
-	m = Vm
-	regs = 1
+op VPUSH_A1(cond: condition, Vd: DoubleReg, imm8: card(8))
+	regs = UInt(imm8) / 2 // If UInt(imm8) is odd, see "FSTMX".
+	syntax = if regs > 1 
+		then format("vpush%s {%s-d%d}", cond, Vd, Vd+regs-1)
+		else format("vpush%s {%s}", cond, Vd) endif
+	image = format("%s 1101 0%1b10 1101 %4b 1011 %8b", cond, Vd.p, Vd.r, imm8)
+	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
+	single_regs = 0
+	d = UInt(Vd)
+	imm32 = ZeroExtend(imm8::0b00, 32)
+	//if regs == 0 || regs > 16 || (d+regs) > 32 then UNPREDICTABLE;
+	//if VFPSmallRegisterBank() && (d+regs) > 16 then UNPREDICTABLE;
 
-op VMLA_VMLS_fp_A1_quad(op_: bool, Vn: QuadReg, Vd: QuadReg, Vm: QuadReg)
-	syntax = format("v%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, Vd, Vn, Vm) 
-	image = format("1111 0010 0 %1b %1b 0 %4b %4b 1101 %1b 1 %1b 1 %4b", Vd.p, op_, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if Vd<0> == '1' || Vn<0> == '1' || Vm<0> == '1' then UNDEFINED;
-	advsimd = 1
-	dp_operation = 0
-	add = op_ == 0
-	esize = 32
-	elements = 2
-	d = Vd
-	n = Vn
-	m = Vm
-	regs = 2
-
-op VMLA_VMLS_fp_A2_32(cond: condition, Vn: SingleReg, Vd: SingleReg, op_: bool, Vm: SingleReg)
-	syntax = format("v%s%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, cond, Vd, Vn, Vm) 
-	image = format("%s 11100 %1b 00 %4b %4b 101 0 %1b %1b %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	advsimd = 0
-	dp_operation = 0
-	add = op_ == 0
-	d = Vd
-	n = Vn
-	m = Vm
-
-op VMLA_VMLS_fp_A2_64(cond: condition, Vn: DoubleReg, Vd: DoubleReg, op_: bool, Vm: DoubleReg)
-	syntax = format("v%s%s.f64 %s, %s, %s", if op_ then "mls" else "mla" endif, cond, Vd, Vn, Vm) 
-	image = format("%s 11100 %1b 00 %4b %4b 101 1 %1b %1b %1b 0 %4b", cond, Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	advsimd = 0
-	dp_operation = 1
-	d = Vd
-	n = Vn
-	m = Vm
-
-
-op VMLA_thumb = VMLA_VMLS_thumb_fp
-
-op VMLA_VMLS_thumb_fp(x: VMLA_VMLS_thumb_fp_list)
+op VPUSH_A2(cond: condition, Vd: SingleReg, imm8: card(8))
+	regs = UInt(imm8)
+	syntax = if regs > 1 
+		then format("vpush%s {%s-s%d}", cond, Vd, Vd+regs-1)
+		else format("vpush%s {%s}", cond, Vd) endif
+	image = format("%s 110 1 0 %1b 1 0 1101  %4b 1010 %8b", cond, Vd.p, Vd.r, imm8)
+	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
+	single_regs = 1
+	d = UInt(Vd)
+	imm32 = ZeroExtend(imm8::0b00, 32)
+	//if regs == 0 || regs > 16 || (d+regs) > 32 then UNPREDICTABLE;
+	//if VFPSmallRegisterBank() && (d+regs) > 16 then UNPREDICTABLE;
+	
+	
+op VPUSH_thumb(x: VPUSH_thumb_list)
 	syntax = x.syntax
 	image = x.image
 	action = {
-		//EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, advsimd);
-		//if advsimd then // Advanced SIMD instruction
+		//EncodingSpecificOperations(); CheckVFPEnabled(TRUE); NullCheckIfThumbEE(13); 
+		//address = SP - imm32;
+		//SP = SP - imm32;
+		//if single_regs then
 		//	for r = 0 to regs-1
-		//		for e = 0 to elements-1
-		//			product = FPMul(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE); 
-		//			addend = if add then product else FPNeg(product); 
-		//			Elem[D[d+r],e,esize] = FPAdd(Elem[D[d+r],e,esize], addend, FALSE);
-		//else			// VFP instruction
-		//	if dp_operation then
-		//		addend64 = if add then FPMul(D[n], D[m], TRUE) else FPNeg(FPMul(D[n], D[m], TRUE));
-		//		D[d] = FPAdd(D[d], addend64, TRUE); 
-		//	else
-		//		addend32 = if add then FPMul(S[n], S[m], TRUE) else FPNeg(FPMul(S[n], S[m], TRUE)); 
-		//		S[d] = FPAdd(S[d], addend32, TRUE);
+		//		MemA[address,4] = S[d+r]; address = address+4;
+		//else
+		//	for r = 0 to regs-1
+		//	// Store as two word-aligned words in the correct order for current endianness. 
+		//	MemA[address,4] = if BigEndian() then D[d+r]<63:32> else D[d+r]<31:0>; 
+		//	MemA[address+4,4] = if BigEndian() then D[d+r]<31:0> else D[d+r]<63:32>; 
+		//	address = address+8;
 	}
 
-op VMLA_VMLS_thumb_fp_list = VMLA_VMLS_fp_T1_double | VMLA_VMLS_fp_T1_quad | VMLA_VMLS_fp_T2_32 | VMLA_VMLS_fp_T2_64
+op VPUSH_thumb_list = VPUSH_T1 | VPUSH_T2
 
-op VMLA_VMLS_fp_T1_double(op_: bool, Vn: DoubleReg, Vd: DoubleReg, Vm: DoubleReg)
+op VPUSH_T1(Vd: DoubleReg, imm8: card(8))
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("v%s%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
-	image = format("1110 1111 0 %1b %1b 0 %4b  %4b 1101 %1b 0 %1b 1 %4b", Vd.p, op_, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	regs = UInt(imm8) / 2 // If UInt(imm8) is odd, see "FSTMX".
+	syntax = if regs > 1 
+		then format("vpush%s {%s-d%d}", op_cond_syntax_new(ITCOND), Vd, Vd+regs-1)
+		else format("vpush%s {%s}", op_cond_syntax_new(ITCOND), Vd) endif
+	image = format("1110 110 1 0 %1b 1 0 1101  %4b 1011 %8b", Vd.p, Vd.r, imm8)
+	single_regs = 0
+	d = UInt(Vd)
+	imm32 = ZeroExtend(imm8::0b00, 32)
+	//if regs == 0 || regs > 16 || (d+regs) > 32 then UNPREDICTABLE;
+	//if VFPSmallRegisterBank() && (d+regs) > 16 then UNPREDICTABLE;
+
+op VPUSH_T2(Vd: SingleReg, imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	regs = UInt(imm8)
+	syntax = if regs > 1 
+		then format("vpush%s {%s-s%d}", op_cond_syntax_new(ITCOND), Vd, Vd+regs-1)
+		else format("vpush%s {%s}", op_cond_syntax_new(ITCOND), Vd) endif
+	image = format("1110 110 1 0 %1b 1 0 1101  %4b 1010 %8b", Vd.p, Vd.r, imm8)
+	single_regs = 1
+	d = UInt(Vd)
+	imm32 = ZeroExtend(imm8::0b00, 32)
+	//if regs == 0 || regs > 16 || (d+regs) > 32 then UNPREDICTABLE;
+	//if VFPSmallRegisterBank() && (d+regs) > 16 then UNPREDICTABLE;
+	
+
+
+
+////// VSTM //////
+op VSTM_arm(x: VSTM_arm_list)
+	syntax = x.syntax
+	image = x.image
+	cond = x.cond
+	action = {
+		if ConditionPassed() then
+			x.action; // EncodingSpecificOperations();
+			// CheckVFPEnabled(true);
+			// NullCheckIfThumbEE(n);
+			// TODO
+		endif;
+	}
+
+op VSTM_arm_list = VSTM_A1_01 | VSTM_A1_10 | VSTM_A2_01 | VSTM_A2_10
+
+op VSTM_A1_01(cond: condition, D: bool, W:bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	P = 0
+	U = 1
+	single_regs = 0
+	add = U
+	wback = W == 1
+	d = UInt(D :: Vd)
+	n = UInt(Rn)
+	imm32 = imm8 :: 0
+	regs = UInt(imm8) / 2
+	
+	syntax = format("vstm%s%s%s %s%s, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			cond,
+			Rn,
+			if W then "!" else "" endif,
+			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
+		)
+	image = format("%s 1100 1%1b%1b0 %s %s 1011 %8b", cond, D, W, Rn, Vd, imm8)
+	action = {
+		// TODO
+	}
+
+op VSTM_A1_10(cond: condition, D: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	P = 1
+	U = 0
+	W = 1
+	single_regs = 0
+	add = U
+	wback = W == 1
+	d = UInt(D :: Vd)
+	n = UInt(Rn)
+	imm32 = imm8 :: 0
+	regs = UInt(imm8) / 2
+	
+	syntax = format("vstm%s%s%s %s%s, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			cond,
+			Rn,
+			if W then "!" else "" endif,
+			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
+		)
+	image = format("%s 1101 0%1b10 %s %s 1011 %8b", cond, D, Rn, Vd, imm8)
+	action = {
+		// TODO
+	}
+
+op VSTM_A2_01(cond: condition, D: bool, W:bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	P = 0
+	U = 1
+	single_regs = 0
+	add = U
+	wback = W == 1
+	d = UInt(D :: Vd)
+	n = UInt(Rn)
+	imm32 = imm8 :: 0
+	regs = UInt(imm8)
+	
+	syntax = format("vstm%s%s%s %s%s, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			cond,
+			Rn,
+			if W then "!" else "" endif,
+			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
+		)
+	image = format("%s 1100 1%1b%1b0 %s %s 1010 %8b", cond, D, W, Rn, Vd, imm8)
+	action = {
+		// TODO
+	}
+
+op VSTM_A2_10(cond: condition, D: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	P = 1
+	U = 0
+	W = 1
+	single_regs = 0
+	add = U
+	wback = W == 1
+	d = UInt(D :: Vd)
+	n = UInt(Rn)
+	imm32 = imm8 :: 0
+	regs = UInt(imm8)
+	
+	syntax = format("vstm%s%s%s %s%s, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			cond,
+			Rn,
+			if W then "!" else "" endif,
+			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
+		)
+	image = format("%s 1101 0%1b10 %s %s 1010 %8b", cond, D, Rn, Vd, imm8)
+	action = {
+		// TODO
+	}
+
+
+
+
+
+
+
+////// VSTR //////
+
+// TODO Really useful?
+/* Encoding of VSTxx
+ *	P UDW1
+ *	0 1X00	VSTM
+ *	0 1X10	VSTM
+ *	1 XX00	VLDR
+ *	1 0X10	VPUSH if Rn = 13, VSTM else
+ *
+ * from this, we derive 2 VSTM opcode families:
+ *	P UDW1
+ *	0 1XX0	VLDM with P = 0, U = 1
+ *	1 0X10	VLDM with P = 1, U = 0
+ */
+
+op VSTR_arm(x: VSTR_arm_list)
+	syntax = x.syntax
+	image = x.image
+	cond = x.cond
+	action = {
+		if ConditionPassed() then
+			//CheckVFPEnabled(TRUE); NullCheckIfThumbEE(n);
+			address = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
+			if x.single_reg then
+				M32[address] = S[x.d]<31..0>;
+			else
+		 		// Store as two word-aligned words in the correct order for current endianness.
+				M32[address] = //if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
+					//D[x.d]<63..32> else 
+					D[x.d]<31..0>; 
+				M32[address+4] = //if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
+					//D[x.d]<31..0> else 
+					D[x.d]<63..32>;
+			endif;
+		endif;
+	}
+
+op VSTR_arm_list = VSTR_A1 | VSTR_A2
+
+op VSTR_A1(c: condition, U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
+	image = format("%s 1101 %1b%1b00 %s %4b 1011 %8b", c, U, Vd.p, Rn, Vd.r, imm8)
+	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
+	single_reg = 0
+	add = U
+	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	d = UInt(Vd)
+	n = UInt(Rn)
+	// if n == 15 then UNPREDICTABLE
+	cond = c
+
+op VSTR_A2(c: condition, U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
+	image = format("%s 1101 %1b%1b00 %s %4b 1010 %8b", c, U, Vd.p, Rn, Vd.r, imm8)
+	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
+	single_reg = 1
+	add = U
+	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	d = UInt(Vd)
+	n = UInt(Rn)
+	// if n == 15 then UNPREDICTABLE
+	cond = c
+
+op VSTR_thumb(x: VSTR_thumb_list)
+	syntax = x.syntax
+	image = x.image
+	cond = x.cond
+	action = {
+		if ConditionPassed() then
+			//CheckVFPEnabled(TRUE); NullCheckIfThumbEE(n);
+			address = if x.add then (R[x.n] + x.imm32) else (R[x.n] - x.imm32) endif;
+			if x.single_reg then
+				M32[address] = S[x.d]<31..0>;
+			else
+		 		// Store as two word-aligned words in the correct order for current endianness.
+				M32[address] = //if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
+					//D[x.d]<63..32> else 
+					D[x.d]<31..0>; 
+				M32[address+4] = //if BigEndian() then // TODO: BigEndian() tests whether big-endian memory accesses are currently selected.
+					//D[x.d]<31..0> else 
+					D[x.d]<63..32>;
+			endif;
+		endif;
+	}
+
+op VSTR_thumb_list = VSTR_T1 | VSTR_T2
+
+op VSTR_T1(U: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
+	image = format("1110 1101 %1b %1b 00 %s %4b 1011 %8b", U, Vd.p, Rn, Vd.r, imm8)
+	single_reg = 0
+	add = U
+	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	d = UInt(Vd)
+	n = UInt(Rn)
+	// if n == 15 then UNPREDICTABLE
+	cond = 1
+
+op VSTR_T2(U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vstr%s %s, [%s, #%s%d]", op_cond_syntax_new(ITCOND), Vd, Rn, if U then "" else "-" endif, imm8::0b00)
+	image = format("1110 1101 %1b %1b 00 %s %4b 1010 %8b", U, Vd.p, Rn, Vd.r, imm8)
+	single_reg = 1
+	add = U
+	imm32 = ZeroExtend(imm8 :: 0b00, 32)
+	d = UInt(Vd)
+	n = UInt(Rn)
+	// if n == 15 then UNPREDICTABLE
+	cond = 1
+
+
+
+////// VSUB (normal) //////
+
+op VSUB_fp_A1(DD: bit, sz: bit, Vn: fpindex, Vd: fpindex, NN: bit, QQ: bit, MM: bit, Vm: fpindex)
+	image = format("1111 0010 0%1b1%1b %4b %4b 1101 %1b%1b%1b0 %4b", DD, sz, Vn, Vd, NN, QQ, MM, Vm)
+	action = {
+		if QQ == 1 && (Vd<0..0> == 1 || Vn<0..0> == 1 || Vm<0..0> == 1) then UNDEFINED; endif;
+		if sz == 1 then UNDEFINED; endif;
+	}
 	advsimd = 1
-	dp_operation = 0
-	add = op_ == 0
 	esize = 32
 	elements = 2
-	d = Vd
-	n = Vn
-	m = Vm
-	regs = 1
-
-op VMLA_VMLS_fp_T1_quad(op_: bool, Vn: QuadReg, Vd: QuadReg, Vm: QuadReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("v%s%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
-	image = format("1110 1111 0 %1b %1b 0 %4b  %4b 1101 %1b 1 %1b 1 %4b", Vd.p, op_, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
-	//if Vd<0> == '1' || Vn<0> == '1' || Vm<0> == '1' then UNDEFINED;
-	advsimd = 1
+	d = UInt(DD::Vd)
+	n = UInt(NN::Vn)
+	m = UInt(MM::Vm)
+	regs = if QQ == 0 then 1 else 2 endif
 	dp_operation = 0
-	add = op_ == 0
+	syntax = format("vsub.f32 q%d, q%d, q%d", d, n, m)
+
+op VSUB_fp_A2(cond: condition, D: bit, Vn: fpindex, Vd: fpindex, sz: bit, N: bit, M: bit, Vm: fpindex)
+	image = format("%s 11100%1b11 %4b %4b 101%1b %1b1%1b0 %4b", cond, D, Vn, Vd, sz, N, M, Vm)
+	action = {
+		// if FPSCR_Len = 0b000 || FPSCR_Stride != 0b00 then SEE "VFP vectors"
+	}
+	advsimd = FALSE
+	dp_operation = (sz == 1)
+	d = if dp_operation then UInt(D::Vd) else UInt(Vd::D) endif
+	n = if dp_operation then UInt(N::Vn) else UInt(Vn::N) endif
+	m = if dp_operation then UInt(M::Vm) else UInt(Vm::M) endif
+	syntax = format("vsub%s.f%d %s, %s, %s", cond, fpsize(), fpreg(d), fpreg(n), fpreg(m))
+
+op VSUB_arm_fp_all = VSUB_fp_A1 | VSUB_fp_A2
+op VSUB_arm_fp(x: VSUB_arm_fp_all)
+	image = x.image
+	syntax = x.syntax
+	action = {
+		x.action;
+		if ConditionPassed() then
+			EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, x.advsimd);
+			if x.advsimd then // Advanced SIMD instruction
+				// TODO
+				//for r = 0 to regs-1
+				//	for e = 0 to elements-1
+				//		Elem[D[d+r],e,esize] = FPSub(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE);
+			else			// VFP instruction
+				if x.dp_operation then
+					D[x.d] = FPSub(D[x.n], D[x.m], TRUE);
+				else
+					S[x.d] = FPSub(S[x.n], S[x.m], TRUE);
+				endif;
+			endif;
+		endif;
+	}
+
+
+////// VSUB (thumb) //////
+op VSUB_fp_T1(DD: bit, sz: bit, Vn: fpindex, Vd: fpindex, NN: bit, QQ: bit, MM: bit, Vm: fpindex)
+	image = format("1110 1111 0%1b1%1b %4b %4b 1101 %1b%1b%1b0 %4b", DD, sz, Vn, Vd, NN, QQ, MM, Vm)
+	action = {
+		if QQ == 1 && (Vd<0..0> == 1 || Vn<0..0> == 1 || Vm<0..0> == 1) then UNDEFINED; endif;
+		if sz == 1 then UNDEFINED; endif;
+	}
+	advsimd = 1
 	esize = 32
 	elements = 2
-	d = Vd
-	n = Vn
-	m = Vm
-	regs = 2
-
-op VMLA_VMLS_fp_T2_32(Vn: SingleReg, Vd: SingleReg, op_: bool, Vm: SingleReg)
-	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("v%s%s.f32 %s, %s, %s", if op_ then "mls" else "mla" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
-	image = format("1110 11100 %1b 00 %4b  %4b 101 0 %1b %1b %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	advsimd = 0
+	d = UInt(DD::Vd)
+	n = UInt(NN::Vn)
+	m = UInt(MM::Vm)
+	regs = if QQ == 0 then 1 else 2 endif
 	dp_operation = 0
-	add = op_ == 0
-	d = Vd
-	n = Vn
-	m = Vm
+	syntax = format("vsub.f32coucou q%d, q%d, q%d", d, n, m)
 
-op VMLA_VMLS_fp_T2_64(Vn: DoubleReg, Vd: DoubleReg, op_: bool, Vm: DoubleReg)
+op VSUB_fp_T2(D: bit, Vn: fpindex, Vd: fpindex, sz: bit, N: bit, M: bit, Vm: fpindex)
+	image = format("1110 1110 0%1b11 %4b %4b 101%1b %1b1%1b0 %4b", D, Vn, Vd, sz, N, M, Vm)
+	action = {
+		// if FPSCR_Len = 0b000 || FPSCR_Stride != 0b00 then SEE "VFP vectors"
+	}
+	advsimd = FALSE
+	dp_operation = (sz == 1)
+	d = if dp_operation then UInt(D::Vd) else UInt(Vd::D) endif
+	n = if dp_operation then UInt(N::Vn) else UInt(Vn::N) endif
+	m = if dp_operation then UInt(M::Vm) else UInt(Vm::M) endif
+	syntax = format("vsub.f%d %s, %s, %s", fpsize(), fpreg(d), fpreg(n), fpreg(m))
+
+op VSUB_thumb_fp_all = VSUB_fp_T1 | VSUB_fp_T2
+op VSUB_thumb_fp(x: VSUB_thumb_fp_all)
+	image = x.image
+	syntax = x.syntax
+	action = {
+		x.action;
+		if ConditionPassed() then
+			EncodingSpecificOperations(); CheckAdvSIMDOrVFPEnabled(TRUE, x.advsimd);
+			if x.advsimd then // Advanced SIMD instruction
+				// TODO
+				//for r = 0 to regs-1
+				//	for e = 0 to elements-1
+				//		Elem[D[d+r],e,esize] = FPSub(Elem[D[n+r],e,esize], Elem[D[m+r],e,esize], FALSE);
+			else			// VFP instruction
+				if x.dp_operation then
+					D[x.d] = FPSub(D[x.n], D[x.m], TRUE);
+				else
+					S[x.d] = FPSub(S[x.n], S[x.m], TRUE);
+				endif;
+			endif;
+		endif;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////// Should move in special.nmp ///////////////////
+
+op VMRS_thumb = VMRS_T1
+
+op VMRS_T1(Rt: REG_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("v%s%s.f64 %s, %s, %s", if op_ then "mls" else "mla" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm) 
-	image = format("1110 11100 %1b 00 %4b  %4b 101 1 %1b %1b %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
-	//if FPSCR.Len != '000' || FPSCR.Stride != '00' then SEE "VFP vectors";
-	advsimd = 0
-	dp_operation = 1
-	d = Vd
-	n = Vn
-	m = Vm
+	syntax = format("vmrs%s %s, fpscr", op_cond_syntax_new(ITCOND), if Rt.number != 15 then Rt.syntax else "APSR_nzcv" endif)
+	image = format("1110 11101111 0001  %s 1010 000 1 0000", Rt)
+	//if Rt == 13 && CurrentInstrSet() != InstrSet_ARM then UNPREDICTABLE;
+	t = UInt(Rt)
+	action = {
+		//CheckVFPEnabled(TRUE); 
+		//SerializeVFP(); VFPExcBarrier();
+		if t != 15 then
+			R[t] = FPSCR;
+		else
+			Ucpsr<28..31> = FPSCR<28..31>;
+		endif;
+	}
+
+

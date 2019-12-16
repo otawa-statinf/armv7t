@@ -545,7 +545,7 @@ op MOV_immediate(x: MOV_imm_list)
 	action = {
 		if ConditionPassed() then
 			// EncodingSpecificOperations();
-			init_imm32_carry;
+			x.init_imm32_carry;
 			result = imm32;
 			if x.d == 15 then // Can only occur for encoding A1
 				ALUWritePC(result); // setflags is always FALSE here 
@@ -1359,7 +1359,7 @@ op BIC_reg_thumb2(S: setS, rd : REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, imm3: c
 	}
 
 
-op CDP_CDP2_thumb2(opc0: card(1), opc1: card(4), CRn: card(4), CRd: card(4), coproc: enum(0..9, 12..15), opc2: card(3),CRm: card(4))
+op CDP_CDP2_thumb2(opc0: card(1), opc1: card(4), CRn: card(4), CRd: card(4), coproc: enum(0..9, 12, 14..15), opc2: card(3),CRm: card(4))
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("cdp%s%s %d, %d, cr%d, cr%d, cr%d, {%d}",op_cond_syntax_new(ITCOND), if(opc0==0b1) then "2" else "" endif, coproc, opc1, CRd, CRn,CRm, opc2)
 	image = format("111%1b 1110 %4b %4b %4b %4b %3b 0 %4b",opc0, opc1, CRn, CRd, coproc, opc2, CRm)
@@ -3110,7 +3110,7 @@ op SUB_imm_T4_thumb2(i: card(1), rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), im
 		//TODO if rn == 0b1111 then SEE ADR; endif;
 		//TODO if rn == 0b1101 then SEE SUB (SP minus immediate); endif;
 		SBIT = 0;
-		SUB(rd,rn,imm12);	
+		SUB(rd,rn,imm32);	
 	}
 
 op SUB_reg_thumb2(S: setS, rd : REG_INDEX, rn : REG_INDEX, rm: REG_INDEX, imm3: card(3), t: card(2), imm2: card(2))

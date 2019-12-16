@@ -523,14 +523,14 @@ op LDRH_imm_Thumb_T3(Rn: REG_INDEX, Rt_1_P_U_W: REG_INDEX_1_P_U_W_rst, imm8: car
 	// 		P = 0 && W = 0 -> UNDEFINED;
 	ITCOND = "f_get_update_ITSTATE"()
 	image = format("11111 00 0 0 01 1 %s  %s %8b", Rn, Rt_1_P_U_W, imm8)
-	P_U_W = Rt_1_P_U_W<7..4>
+	P_U_W = Rt_1_P_U_W
 	Rt = Rt_1_P_U_W
 	P = P_U_W<2..2>
 	U = P_U_W<1..1>
 	W = P_U_W<0..0>
 	syntax =
-		if P then format("ldrh%s %s, [%s, #%s0x%x]%s", op_cond_syntax_new(ITCOND), Rt, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif)
-		else format("ldrh%s %s, [%s], #%s0x%x", op_cond_syntax_new(ITCOND), Rt, Rn, if U then '' else '-' endif, imm8) endif
+		if P then format("ldrh%s %s, [%s, #%s0x%x]%s", op_cond_syntax_new(ITCOND), Rt_1_P_U_W, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif)
+		else format("ldrh%s %s, [%s], #%s0x%x", op_cond_syntax_new(ITCOND), Rt_1_P_U_W, Rn, if U then '' else '-' endif, imm8) endif
 	//if P == '0' && W == '0' then UNDEFINED;
 	condition = ITCOND
 	t = Rt
@@ -1014,8 +1014,8 @@ op LDRB_imm_T3(Rn: REG_INDEX, Rt_1_P_U_W: REG_INDEX_1_P_U_W_rst, imm8: card(8))
 	U = P_U_W<1..1>
 	W = P_U_W<0..0>
 	syntax =
-		if P then format("ldrb%s %s, [%s, #%s0x%x]%s", op_cond_syntax_new(ITCOND), Rt, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif)
-		else format("ldrb%s %s, [%s], #%s0x%x", op_cond_syntax_new(ITCOND), Rt, Rn, if U then '' else '-' endif, imm8) endif
+		if P then format("ldrb%s %s, [%s, #%s0x%x]%s", op_cond_syntax_new(ITCOND), Rt_1_P_U_W.syntax, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif)
+		else format("ldrb%s %s, [%s], #%s0x%x", op_cond_syntax_new(ITCOND), Rt_1_P_U_W.syntax, Rn, if U then '' else '-' endif, imm8) endif
 	condition = ITCOND
 	t = Rt
 	n = Rn
@@ -1066,8 +1066,8 @@ op LDRSB_imm_T2(Rn: REG_INDEX_XPC, Rt_1_P_U_W: REG_INDEX_1_P_U_W_rst, imm8: card
 	U = P_U_W<1..1>
 	W = P_U_W<0..0>
 	syntax =
-		if P then format("ldrsb%s %s, [%s, #%s0x%x]%s", op_cond_syntax_new(ITCOND), Rt, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif)
-		else format("ldrsb%s %s, [%s], #%s0x%x", op_cond_syntax_new(ITCOND), Rt, Rn, if U then '' else '-' endif, imm8) endif
+		if P then format("ldrsb%s %s, [%s, #%s0x%x]%s", op_cond_syntax_new(ITCOND), Rt_1_P_U_W, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif)
+		else format("ldrsb%s %s, [%s], #%s0x%x", op_cond_syntax_new(ITCOND), Rt_1_P_U_W, Rn, if U then '' else '-' endif, imm8) endif
 	condition = ITCOND
 	t = Rt
 	n = Rn
@@ -1146,8 +1146,8 @@ op LDRSH_imm_T2(Rn: REG_INDEX, Rt_1_P_U_W: REG_INDEX_1_P_U_W_rst, imm8: card(8))
 	U = P_U_W<1..1>
 	W = P_U_W<0..0>
 	syntax =
-		if P then format("ldrsh%s %s, [%s, #%s0x%x]%s", op_cond_syntax_new(ITCOND), Rt, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif)
-		else format("ldrsh%s %s, [%s], #%s0x%x", op_cond_syntax_new(ITCOND), Rt, Rn, if U then '' else '-' endif, imm8) endif
+		if P then format("ldrsh%s %s, [%s, #%s0x%x]%s", op_cond_syntax_new(ITCOND), Rt_1_P_U_W, Rn, if U then '' else '-' endif, imm8, if W then '!' else '' endif)
+		else format("ldrsh%s %s, [%s], #%s0x%x", op_cond_syntax_new(ITCOND), Rt_1_P_U_W, Rn, if U then '' else '-' endif, imm8) endif
 	condition = ITCOND
 	t = Rt
 	n = Rn

@@ -217,8 +217,8 @@ op ADD_imm1_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm:IMM3)
 		TMP_REG2 = Get_THUMB_GPR(rn);
 		TMP_SWORD = TMP_REG2 + imm;
 		GPR[rd] = TMP_SWORD;
-		CFLAG = CarryFromAdd(TMP_REG2,imm,TMP_SWORD);
-		VFLAG = OverflowFromAdd(TMP_REG2,imm,TMP_SWORD);
+		CFLAG = CarryFromAdd(TMP_REG2, SInt(imm), TMP_SWORD);
+		VFLAG = OverflowFromAdd(TMP_REG2, SInt(imm), TMP_SWORD);
 		NFLAG = TMP_SWORD<31..31>;
 		if TMP_SWORD == 0 then
 			ZFLAG = 1;
@@ -914,7 +914,7 @@ op MOV_imm_thumb(rd : REG_THUMB_INDEX, imm : IMM8)
 	action = {
 		GPR[rd] = imm;
 		if setflags then
-			APSR_N = imm<31..31>;
+			APSR_N = ZeroExtend(imm, 32)<31..31>;
 			APSR_Z = imm == 0;
 		endif;
 	}
@@ -1215,8 +1215,8 @@ op SBC_thumb( rd : REG_THUMB_INDEX, rm : REG_THUMB_INDEX)
 			ZFLAG = 0;
 		endif;
 		// a revoir \
-		CFLAG =  ! CarryFromSub(TMP_REG1,TMP_REG1, TMP_BIT);
-		VFLAG = OverflowFromSub(TMP_REG1,TMP_REG1,TMP_BIT);
+		CFLAG =  ! CarryFromSub(TMP_REG1,TMP_REG1, TMP_REG1);
+		VFLAG = OverflowFromSub(TMP_REG1,TMP_REG1, TMP_REG1);
 	}
 
 op STMIA_thumb(rn: REG_THUMB_INDEX, llist: THUMB_REG_LIST)
