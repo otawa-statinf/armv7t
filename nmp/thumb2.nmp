@@ -78,6 +78,7 @@ op data_thumb2 =
 	| ROR_thumb2
 	| RSB_imm_T2
 	| RSB_thumb2
+	| UBFX_T1
 
 op control_thumb2 =
 	  BLX_imm_T2
@@ -152,7 +153,6 @@ op vector_thumb2 =
 	| UADD16_thumb2
 	| UADD8_thumb2
 	| UASX_thumb2
-	| UBFX_thumb2
 	| UDIV_thumb2
 	| UHADD16_thumb2
 	| UHADD8_thumb2
@@ -3325,22 +3325,6 @@ op UASX_thumb2(rd: REG_INDEX, rm: REG_INDEX, rn: REG_INDEX)
 	}
 
 
-op UBFX_thumb2(rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm2: card(2), widthm1: card(5))
-	ITCOND = "f_get_update_ITSTATE"()
-	imm5 = imm3 :: imm2
-	syntax = format("ubfx%s %s, %s, #%d, #%d",op_cond_syntax_new(ITCOND), rd, rn, imm5, widthm1+1) // UBFX<c> <Rd>,<Rn>,#<lsb>,#<width>
-	image = format("11110 0 11 110 0 %s 0 %3b %s %2b 0 %5b", rn, imm3, rd, imm2, widthm1)
-	action = {
-		TMP_UREG1 = Get_ARM_GPR(rn);
-		if(imm5+widthm1 <= 31) then
-			TMP_UREG2 = ZeroExtend(TMP_UREG1<imm5+widthm1..imm5>,32);
-			Set_ARM_GPR(rd,TMP_UREG2);
-		else
-			// UNPREDICTABLE;
-		endif;
-	}
-
-
 op UDIV_thumb2(rd: REG_INDEX, rm: REG_INDEX, rn: REG_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("udiv%s %s, %s, %s",op_cond_syntax_new(ITCOND), rd, rn, rm) // UDIV<c> <Rd>,<Rn>,<Rm>
@@ -3890,3 +3874,27 @@ op UXTAH_UXTH_thumb2(rd: REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, rotate: card(2
 
 		Set_ARM_GPR(rd, TMP_UREG3);
 	}
+
+
+op UBFX_T1(rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm2: card(2), widthm1: card(5))
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("ubfx%s %s, %s, #%d, #%d", op_cond_syntax_new(ITCOND), rd, rn, imm3::imm2, widthm1)
+	image = format("11110 0 11 110 0 %s 0 %3b %s %2b 0 %5b", rn, imm3, rd, imm2, widthm1)
+	action = {
+		let d = UInt(rd);
+		let n = UInt(rn);
+		let lsbit = UInt(imm3::imm2);
+		let widthminus1 = UInt(widthm1);
+		if (13 <= d && d <= 15) || (13 <= n && n <= 15) then UNPREDICTABLE; endif;
+		
+		if ConditionPassed() then
+			EncodingSpecificOperations();
+			let msbit = lsbit + widthminus1;
+			if msbit <= 31 then
+				R[d] = ZeroExtend(R[n]<msbit..lsbit>, 32);
+			else
+				UNPREDICTABLE;
+			endif;
+		endif;
+	}
+

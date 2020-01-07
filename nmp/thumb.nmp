@@ -27,7 +27,7 @@ canon u8 "f_set_ITSTATE"(u8)
 canon u8 "f_get_ITSTATE"()
 canon u8 "f_get_update_ITSTATE"()
 
-let UNPREDICTABLE =0b11111111111111111111111111111111
+let _UNPREDICTABLE = 0b11111111111111111111111111111111
 
 mode IMM3(n: u3) = n
 	syntax = format("#%d", n)
@@ -355,7 +355,7 @@ op ASR2_thumb(rd : REG_THUMB_INDEX, rs:REG_THUMB_INDEX )
 			if CFLAG == 0 then
 				GPR[rd] = 0;
 			else
-				GPR[rd] =	UNPREDICTABLE;
+				GPR[rd] =	_UNPREDICTABLE;
 			endif;
 		endif; endif;
 		NFLAG = GPR[rd]<31..31>;
@@ -417,7 +417,7 @@ op B_thumb_T2(imm11: int(11))
 	syntax = format("b%s.n %l", op_cond_syntax_16(ITCOND), target)
 	image = format("11100 %11b", imm11)
 	action = {
-		// if InITBlock && !LastInITBlock then UNPREDICTABLE
+		// if InITBlock && !LastInITBlock then _UNPREDICTABLE
 		BranchWritePC_thumb(target);
 	}
 
@@ -510,7 +510,7 @@ op CBNZ_CBZ_thumb(rn: REG_THUMB_INDEX, i: card(1), imm5: card(5), op_: card(1))
 		endif
 	image = format("1011 %1b 0 %1b 1 %5b %s", op_, i, imm5, rn)
 	nonzero = op_
-	//if InITBlock() then UNPREDICTABLE;
+	//if InITBlock() then _UNPREDICTABLE;
 	action = {
 		//EncodingSpecificOperations();
 		if nonzero ^ (R[rn] == 0) then
@@ -652,7 +652,7 @@ op LDR_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 		 if ((TMP_START_ADDR & 3 ) == 0) then
                       TMP_REG1 = M32[TMP_START_ADDR];
                  else
-                    TMP_REG1 = UNPREDICTABLE;
+                    TMP_REG1 = _UNPREDICTABLE;
                   endif;
                  GPR[rd] = TMP_REG1;
 
@@ -667,7 +667,7 @@ op LDR_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IND
 		 if ((TMP_START_ADDR & 3 ) == 0) then
                       TMP_REG1 = M32[TMP_START_ADDR];
                  else
-                    TMP_REG1 = UNPREDICTABLE;
+                    TMP_REG1 = _UNPREDICTABLE;
                   endif;
                  GPR[rd] = TMP_REG1;
 
@@ -692,7 +692,7 @@ op LDR_imm3_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
                  if ((TMP_START_ADDR & 3 ) == 0) then
                       TMP_REG1 = M32[TMP_START_ADDR];
                  else
-                    TMP_REG1 = UNPREDICTABLE;
+                    TMP_REG1 = _UNPREDICTABLE;
                   endif;
                  GPR[rd] = TMP_REG1;
 
@@ -748,7 +748,7 @@ op LDRH_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IN
                  if (TMP_BIT == 0) then
                       TMP_REGLIST = M16[TMP_START_ADDR];
                  else
-                    TMP_REGLIST = UNPREDICTABLE;
+                    TMP_REGLIST = _UNPREDICTABLE;
                   endif;
 		 GPR[rd] = TMP_REGLIST;
 
@@ -766,7 +766,7 @@ op LDRSB_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX
 		 TMP_IMM = M[TMP_START_ADDR];
 		 TMP_BIT = TMP_IMM<7..7>;
 		 if (TMP_BIT == 1) then
-		    TMP_REG1 = UNPREDICTABLE;
+		    TMP_REG1 = _UNPREDICTABLE;
 		    TMP_REG1 = TMP_REG1 << 8;
 		    TMP_REG2 = TMP_REG1 + TMP_IMM;
 		  else
@@ -788,14 +788,14 @@ op LDRSH_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_INDEX
 		  		TMP_REGLIST = M16[TMP_START_ADDR];
 				TMP_BIT = TMP_REGLIST<15..15>;
 				if (TMP_BIT == 1) then
-				   TMP_REG1 = UNPREDICTABLE;
+				   TMP_REG1 = _UNPREDICTABLE;
 				   TMP_REG1 = TMP_REG1 << 16;
 				   TMP_REG2 = TMP_REG1 + TMP_REGLIST;
 				else
 					TMP_REG2 = TMP_REGLIST;
 	                        endif;
 		       else
-	        	        TMP_REG2 = UNPREDICTABLE;
+	        	        TMP_REG2 = _UNPREDICTABLE;
 	          endif;
                  GPR[rd] = TMP_REG2;
 
@@ -1279,7 +1279,7 @@ op STR_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 		if ((TMP_START_ADDR & 3 ) == 0) then
 			M32[TMP_START_ADDR] =  GPR[rd];
 		else
-			M32[TMP_START_ADDR] = UNPREDICTABLE;
+			M32[TMP_START_ADDR] = _UNPREDICTABLE;
 		endif;
 	}
 
@@ -1292,7 +1292,7 @@ op STR_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IND
 		if ((TMP_START_ADDR & 3 ) == 0) then
 			M32[TMP_START_ADDR] = GPR[rd];
 		else
-			M32[TMP_START_ADDR] = UNPREDICTABLE;
+			M32[TMP_START_ADDR] = _UNPREDICTABLE;
 		endif;
 	}
 
@@ -1306,7 +1306,7 @@ op STR_imm2_thumb( rd : REG_THUMB_INDEX, imm: IMM8)
 		if ((TMP_START_ADDR & 3 ) == 0) then
 			M32[TMP_START_ADDR] = GPR[rd];
 		else
-			M32[TMP_START_ADDR] = UNPREDICTABLE;
+			M32[TMP_START_ADDR] = _UNPREDICTABLE;
 		endif;
 	}
 
@@ -1346,7 +1346,7 @@ op STRH_imm_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, imm: IMM5)
 		if ((TMP_START_ADDR & 3 ) == 0) then
 			M16[TMP_START_ADDR] = TMP_REGLIST;
 		else
-			M16[TMP_START_ADDR] = UNPREDICTABLE;
+			M16[TMP_START_ADDR] = _UNPREDICTABLE;
 		endif;
 	}
 
@@ -1361,7 +1361,7 @@ op STRH_shr_thumb( rd : REG_THUMB_INDEX, rn : REG_THUMB_INDEX, rm : REG_THUMB_IN
 		if ((TMP_START_ADDR & 3 ) == 0) then
 			M16[TMP_START_ADDR] = TMP_REGLIST;
 		else
-			M16[TMP_START_ADDR] = UNPREDICTABLE;
+			M16[TMP_START_ADDR] = _UNPREDICTABLE;
 		endif;
 	}
 

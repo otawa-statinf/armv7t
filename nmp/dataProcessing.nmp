@@ -31,6 +31,14 @@ macro update_shift_CFLAG(shift_op) = \
 	endif \
 
 
+op dataProcessing = ADD_imm | ADC_shr | ADC_imm | ADD_shr | AND_shr | AND_imm | BIC_shr | BIC_imm
+				| CMN_shr | CMN_imm | CMP_shr | CMP_imm | EOR_shr | EOR_imm | MOV_shr | MOV_imm 
+				| MVN_shr | MVN_imm | ORR_shr | ORR_imm | RSB_shr | RSB_imm | RSC_shr | RSC_imm 
+				| SBC_shr | SBC_imm | SUB_shr | SUB_imm | TEQ_shr | TEQ_imm | TST_shr | TST_imm
+				| MOVT | MOVW_imm | UBFX
+
+
+
 op ADD_shr(cond : condition, sets : setS, rd : REG_INDEX, rn : REG_INDEX, shifter_operand	: shiftedRegister)
 	syntax = format("add%s%s %s, %s, %s", cond.syntax, sets.syntax, rd.syntax, rn.syntax, shifter_operand.syntax)
 	image = format("%s0000100%s%s%s%s", cond.image, sets.image, rn.image, rd.image, shifter_operand.image)
@@ -454,3 +462,23 @@ op BFIC(cond: condition, rd: REG_INDEX, rn: REG_INDEX, msb: card(5), lsb: card(5
 	}
 
 
+op UBFX(cond: condition, rd: REG_INDEX, rn: REG_INDEX, lsb: card(5), widthm1: card(5))
+	syntax = format("ubfx%s %s, %s, #%d, #%d", cond, rd, rn, lsb, widthm1)
+	image = format("%s 01111 1 1 %5b %s %5b 101 %s", cond, widthm1, rd, lsb, rn)
+	action = {
+		let d = UInt(rd);
+		let n = UInt(rn);
+		let lsbit = UInt(lsb);
+		let widthminus1 = UInt(widthm1);
+		if d == 15 || n == 15 then UNPREDICTABLE; endif;
+		
+		if ConditionPassed() then
+			EncodingSpecificOperations();
+			let msbit = lsbit + widthminus1;
+			if msbit <= 31 then
+				R[d] = ZeroExtend(R[n]<msbit..lsbit>, 32);
+			else
+				UNPREDICTABLE;
+			endif;
+		endif;
+	}

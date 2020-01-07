@@ -415,11 +415,8 @@ extend VMOV_imm_A2_32
 extend VMOV_imm_A2_64
 	used_regs = { "write"(S[d * 2]); "write"(S[d * 2 + 1]); }
 
-extend VMOV_reg_A2_32
-	used_regs = { "write"(S[d]); "read"(S[m]); }
-
-extend VMOV_reg_A2_32
-	used_regs = { "write"(S[d]); "read"(S[m]); }
+/*extend VMOV_reg_A2_32
+	used_regs = { "write"(S[d]); "read"(S[m]); }*/
 
 extend VMOV_creg_spreg_A1
 	used_regs = {

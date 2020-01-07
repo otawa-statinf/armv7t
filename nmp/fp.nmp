@@ -68,12 +68,10 @@ mode SingleReg(_r: card(4), _p: card(1)) = _r :: _p
 
 
 // Macro definitions
-macro BigEndian() = 0
 macro CheckAdvSIMDOrVFPEnabled(_1, _2) =
 macro CheckAdvSIMDOrVFEnabled(_1, _2) =
 macro CheckVFPEnabled(_) =
 macro Consistent(_) = TRUE
-macro EncodingSpecificOperations() =
 macro FixedToFP32(x, u, _r, _f)	= coerce(doublefp, if u then coerce(card(32), x) else coerce(int(32), x) endif)
 macro FixedToFP64(x, u, _r, _f)	= coerce(doublefp, if u then coerce(card(64), x) else coerce(int(64), x) endif)
 macro FPDoubleToSingle(x, _f) 	= coerce(singlefp, x)

@@ -1,5 +1,5 @@
 //
-// GLISS V2 -- ARM branch instructions
+// GLISS V2 -- ARM load-store instructions
 // Copyright (c) 2010, IRIT - UPS <casse@irit.fr>
 //
 // This file is part of GLISS2.
@@ -18,6 +18,24 @@
 // along with GLISS2; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
+
+op LoadStore =
+	  LDREX
+	| LDRH_imm
+	| LDRH_shr 
+	| LDRSB_imm
+	| LDRSB_shr
+	| LDRSH_imm
+	| LDRSH_shr
+	| LDR_imm
+	| LDR_shr
+	| STRD_imm
+	| STRD_reg_A1
+	| STREX
+	| STRH_imm
+	| STRH_shr
+	| STR_imm
+	| STR_shr
 
 
 // macros
@@ -351,7 +369,8 @@ op STR_imm(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 
 	}
 
-op LDR_shr(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_INDEX, rd: REG_INDEX, shifter_operand: loadstoreSpecifiedShift)
+op LDR_shr(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1,
+	rn: REG_INDEX, rd: REG_INDEX, shifter_operand: loadstoreSpecifiedShift)
 
 	syntax = format("ldr%s%s%s %s, [%s%s, %s%s%s%s",
 		cond.syntax,
@@ -365,8 +384,8 @@ op LDR_shr(cond: condition, setpre: u1, setu: u1, setb: u1, setw: u1, rn: REG_IN
 		if setpre then "]" else "" endif,
 		if setw then "!" else "" endif )
 
-	image = format("%s011%1b%1b%1b%1b1%s%s%s", cond.image, setpre,
-		setu, setb, setw, rn.image,rd.image,shifter_operand.image)
+	image = format("%s 011 %1b%1b%1b%1b 1 %s %s %s", cond.image, setpre,
+		setu, setb, setw, rn.image, rd.image, shifter_operand.image)
 	action = {
 		if (cond) then
 			if (setpre == 0)  && (setw == 1) then
@@ -559,6 +578,54 @@ op STRD_imm(cond: condition, setpre: u1, setu: u1, setw: u1, rn: REG_INDEX, rt: 
 			endif;
 		endif;
        }
+
+
+op STRD_reg_A1(cond: condition, P: bit, U: bit, W: bit, Rn: REG_INDEX, Rt: REG_INDEX, Rm: REG_INDEX)
+	syntax = format("strd%s %s-%d, [%s, %s%s]%s",
+		cond,
+		Rt,
+		Rt+1,
+		Rn,
+		if U then "+" else "-" endif,
+		Rm,
+		if (P == 0) || (W == 1) then "!" else "" endif)
+	image = format("%s 000 %1b%1b0%1b0 %s %s 0000 1111 %s", cond, P, U, W, Rn, Rt, Rm)
+	action = {
+		if Rt<0..0> == 1 then UNPREDICTABLE; endif;
+		let t = UInt(Rt);
+		let t2 = t + 1;
+		let n = UInt(Rn);
+		let m = UInt(Rm);
+		let index = (P == 1);
+		let add = (U == 1);
+		let wback = (P == 0) || (W == 1);
+		if P == 0 && W == 1 then UNPREDICTABLE; endif;
+		if t2 == 15 || m == 16 then UNPREDICTABLE; endif;
+		if wback && (n == 15 || n == t || n == t2) then UNPREDICTABLE; endif;
+		if ArchVersion() < 6 && wback && m == n then UNPREDICTABLE; endif;
+		
+		if ConditionPassed() then
+			EncodingSpecificOperations();
+			let offset_addr = if add then (R[n] + R[m]) else (R[n] - R[m]) endif;
+			let address = if index then offset_addr else R[n] endif;
+			if HavePAE() && address<2..0> == 0b000 then
+				let data: card(64) = 0;
+				if BigEndian() then
+					data<63..32> = R[t];
+					data<31..0> = R[t2];
+				else
+					data<31..0> = R[t];
+					data<63..32> = R[t2];
+				endif;
+				M64[address] = data;
+			else
+				M32[address] = R[t];
+				M32[address+4] = R[t2];
+			endif;
+			if wback then R[n] = offset_addr; endif;
+		endif;
+	}
+
 
 
 op LDRH_imm(cond: condition, setpre:u1,setu:u1,setw:u1,rn : REG_INDEX, rd : REG_INDEX , immh: u4, imml:u4)
