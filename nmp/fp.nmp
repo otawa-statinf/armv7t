@@ -107,6 +107,7 @@ op fp_arm =
 	| VSTM_arm
 	| VSTR_arm
 	| VSUB_arm_fp
+	| VMRS_A1
 	//| VPUSH_arm
 	//| VPOP_arm
 
@@ -119,12 +120,12 @@ op fp_thumb =
 	| VLDR_thumb 
 	| VMLA_thumb
 	| VMOV_thumb
-	| VMRS_thumb
 	| VMUL_thumb
 	| VPOP_thumb
 	| VPUSH_thumb
 	| VSTR_thumb
 	| VSUB_thumb_fp
+	| VMRS_T1
 
 
 ////// VADD (normal and thumb) //////
@@ -1837,34 +1838,52 @@ op VSUB_thumb_fp(x: VSUB_thumb_fp_all)
 	}
 
 
+////// VMRS //////
 
-
-
-
-
-
-
-
-
-
-
-////////////////////////////// Should move in special.nmp ///////////////////
-
-op VMRS_thumb = VMRS_T1
+op VMRS_A1(cond: condition, Rt: REG_INDEX)
+	syntax = format("vmrs%s %s, fpscr",
+		cond, if Rt.number != 15 then Rt.syntax else "APSR_nzcv" endif)
+	image = format("%s 11101111 0001 %s 1010 0001 0000", cond, Rt)
+	action = {
+		let t = UInt(Rt);
+		if t == 13 && CurrentInstrSet() != InstrSet_ARM then UNPREDICTABLE; endif;
+		if ConditionPassed() then
+			EncodingSpecificOperations();
+			CheckVFPEnabled(TRUE);
+			SerializeVFP();
+			VFPExcBarrier();
+			if t != 15 then
+				R[t] = FPSCR;
+			else
+				APSR_N = FPSCR_N;
+				APSR_Z = FPSCR_Z;
+				APSR_C = FPSCR_C;
+				APSR_V = FPSCR_V;
+			endif;
+		endif;
+	}
 
 op VMRS_T1(Rt: REG_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = format("vmrs%s %s, fpscr", op_cond_syntax_new(ITCOND), if Rt.number != 15 then Rt.syntax else "APSR_nzcv" endif)
-	image = format("1110 11101111 0001  %s 1010 000 1 0000", Rt)
-	//if Rt == 13 && CurrentInstrSet() != InstrSet_ARM then UNPREDICTABLE;
-	t = UInt(Rt)
+	syntax = format("vmrs%s %s, fpscr",
+		op_cond_syntax_new(ITCOND), if Rt.number != 15 then Rt.syntax else "APSR_nzcv" endif)
+	image = format("1110 11101111 0001  %s 1010 0001 0000", Rt)
 	action = {
-		//CheckVFPEnabled(TRUE); 
-		//SerializeVFP(); VFPExcBarrier();
-		if t != 15 then
-			R[t] = FPSCR;
-		else
-			Ucpsr<28..31> = FPSCR<28..31>;
+		let t = UInt(Rt);
+		if t == 13 && CurrentInstrSet() != InstrSet_ARM then UNPREDICTABLE; endif;
+		if ConditionPassed() then
+			EncodingSpecificOperations();
+			CheckVFPEnabled(TRUE);
+			SerializeVFP();
+			VFPExcBarrier();
+			if t != 15 then
+				R[t] = FPSCR;
+			else
+				APSR_N = FPSCR_N;
+				APSR_Z = FPSCR_Z;
+				APSR_C = FPSCR_C;
+				APSR_V = FPSCR_V;
+			endif;
 		endif;
 	}
 

@@ -536,10 +536,10 @@ extend VDIV_thumb
 		endif;
 	}
 
-extend VMRS_T1
+extend VMRS_A1, VMRS_T1
 	used_regs = {
-		if t!= 15 then
-			writeR(t); readFPSCR();
+		if Rt.number != 15 then
+			writeR(Rt.number); readFPSCR();
 		else
 			writeCPSR(); readFPSCR();
 		endif;
