@@ -16,9 +16,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+let VFPNegMul_VNMLA = 0b01
+let VFPNegMul_VNMLS = 0b10
+let VFPNegMul_VNMUL = 0b11
 
 macro BigEndian() = 0
 macro EncodingSpecificOperations() =
+
+macro FPNeg_(operand) = -(operand)
+macro FPAdd_(op1, op2, fpscr_controlled) = (op1) + (op2)
+macro FPMul_(op1, op2, fpscr_controlled) = (op1) * (op2)
+
 macro HavePAE() = 1
 
 macro _ROR_(x, shift) = x >>> shift
