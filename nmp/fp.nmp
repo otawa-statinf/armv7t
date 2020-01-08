@@ -833,22 +833,22 @@ op VMLA_VMLS_fp_T2_64(Vn: DoubleReg, Vd: DoubleReg, op_: bool, Vm: DoubleReg)
 	n = Vn
 	m = Vm
 
-op VNMLA_VNMLS_A1(cond: condition, D: bit, Vn: card(4), Vd: card(4),
+op VNMLA_VNMLS_A1(cond: condition, _D: bit, Vn: card(4), Vd: card(4),
 	sz: bit, N: bit, _op:bit, M: bit, Vm: card(4))
 	syntax = 
 		if sz == 0 then
 			format("vnml%s.f32 S%d, S%d, S%d",
-				if _op == 0 then "a" else "s" endif, Vd::D, Vn::N, Vm::M)
+				if _op == 0 then "a" else "s" endif, Vd::_D, Vn::N, Vm::M)
 		else
 			format("vnml%s.f64 D%d, D%d, D%d",
-				if _op == 0 then "a" else "s" endif, D::Vd, N::Vn, M::Vm)
+				if _op == 0 then "a" else "s" endif, _D::Vd, N::Vn, M::Vm)
 		endif
-	image = format("%s 11100 %1b 01 %4b %4b 101 %1b%1b%1b%1b 0 %4b", cond, D, Vn, Vd, sz, N, _op, M, Vm)
+	image = format("%s 11100 %1b 01 %4b %4b 101 %1b%1b%1b%1b 0 %4b", cond, _D, Vn, Vd, sz, N, _op, M, Vm)
 	action = {
 		// if FPSCR_Len != 0b000 || FPSCR_Strid != 0b00 then SEE "VFP vectors"
 		let _type = if _op == 1 then VFPNegMul_VNMLA else VFPNegMul_VNMLS endif;
 		let dp_operation = (sz == 1);
-		let d = if dp_operation then UInt(D::Vd) else UInt(Vd::D) endif;
+		let d = if dp_operation then UInt(_D::Vd) else UInt(Vd::_D) endif;
 		let n = if dp_operation then UInt(N::Vn) else UInt(Vn::N) endif;
 		let m = if dp_operation then UInt(M::Vm) else UInt(Vm::M) endif;
 		
