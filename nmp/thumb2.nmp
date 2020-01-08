@@ -79,6 +79,7 @@ op data_thumb2 =
 	| RSB_imm_T2
 	| RSB_thumb2
 	| UBFX_T1
+	| UXTB_T1
 
 op control_thumb2 =
 	  BLX_imm_T2
@@ -175,7 +176,7 @@ op vector_thumb2 =
 	| USUB16_thumb2
 	| USUB8_thumb2
 	| UXTAB16_UXTB16_thumb2
-	| UXTAB_UXTB_thumb2
+	| UXTAB_T1
 	| UXTAH_UXTH_thumb2
 
 
@@ -3796,7 +3797,7 @@ op USUB8_thumb2(rd: REG_INDEX, rm: REG_INDEX, rn: REG_INDEX)
 	}
 
 
-op UXTAB_UXTB_thumb2(rd: REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, rotate: card(2))
+/*op UXTAB_UXTB_thumb2(rd: REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, rotate: card(2))
 	ITCOND = "f_get_update_ITSTATE"()
 	imm5 = rotate::0b000
 	syntax = 
@@ -3819,7 +3820,7 @@ op UXTAB_UXTB_thumb2(rd: REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, rotate: card(2
 		endif;	
 
 		Set_ARM_GPR(rd, TMP_UREG3);
-	}
+	}*/
 
 
 op UXTAB16_UXTB16_thumb2(rd: REG_INDEX, rm: REG_INDEX, rn: REG_INDEX, rotate: card(2))
@@ -3895,6 +3896,50 @@ op UBFX_T1(rd: REG_INDEX, rn: REG_INDEX, imm3: card(3), imm2: card(2), widthm1: 
 			else
 				UNPREDICTABLE;
 			endif;
+		endif;
+	}
+
+
+op UXTB_T1(Rd: card(3), Rm: card(3))
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("uxtb%s R%d, R%d", op_cond_syntax_new(ITCOND), Rd, Rm)
+	image = format("1011 0010 11 %3b %3b", Rm, Rd)
+	action = {
+		let d = UInt(Rd);
+		let m = UInt(Rm);
+		let rotation = 0;
+		if d == 15 || m == 15 then UNPREDICTABLE; endif;
+		if ConditionPassed() then
+			EncodingSpecificOperations();
+			let rotated = _ROR_(Rm, rotation);
+			Set_ARM_GPR(Rd, ZeroExtend(rotated<7..0>, 32));
+		endif;
+	}
+
+
+/// = UXTB_T2
+op UXTAB_T1(Rd: REG_INDEX, Rn: REG_INDEX, Rm: REG_INDEX, rotate: card(2))
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = 
+		if Rn.number == 0b1111 then
+			format("uxtb%s %s, %s, %d",
+				op_cond_syntax_new(ITCOND), Rd, Rm, rotate :: 0b000)
+		else
+			format("uxtab%s %s, %s, %s, %d",
+				op_cond_syntax_new(ITCOND), Rd, Rn, Rm, rotate :: 0b000)
+		endif
+	image = format("11111 010 0 101 %s 1111 %s 10 %2b %s", Rn, Rd, rotate, Rm)
+	action = {
+		// if Rn == '1111' SEE UXTB
+		let d = UInt(Rd.number);
+		let n = UInt(Rn.number);
+		let m = UInt(Rm.number);
+		let rotation = UInt(rotate :: 0b000);
+		if d == 15 || m == 15 || (n == 0b1111 && (d == 13 || m == 13)) then UNPREDICTABLE; endif;
+		if ConditionPassed() then
+			EncodingSpecificOperations();
+			let rotated = _ROR_(Rm, rotation);
+			Set_ARM_GPR(Rd, ZeroExtend(rotated<7..0>, 32));
 		endif;
 	}
 

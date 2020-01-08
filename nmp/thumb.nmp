@@ -171,7 +171,7 @@ op thumb1_list =
 	| STMIA_thumb | STR_thumb | STRB_thumb | STRH_thumb | SUB_thumb
 	| SXTB_thumb | SXTH_thumb
 	| TST_thumb  |  MOV_thumb //| NOP_thumb // Shadowed by the work from Jerabek
-	| NOP_thumb_jer | UXTB_thumb | UXTH_thumb
+	| NOP_thumb_jer /*| UXTB_thumb*/ | UXTH_thumb
 
 
 ///////////////////////////////////////////
@@ -1532,7 +1532,7 @@ op NOP_thumb_jer(firstcond: card(4), mask: card(4))
 
 
 // From Jerabek
-op UXTB_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
+/*op UXTB_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
 	ITCOND = "f_get_update_ITSTATE"()
 	syntax = format("uxtb%s %s, %s", op_cond_syntax_new(ITCOND),rd.syntax, rm.syntax)
 	image = format("1011 0010 11 %s %s", rm.image, rd.image)
@@ -1540,7 +1540,7 @@ op UXTB_thumb(rd: REG_THUMB_INDEX, rm: REG_THUMB_INDEX)
 		TMP_UREG1 = Get_ARM_GPR(rm);
 		TMP_UREG3 = ZeroExtend(TMP_UREG1<7..0>, 32);
 		Set_ARM_GPR(rd, TMP_UREG3);
-	}
+	}*/
 
 
 // From Jerabek

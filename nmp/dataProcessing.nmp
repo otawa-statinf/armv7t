@@ -35,7 +35,7 @@ op dataProcessing = ADD_imm | ADC_shr | ADC_imm | ADD_shr | AND_shr | AND_imm | 
 				| CMN_shr | CMN_imm | CMP_shr | CMP_imm | EOR_shr | EOR_imm | MOV_shr | MOV_imm 
 				| MVN_shr | MVN_imm | ORR_shr | ORR_imm | RSB_shr | RSB_imm | RSC_shr | RSC_imm 
 				| SBC_shr | SBC_imm | SUB_shr | SUB_imm | TEQ_shr | TEQ_imm | TST_shr | TST_imm
-				| MOVT | MOVW_imm | UBFX
+				| MOVT | MOVW_imm | UBFX | UXTB_A1
 
 
 
@@ -480,5 +480,20 @@ op UBFX(cond: condition, rd: REG_INDEX, rn: REG_INDEX, lsb: card(5), widthm1: ca
 			else
 				UNPREDICTABLE;
 			endif;
+		endif;
+	}
+
+op UXTB_A1(cond: condition, Rd: REG_INDEX, Rm: REG_INDEX, rotate: card(2))
+	syntax = format("uxtb%s %s, %s, %d", cond, Rd, Rm, rotate :: 0b000)
+	image = format("%s 0110 1110 1111 %s %2b00 0111 %s", cond, Rd, rotate, Rm)
+	action = {
+		let d = UInt(Rd.number);
+		let m = UInt(Rm.number);
+		let rotation = UInt(rotate :: 0b000);
+		if d == 15 || m == 15 then UNPREDICTABLE; endif;
+		if ConditionPassed() then
+			EncodingSpecificOperations();
+			let rotated = _ROR_(Rm, rotation);
+			Set_ARM_GPR(Rd, ZeroExtend(rotated<7..0>, 32));
 		endif;
 	}

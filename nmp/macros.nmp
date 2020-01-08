@@ -20,6 +20,9 @@
 macro BigEndian() = 0
 macro EncodingSpecificOperations() =
 macro HavePAE() = 1
+
+macro _ROR_(x, shift) = x >>> shift
+
 macro SerializeVFP() =
 macro UNPREDICTABLE =
 macro VFPExcBarrier() =
