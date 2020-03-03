@@ -584,7 +584,7 @@ op STRD_reg_A1(cond: condition, P: bit, U: bit, W: bit, Rn: REG_INDEX, Rt: REG_I
 	syntax = format("strd%s %s-%d, [%s, %s%s]%s",
 		cond,
 		Rt,
-		Rt+1,
+		Rt.number + 1,
 		Rn,
 		if U then "+" else "-" endif,
 		Rm,
