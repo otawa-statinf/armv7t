@@ -961,7 +961,7 @@ op VMOV_reg_A(x: VMOV_reg_A_list)
 	}
 
 
-/*
+
 op VMOV_reg_A2_32(cond: condition, Vd: SingleReg, Vm: SingleReg)
 	syntax = format("vmov%s.f32 %s, %s", cond, Vd, Vm)
 	image = format("%s 1110 1%1b11 0000 %4b 1010 01%1b0 %4b", cond, Vd.p, Vd.r, Vm.p, Vm.r)
@@ -1004,7 +1004,6 @@ op VMOV_arm_reg(x: VMOV_arm_reg_list)
 			loop;
 		endif;
 	}
-*/
 
 
 
