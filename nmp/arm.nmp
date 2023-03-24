@@ -1,32 +1,54 @@
-///////////////////////////////////////////////////
-//
-// New ARM description in Sim-nML
-//
-// Thinked for gliss2.
-// Based on "arm/goodies/arm_param/arm.nmp"
-// Need to be optimized by optirg. 
-//
-// July 2009
-// R. Dubot Y. Ndongo
-//
-// January 2011
-// Needs to be completed to be working
-// J. Barre
-//
-///////////////////////////////////////////////////
+/*
+ *	This file is part of gliss2/a64 instruction set.
+ * 
+ *	gliss2/a64 is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	gliss2/a64 is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+ *
+ *	You should have received a copy of the GNU General Public License
+ *	along with Foobar.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
-
-let proc = "arm"
+let proc = "a64"
 let gliss_isize = "32"
 
-include "simpleType.nmp"
-include "state.nmp"
-include "tempVar.nmp"
-include "modes.nmp"
+// Types
+type reg = card(5)
+macro integer = let
+type bit = card(1)
 
-// ****** instruction set ******
+// Macros
+macro UInt(n) = n
+macro Zeros(n) = coerce(card(n), 0)
+macro ZeroExtend(x, s) = x
 
-op instruction(x : ARM_instr)
+
+// Registers
+var _[1, card(64)]
+reg PC[1, card(64)] pc=1
+reg SP[1, card(64)]
+reg WSP[1, card(32)] alias=SP<31..0>
+reg X[32, card(64)]
+
+mode reg_sp =
+
+macro syn_x_sp(sf, i) = \
+	if sf then \
+		if i == 31 then "SP" else format("X%d", i) endif \
+	else \
+		if i == 31 then "WSP" else format("X%d", i) endif \
+	endif
+
+
+
+// instructions
+op instruction(x: all_insts)
 	image = x.image
 	syntax = x.syntax
 	action = {
@@ -34,48 +56,34 @@ op instruction(x : ARM_instr)
 		x.action;
 	}
           
-op ARM_instr = dataProcessing 
-	| branch 
-	| LoadStore 
-	| LoadStoreM 
-	| interrupt 
-	| multiply 
-	| semaphore 
-	| misc 
-	| sra
-	| fp_arm
-	| coproc
+op all_insts = computation_insts
 
+op computation_insts =
+	ADD_imm
 
-op branch = BX_ARM | BLX_ARM | B_Cond
-
-op LoadStoreM = STM | LDM
-
-op interrupt = SWI
-
-op multiply = MLA | MUL | SMULL | UMULL | SMLAL | UMLAL | MLS
-
-op semaphore = SWP
-
-op misc = CLZ
-
-op sra = MSR_imm | MSR_shr | MRS | DMB
-
-op coproc = STC | LDC | MRC
-
-
-// ****** includes ******
-
-include "macros.nmp"
-include "condition.nmp"
-include "dataProcessingMacro.nmp"
-include "shiftedRegister.nmp"
-include "dataProcessing.nmp"
-include "control.nmp"
-include "loadstore.nmp"
-include "mult.nmp"
-include "system.nmp"
-include "loadStoreM_Macro.nmp"
-include "loadStoreM.nmp"
-include "thumb.nmp"
-
+op ADD_imm(sf: bool, sh: bool, imm12: card(12), Rn: reg, Rd: reg)
+	image = format("%1b00100010%1b %12b %5b %5b", sf, sh, imm12, Rn, Rd)
+	syntax =
+		if sf then
+			format("ADD X%d, X%d, #%d%s", Rd, Rn, imm12, if sh then "LSL #12" else "" endif)
+		else
+			format("ADD W%d, W%d, #%d%s", Rd, Rn, imm12, if sh then "LSL #12" else "" endif)
+		endif
+	action = {
+		integer d = UInt(Rd);
+		integer n = UInt(Rn);
+		integer datasize = if sf == 1 then 64 else 32 endif;
+		integer imm;
+		switch(sh) {
+		case 0: imm = ZeroExtend(imm12, datasize);
+		case 1: imm = ZeroExtend(imm12::Zeros(12), datasize);
+		}
+		integer result;
+		integer operand1 = if n == 31 then SP else X[n] endif;
+		AddWithCarry(result, _, operand1, imm, 0);
+		if d == 31 then
+			SP = result;
+		else
+			X[d] = result;
+		endif;
+	}

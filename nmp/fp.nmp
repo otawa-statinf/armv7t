@@ -67,6 +67,47 @@ mode SingleReg(_r: card(4), _p: card(1)) = _r :: _p
 	syntax = format("s%d", i)
 
 
+
+
+// Unpacking FP
+let FPType_NonZero = 0
+let FPType_Zero = 1
+let FPType_Infinity = 2
+let FPType_QNaN = 3
+let FPType_SNaN = 4
+
+macro FPUnpack32(type_, sign, value, fpval, fpscr_val) = \
+	sign = fpval<31..32>; \
+	let exp32 = fpval<30..23>; \
+	let frac32 = fpval<22..0>; \
+	if IsZero(exp32) then \
+		if IsZero(frac32) || fpscr_val<24..24> == 1 then \
+			type_ = FPType_Zero; \
+			value = 0; \
+			if !IsZero(frac32) then FPProcessException(FPExc_InputDernomr, fpscr_val); endif; \
+		else \
+			type_ = FPType_NonZero; \
+			value = 0;	\
+		endif; \
+	else if IsOnes32(exp32) then \
+		if IsZero(frac32) then \
+			type_ = FPType_Inifinity; \
+			value = 0;  \
+		else \
+			type_ = if frac32<22..22> = 1 then FPType_QNaN else FYpe_SNaN endif; \
+			value = 0; \
+		endif; \
+	else \
+		type_ = FPType_NonZero; \
+		value = 0; \
+	endif; endif
+
+// TODO Fix the value calculation.
+// 2.**-126 * (UInt32(frac32) * 2.**-23)
+// 2.**1000000
+// value = 2.**(UInt(exp32 - 127) * (1. + UInt(frac32) * 2.**-23)
+
+
 // Macro definitions
 macro CheckAdvSIMDOrVFPEnabled(_1, _2) =
 macro CheckAdvSIMDOrVFEnabled(_1, _2) =
@@ -78,6 +119,12 @@ macro FPDoubleToSingle(x, _f) 	= coerce(singlefp, x)
 macro FPSingleToDouble(x, _f)	= coerce(doublefp, x)
 macro FPSub(x, y, _3) = x - y
 macro FPToFixed32(x, u, _r, _f)	= (if u then coerce(card(32), x) else coerce(int(32), x) endif)
+
+/*macro FPToFixed64(M, frac_bits, unsigned, round0, ctrl) = \
+	let fpscr_val = if ctrl then FPSCR else StandardFPSCRValue(); \
+	if round0 then fpcr_val<23..22> = 0b11; \
+	let type_:  */
+
 macro NullCheckIfThumbEE(_) = 
 macro UNDEFINED =
 macro VFPExpandImm_sp(imm8) 	= coerce(float(23, 9), imm8)
@@ -336,8 +383,131 @@ op VCVT_arm_ff_A1(cond: condition, D_: card(1), Vd: card(4), sz: bool, M: card(1
 			endif;
 		endif;
 	}
+
+
+/****** VC Instruction (Thumb mode) ******/
+
+op VCVT_thumb =
+	  VCVT_T1_float_int
+	| VCVT_T1_float_fix
+	| VCVT_T1_double_single
+
+op VCVT_T1_float_fix(D: bit, op_: bit, U: bit, Vd: card(4), sf: bit, sx: bit, i: bit, imm4: card(4))
+	ITCOND = "f_get_update_ITSTATE"()
+
+	image = format("1110 1110 1%1b11 1%1b1%1b %4b 101%1b %1b1%1b0 %4b",
+		D, op_, U, Vd, sf, sx, i, imm4)
+
+	Td = switch(U::sx) {
+		case 0b00: "s16"
+		case 0b01: "s32"
+		case 0b10: "u16"
+		case 0b11: "u32"
+	}
+
+	to_fixed = op_ == 1
+	dp_operation = sf == 1
+	unsigned = U == 1
+	size = if sx == 0 then 16 else 32 endif
+	frac_bits = size - imm4::i
+	d = if dp_operation then D::Vd else Vd::D endif
+	round_zero = to_fixed
+	round_nearest = !to_fixed
 	
-op VCVT_thumb = VCVT_VCVTR_thumb_fp_int_fp
+	syntax =
+		if op_ == 1 then
+			if sf == 1 then
+				format("vcvt%s.%s.f64 d%d, d%d, #%d",
+					op_cond_syntax_new(ITCOND), Td, d, d, frac_bits)
+			else
+				format("vcvt%s.%s.f32 s%d, s%d, #%d",
+					op_cond_syntax_new(ITCOND), Td, d, d, frac_bits)
+			endif
+		else
+			if sf == 1 then
+				format("vcvt%s.f64.%s d%d, d%d, #%d",
+					op_cond_syntax_new(ITCOND), Td, d, d, frac_bits)
+			else
+				format("vcvt%s.f32.%s s%d, s%d, #%d",
+					op_cond_syntax_new(ITCOND), Td, d, d, frac_bits)
+			endif
+		endif
+
+	action = {
+	}
+
+op VCVT_T1_double_single(D: bit, Vd: card(4), sz: bit, M: bit, Vm: card(4))
+	ITCOND = "f_get_update_ITSTATE"()
+
+	image = format("1110 1110 1%1b11 0111 %4b 101%1b 11%1b0 %4b",
+		D, Vd, sz, M, Vm)
+
+	double_to_single = sz == 1
+	d = if double_to_single then Vd::D else D::Vd endif
+	m = if double_to_single then M::Vm else Vm::M endif
+
+	syntax =
+		if sz == 0 then
+			format("vcvt%s.f64.f32 d%d, s%d",
+				op_cond_syntax_new(ITCOND), d, m)
+		else
+			format("vcvt%s.f32.f64 s%d, d%d",
+				op_cond_syntax_new(ITCOND), d, m)
+		endif
+
+	action = {
+		
+	}
+
+macro bitR(b) = if b == 1 then "R" else "" endif
+
+op VCVT_T1_float_int(D: bit, opc2: enum(0b000, 0b100, 0b101), Vd: card(4), sz: bit, op_: bit, M: bit, Vm: card(4))
+	ITCOND = "f_get_update_ITSTATE"()
+
+	image = format("1110 1110 1%1b11 1%3b %4b 101%1b %1b1%1b0 %4b",
+		D, opc2, Vd, sz, op_, M, Vm)
+
+	to_integer = opc2<2..2> == 1
+	dp_operation = sz == 1
+	unsigned = if to_integer then opc2<0..0> == 0 else op_ == 0 endif
+	d = if to_integer then Vd::D else
+			if dp_operation then D::Vd else Vd::D endif endif
+	m = if to_integer then
+			if dp_operation then M::Vm else Vm::M endif
+		else Vm::M endif
+	Tm = if op_ == 1 then "s32" else "u32" endif
+
+	syntax =
+		if opc2 == 0b101 then
+			if sz == 1 then
+				format("vcvt%s%s.s32.f64 s%d, d%d", 
+					bitR(op_), op_cond_syntax_new(ITCOND), d, m )
+			else
+				format("vcvt%s%s.s32.f32 s%d, d%d", 
+					bitR(op_), op_cond_syntax_new(ITCOND), d, m )
+			endif
+		else if opc2 == 0b100 then
+			if sz == 1 then
+				format("vcvt%s%s.u32.f64 s%d, d%d", 
+					bitR(op_), op_cond_syntax_new(ITCOND), d, m )
+			else
+				format("vcvt%s%s.u32.f32 s%d, d%d", 
+					bitR(op_), op_cond_syntax_new(ITCOND), d, m )
+			endif
+		else
+			if sz == 1 then
+				format("vcvt%s.f64.%s d%d, s%d", 
+					op_cond_syntax_new(ITCOND), Tm, d, m )
+			else
+				format("vcvt%s.f32.%s s%d, s%d", 
+					op_cond_syntax_new(ITCOND), Tm, d, m )
+			endif
+		endif endif
+
+	action = { }
+
+/*
+VCVT_VCVTR_thumb_fp_int_fp
 
 op VCVT_VCVTR_thumb_fp_int_fp(x: VCVT_VCVTR_thumb_fp_int_fp_list)
 	syntax = x.syntax
@@ -356,18 +526,26 @@ op VCVT_VCVTR_thumb_fp_int_fp(x: VCVT_VCVTR_thumb_fp_int_fp_list)
 		//		S[d] = FixedToFP(S[m], 32, 0, unsigned, round_nearest, TRUE);
 	}
 
-op VCVT_VCVTR_thumb_fp_int_fp_list = VCVT_VCVTR_fp_int_fp_T1_D32_M32 
+op VCVT_VCVTR_thumb_fp_int_fp_list =
+	  VCVT_VCVTR_fp_int_fp_T1_D32_M32 
 	| VCVT_VCVTR_fp_int_fp_T1_D32_M64
 	| VCVT_VCVTR_fp_int_fp_T1_D64_M32
 
 // TODO rename VCVT_VCVTR_fp_int_FP_T1 (and group with next)
 op VCVT_VCVTR_fp_int_fp_T1_D32_M32(opc2: enum(0, 4..5), Vd: SingleReg, op_: bool, Vm: SingleReg)
 	ITCOND = "f_get_update_ITSTATE"()
-	syntax = if opc2 == 0b101 then format("vcvt%s%s.s32.f32 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
-		else if opc2 == 0b100 then format("vcvt%s%s.u32.f32 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
-		else /* opc2 == 0b000 */ format("vcvt%s.f32.%s %s, %s", op_cond_syntax_new(ITCOND), if op_ then "s32" else "u32" endif, Vd, Vm) 
+	syntax =
+		if opc2 == 0b101 then
+			format("vcvt%s%s.s32.f32 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
+		else if opc2 == 0b100 then
+			format("vcvt%s%s.u32.f32 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
+		else
+			format("vcvt%s.f32.%s %s, %s", op_cond_syntax_new(ITCOND), if op_ then "s32" else "u32" endif, Vd, Vm) 
 		endif endif
-	image = format("1110 11101 %1b 11 1 %3b  %4b 101 0 %1b 1 %1b 0 %4b", Vd.p, opc2, Vd.r, op_, Vm.p, Vm.r)
+
+	image = format("1110 11101 %1b 11 1 %3b  %4b 101 0 %1b 1 %1b 0 %4b", Vd.p, 
+	opc2, Vd.r, op_, Vm.p, Vm.r)
+
 	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
 	to_integer = opc2<2..2>
 	dp_operation = 0
@@ -380,9 +558,12 @@ op VCVT_VCVTR_fp_int_fp_T1_D32_M32(opc2: enum(0, 4..5), Vd: SingleReg, op_: bool
 
 op VCVT_VCVTR_fp_int_fp_T1_D32_M64(opc2: enum(4..5), Vd: SingleReg, op_: bool, Vm: DoubleReg)
 	ITCOND = "f_get_update_ITSTATE"()
+
 	syntax = if opc2 == 0b101 then format("vcvt%s%s.s32.f64 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm)
-		else /* opc2 == 0b100 */ format("vcvt%s%s.u32.f64 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm) endif
+		else  format("vcvt%s%s.u32.f64 %s, %s", if op_ then "" else "R" endif, op_cond_syntax_new(ITCOND), Vd, Vm) endif
+
 	image = format("1110 11101 %1b 11 1 %3b  %4b 101 1 %1b 1 %1b 0 %4b", Vd.p, opc2, Vd.r, op_, Vm.p, Vm.r)
+
 	//For the case when cond is 0b1111, see Unconditional instructions on page A5-216.
 	to_integer = opc2<2..2> // 0b1
 	dp_operation = 1
@@ -407,7 +588,7 @@ op VCVT_VCVTR_fp_int_fp_T1_D64_M32(opc2: enum(0), Vd: DoubleReg, op_: bool, Vm: 
 		else op_ == 0b0 endif
 	round_zero = op_
 	round_nearest = 0 // FALSE selects FPSCR rounding
-
+*/
 
 
 

@@ -571,21 +571,50 @@ extend VCVT_arm_ff_A1
 		endif;
 	}
 
-extend VCVT_VCVTR_thumb_fp_int_fp
+extend VCVT_T1_float_fix
 	used_regs = {
-		if x.to_integer then
-			if x.dp_operation then
-				writeS(x.d); readD(x.m);
+		if op_ == 1 then
+			if sf == 1 then
+				readD(d); writeD(d);
 			else
-				writeS(x.d); readS(x.m);
+				readS(d); writeS(d);
 			endif;
 		else
-			if x.dp_operation then
-				writeD(x.d); readS(x.m); 
+			if sf == 1 then
+				readD(d); writeD(d);
 			else
-				writeS(x.d); readS(x.m);
+				readS(d); writeS(d);
 			endif;
-		endif;		
+		endif;
+	}
+
+extend VCVT_T1_double_single
+	used_regs = {
+		readS(m);
+		writeD(d);
+	}
+
+extend VCVT_T1_float_int
+	used_regs = {
+		if opc2 == 0b101 then
+			if sz == 1 then
+				writeS(d); readD(m);
+			else
+				writeS(d); readD(m);
+			endif;
+		else if opc2 == 0b100 then
+			if sz == 1 then
+				writeS(d); readD(m);
+			else
+				writeS(d); readD(m);
+			endif;
+		else
+			if sz == 1 then
+				writeD(d); readS(m);
+			else
+				writeS(d); readS(m);
+			endif;
+		endif; endif;
 	}
 
 extend VADD_arm_fp

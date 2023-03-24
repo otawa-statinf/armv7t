@@ -34,3 +34,12 @@ macro _ROR_(x, shift) = x >>> shift
 macro SerializeVFP() =
 macro UNPREDICTABLE =
 macro VFPExcBarrier() =
+
+// exceptions
+macro FPProcessException(exception_, fpscr_val) =
+
+// basic calculations
+macro IsZero(x) 	= (x) == 0
+macro IsOnes32(x)	= (x) == 0xFFFFFFFF
+
+
