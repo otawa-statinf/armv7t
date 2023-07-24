@@ -413,12 +413,14 @@ op B_thumb(cond: u4,  simm: SIMM8)
 
 op B_thumb_T2(imm11: int(11))
 	ITCOND = "f_get_update_ITSTATE"()
-	target = __IADDR + 4 + SignExtend(imm11 :: 0<0..0>, 32)
+	imm32 = SignExtend(imm11 :: 0b0, 32)
+	target = __IADDR + 4 + imm32
 	syntax = format("b%s.n %l", op_cond_syntax_16(ITCOND), target)
 	image = format("11100 %11b", imm11)
 	action = {
 		// if InITBlock && !LastInITBlock then _UNPREDICTABLE
-		BranchWritePC_thumb(target);
+		// EncodingSpecificOperations();
+		BranchWritePC_thumb(PC + imm32);
 	}
 
 
