@@ -24,6 +24,7 @@ Then compile all with:
 	make
 </code>
 
+For use with OTAWA, make sure you uncomment the `"WITH_FAST_STATE"` line. 
 
 ===== Usage =====
 
