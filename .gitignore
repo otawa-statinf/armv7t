@@ -1,7 +1,6 @@
 arm.irg
 autodoc
 config.mk
-disasm
 include/
 src/
 sim
