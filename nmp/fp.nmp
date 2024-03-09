@@ -166,14 +166,21 @@ op fp_thumb =
 	| VCVT_thumb
 	| VDIV_thumb
 	| VLDR_thumb 
+	| VLDM_thumb
 	| VMLA_thumb
 	| VMOV_thumb
 	| VMUL_thumb
-	| VPOP_thumb
+	// | VPOP_thumb
 	| VPUSH_thumb
 	| VSTR_thumb
 	| VSUB_thumb_fp
 	| VMRS_T1
+	| VCMP_VCMPE
+	| VFMA_VFMS
+	| VFNMA_VFNMS
+	| VNMUL
+	| VSTM_THUMB
+	| VSQRT
 
 
 ////// VADD (normal and thumb) //////
@@ -761,7 +768,153 @@ op VLDM_arm_A2_10(cond: condition, D: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: 
 		// TODO
 	} 
 
+op VLDM_thumb(x: VLDM_thumb_list)
+	syntax = x.syntax
+	image = x.image
+	cond = x.cond
+	action = {
+		// TODO
+	}
 
+op VLDM_thumb_list = VLDMDB_thumb_T1_W1 | VLDMDB_thumb_T2_W1 | VLDMIA_thumb_T1_W1 | VLDMIA_thumb_T2_W1 | VLDMIA_thumb_T1_W0 | VLDMIA_thumb_T2_W0
+
+op VLDMDB_thumb_T1_W1(Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8)) 
+	ITCOND = "f_get_update_ITSTATE"()
+	P = 1
+	U = 0
+	W = 1
+	single_regs = 0
+	add = (U == 1)
+	wback = (W == 1)
+	n = UInt(Rn)
+	imm32 = imm8 :: 0b00
+	regs = UInt(imm8) / 2
+	syntax = format("vldm%s%s%s %s!, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			op_cond_syntax_new(ITCOND),
+			Rn,
+			if imm8 <= 2 then format("s%d", d) else format("s%d-s%d", d, d + imm8 / 2 - 1) endif
+		)
+	image = format("1110 110 10%1b 1 1 %s %4b 1011 %8b", Vd.p, Rn, Vd.r, imm8)
+	action = {
+		// TODO
+	} 
+
+op VLDMDB_thumb_T2_W1(Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8)) 
+	ITCOND = "f_get_update_ITSTATE"()
+	P = 1
+	U = 0
+	W = 1
+	single_regs = 0
+	add = (U == 1)
+	wback = (W == 1)
+	n = UInt(Rn)
+	imm32 = imm8 :: 0b00
+	regs = UInt(imm8) / 2
+	syntax = format("vldm%s%s%s %s!, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			op_cond_syntax_new(ITCOND),
+			Rn,
+			if imm8 <= 2 then format("s%d", d) else format("s%d-s%d", d, d + imm8 / 2 - 1) endif
+		)
+	image = format("1110 110 10%1b 1 1 %s %4b 1010 %8b", Vd.p, Rn, Vd.r, imm8)
+	action = {
+		// TODO
+	} 
+
+op VLDMIA_thumb_T1_W0(Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8)) 
+	ITCOND = "f_get_update_ITSTATE"()
+	P = 0
+	U = 1
+	W = 0
+	single_regs = 0
+	add = (U == 1)
+	wback = (W == 1)
+	n = UInt(Rn)
+	imm32 = imm8 :: 0b00
+	regs = UInt(imm8) / 2
+	syntax = format("vldm%s%s%s %s!, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			op_cond_syntax_new(ITCOND),
+			Rn,
+			if imm8 <= 2 then format("s%d", d) else format("s%d-s%d", d, d + imm8 / 2 - 1) endif
+		)
+	image = format("1110 110 01%1b 0 1 %s %4b 1011 %8b", Vd.p, Rn, Vd.r, imm8)
+	action = {
+		// TODO
+	} 
+
+op VLDMIA_thumb_T1_W1(Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8)) 
+	ITCOND = "f_get_update_ITSTATE"()
+	P = 0
+	U = 1
+	W = 1
+	single_regs = 0
+	add = (U == 1)
+	wback = (W == 1)
+	n = UInt(Rn)
+	imm32 = imm8 :: 0b00
+	regs = UInt(imm8) / 2
+	syntax = format("vldm%s%s%s %s!, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			op_cond_syntax_new(ITCOND),
+			Rn,
+			if imm8 <= 2 then format("s%d", d) else format("s%d-s%d", d, d + imm8 / 2 - 1) endif
+		)
+	image = format("1110 110 01%1b 1 1 %s %4b 1011 %8b", Vd.p, Rn, Vd.r, imm8)
+	action = {
+		// TODO
+	} 
+
+op VLDMIA_thumb_T2_W0(Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8)) 
+	ITCOND = "f_get_update_ITSTATE"()
+	P = 0
+	U = 1
+	W = 0
+	single_regs = 0
+	add = (U == 1)
+	wback = (W == 1)
+	n = UInt(Rn)
+	imm32 = imm8 :: 0b00
+	regs = UInt(imm8) / 2
+	syntax = format("vldm%s%s%s %s!, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			op_cond_syntax_new(ITCOND),
+			Rn,
+			if imm8 <= 2 then format("s%d", d) else format("s%d-s%d", d, d + imm8 / 2 - 1) endif
+		)
+	image = format("1110 110 01%1b 0 1 %s %4b 1010 %8b", Vd.p, Rn, Vd.r, imm8)
+	action = {
+		// TODO
+	}
+
+op VLDMIA_thumb_T2_W1(Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8)) 
+	ITCOND = "f_get_update_ITSTATE"()
+	P = 0
+	U = 1
+	W = 1
+	single_regs = 0
+	add = (U == 1)
+	wback = (W == 1)
+	n = UInt(Rn)
+	imm32 = imm8 :: 0b00
+	regs = UInt(imm8) / 2
+	syntax = format("vldm%s%s%s %s!, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			op_cond_syntax_new(ITCOND),
+			Rn,
+			if imm8 <= 2 then format("s%d", d) else format("s%d-s%d", d, d + imm8 / 2 - 1) endif
+		)
+	image = format("1110 110 01%1b 1 1 %s %4b 1010 %8b", Vd.p, Rn, Vd.r, imm8)
+	action = {
+		// TODO
+	} 
 
 ////// VLDR //////
 
@@ -856,7 +1009,76 @@ op VLDR_T2(U: bool, Rn: REG_INDEX, Vd: SingleReg, imm8: card(8))
 	n = UInt(Rn)
 	cond = 1
 	
+//////  VFNMA_VFNMS //////
 
+op VFMA_VFMS = VFMA_VFMS_64_T1 | VFMA_VFMS_32_T1
+
+op VFMA_VFMS_64_T1(Vn:DoubleReg, Vd:DoubleReg, op_:bool, Vm:DoubleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vfm%s%s.f64 %s, %s, %s", if op_ == 1 then "s" else "a" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
+	image = format("1 1 1 0 1 1 1 0 1 %1b 10 %4b %4b 1 0 1 1 %1b %1b %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
+	action = {}
+
+op VFMA_VFMS_32_T1(Vn:SingleReg, Vd:SingleReg, op_:bool, Vm:SingleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vfm%s%s.f32 %s, %s, %s", if op_ == 1 then "s" else "a" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
+	image = format("1 1 1 0 1 1 1 0 1 %1b 10 %4b %4b 1 0 1 0 %1b %1b %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
+	action = {}
+
+//////  VFNMA_VFNMS //////
+
+op VFNMA_VFNMS = VFNMA_VFNMS_64 | VFNMA_VFNMS_32
+
+op VFNMA_VFNMS_64(Vn:DoubleReg, Vd:DoubleReg, op_:bool, Vm:DoubleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vfnm%s%s.f64 %s, %s, %s", if op_ == 1 then "a" else "s" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
+	image = format("1 1 1 0 1 1 1 0 1 %1b 0 1 %4b %4b 1 0 1 1 %1b %1b %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
+	action = {}
+
+op VFNMA_VFNMS_32(Vn:SingleReg, Vd:SingleReg, op_:bool, Vm:SingleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vfnm%s%s.f32 %s, %s, %s", if op_ == 1 then "a" else "s" endif, op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
+	image = format("1 1 1 0 1 1 1 0 1 %1b 0 1 %4b %4b 1 0 1 0 %1b %1b %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, op_, Vm.p, Vm.r)
+	action = {}
+
+////// VNMLA, VNMLS, VNMUL //////
+op VNMUL = VNMLA_VNMLS_VNMUL_64_T2 | VNMLA_VNMLS_VNMUL_32_T2
+
+op VNMLA_VNMLS_VNMUL_64_T2(Vn:DoubleReg, Vd:DoubleReg, Vm:DoubleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vnmul%s.f64 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
+	image = format("1110 1 1 1 0 0 %1b 1 0 %4b %4b 1 0 1 1 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	action = {}
+
+op VNMLA_VNMLS_VNMUL_32_T2(Vn:SingleReg, Vd:SingleReg, Vm:SingleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vnmul%s.f32 %s, %s, %s", op_cond_syntax_new(ITCOND), Vd, Vn, Vm)
+	image = format("1110 1 1 1 0 0 %1b 1 0 %4b %4b 1 0 1 0 %1b 1 %1b 0 %4b", Vd.p, Vn.r, Vd.r, Vn.p, Vm.p, Vm.r)
+	action = {}
+
+////// VCMP_VCMPE //////
+
+op VCMP_VCMPE = VCMP_VCMPE_64_T1 | VCMP_VCMPE_32_T1 | VCMP_VCMPE_64_T2 | VCMP_VCMPE_32_T2
+
+op VCMP_VCMPE_64_T1(Vd:DoubleReg, E:bool, Vm:DoubleReg)
+	syntax = format("vcmp%s.f64 %s, %s", if E == 1 then "e" else "" endif, Vd, Vm)
+	image = format("1 1 1 0 1 1 1 0 1 %1b 1 1 0 1 00 %4b 1 0 1 1 %1b 1 %1b 0 %4b", Vd.p, Vd.r, E, Vm.p, Vm.r)
+	action = {}
+
+op VCMP_VCMPE_32_T1(Vd:SingleReg, E:bool, Vm:SingleReg)
+	syntax = format("vcmp%s.f32 %s, %s", if E == 1 then "e" else "" endif, Vd, Vm)
+	image = format("1 1 1 0 1 1 1 0 1 %1b 1 1 0 1 00 %4b 1 0 1 0 %1b 1 %1b 0 %4b", Vd.p, Vd.r, E, Vm.p, Vm.r)
+	action = {}
+
+op VCMP_VCMPE_64_T2(Vd:DoubleReg, E:bool)
+	syntax = format("vcmp%s.f64 %s, #0.0", if E == 1 then "e" else "" endif, Vd)
+	image = format("1 1 1 0 1 1 1 0 1 %1b 1 1 0 1 0 1 %4b 1 0 1 1 %1b 1 0 0 0 0 0 0", Vd.p, Vd.r, E)
+	action = {}
+
+op VCMP_VCMPE_32_T2(Vd:SingleReg, E:bool)
+	syntax = format("vcmp%s.f32 %s, #0.0", if E == 1 then "e" else "" endif, Vd)
+	image = format("1 1 1 0 1 1 1 0 1 %1b 1 1 0 1 0 1 %4b 1 0 1 0 %1b 1 0 0 0 0 0 0", Vd.p, Vd.r, E)
+	action = {}
 
 ////// VMLA_VMLS //////
 
@@ -1829,10 +2051,121 @@ op VSTM_A2_10(cond: condition, D: bool, Rn: REG_INDEX, Vd: DoubleReg, imm8: card
 	}
 
 
+op VSTM_THUMB(x: VSTM_thumb_list)
+	syntax = x.syntax
+	image = x.image
+	cond = x.cond
+	action = {
+		if ConditionPassed() then
+			x.action; // EncodingSpecificOperations();
+			// CheckVFPEnabled(true);
+			// NullCheckIfThumbEE(n);
+			// TODO
+		endif;
+	}
 
+op VSTM_thumb_list = VSTM_thumb_T1_W0 | VSTM_thumb_T1_W1 | VSTM_thumb_T2_W0 | VSTM_thumb_T2_W1
+// | VSTM_thumb_T2
 
+op VSTM_thumb_T1_W0(Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	P = 0
+	U = 1
+	W = 0
+	single_regs = 0
+	add = U
+	wback = W == 1
+	n = UInt(Rn)
+	imm32 = imm8 :: 0
+	regs = UInt(imm8) / 2
+	
+	syntax = format("vstm%s%s%s %s%s, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			op_cond_syntax_new(ITCOND),
+			Rn,
+			if W then "!" else "" endif,
+			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
+		)
+	image = format("1110 1100 1%1b 0 0 %4b %4b 1011 %8b", Vd.p, Rn, Vd.r, imm8)
+	action = {
+		// TODO
+	}
 
+op VSTM_thumb_T1_W1(Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	P = 0
+	U = 1
+	W = 1
+	single_regs = 0
+	add = U
+	wback = W == 1
+	n = UInt(Rn)
+	imm32 = imm8 :: 0
+	regs = UInt(imm8) / 2
+	
+	syntax = format("vstm%s%s%s %s%s, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			op_cond_syntax_new(ITCOND),
+			Rn,
+			if W then "!" else "" endif,
+			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
+		)
+	image = format("1110 1100 1%1b 1 0 %4b %4b 1011 %8b", Vd.p, Rn, Vd.r, imm8)
+	action = {
+		// TODO
+	}
 
+op VSTM_thumb_T2_W0(Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	P = 0
+	U = 1
+	W = 0
+	single_regs = 0
+	add = U
+	wback = W == 1
+	n = UInt(Rn)
+	imm32 = imm8 :: 0
+	regs = UInt(imm8) / 2
+	
+	syntax = format("vstm%s%s%s %s%s, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			op_cond_syntax_new(ITCOND),
+			Rn,
+			if W then "!" else "" endif,
+			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
+		)
+	image = format("1 1 1 0 1 1 0 01 %1b 0 0 %4b %4b 1010 %8b", Vd.p, Rn, Vd.r, imm8)
+	action = {
+		// TODO
+	}
+
+op VSTM_thumb_T2_W1(Rn: REG_INDEX, Vd: DoubleReg, imm8: card(8))
+	ITCOND = "f_get_update_ITSTATE"()
+	P = 0
+	U = 1
+	W = 1
+	single_regs = 0
+	add = U
+	wback = W == 1
+	n = UInt(Rn)
+	imm32 = imm8 :: 0
+	regs = UInt(imm8) / 2
+	
+	syntax = format("vstm%s%s%s %s%s, {%s}",
+			if U then "i" else "d" endif,
+			if P then "b" else "a" endif,
+			op_cond_syntax_new(ITCOND),
+			Rn,
+			if W then "!" else "" endif,
+			if regs == 1 then format("d%d", d) else format("d%d-d%d", d, d + regs - 1) endif
+		)
+	image = format("1 1 1 0 1 1 0 01 %1b 1 0 %4b %4b 1010 %8b", Vd.p, Rn, Vd.r, imm8)
+	action = {
+		// TODO
+	}
 
 ////// VSTR //////
 
@@ -2107,3 +2440,20 @@ op VMRS_T1(Rt: REG_INDEX)
 	}
 
 
+op VSQRT = VSQRT_32_T1 | VSQRT_64_T1
+
+op VSQRT_32_T1(Vd: SingleReg, Vm: SingleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vsqrt%s.f32 %s, %s", op_cond_syntax_new(ITCOND), Vd, Vm)
+	image = format("1 1 1 0 1 1 1 0 1 %1b 1 1 0 0 0 1 %4b 1 0 1 0 1 1 %1b 0 %4b", Vd.p, Vd.r, Vm.p, Vm.r)
+	action = {
+
+	}
+
+op VSQRT_64_T1(Vd: DoubleReg, Vm: DoubleReg)
+	ITCOND = "f_get_update_ITSTATE"()
+	syntax = format("vsqrt%s.f64 %s, %s", op_cond_syntax_new(ITCOND), Vd, Vm)
+	image = format("1 1 1 0 1 1 1 0 1 %1b 1 1 0 0 0 1 %4b 1 0 1 1 1 1 %1b 0 %4b", Vd.p, Vd.r, Vm.p, Vm.r)
+	action = {
+		
+	}
